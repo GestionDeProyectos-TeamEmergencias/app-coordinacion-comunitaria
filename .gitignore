@@ -1,0 +1,31 @@
+# =========================
+# Node.js / Cloud Functions
+# =========================
+node_modules/
+npm-debug.log
+yarn-error.log
+.env
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+
+# =========================
+# Flutter / Dart
+# =========================
+.dart_tool/
+.packages
+build/
+.pub-cache/
+.pub/
+/android/app/src/main/res/values/secrets.xml
+/android/app/google-services.json
+/ios/Runner/GoogleService-Info.plist
+
+# =========================
+# IDEs y OS
+# =========================
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
