@@ -29,3 +29,7 @@ build/
 *.iml
 .DS_Store
 Thumbs.db
+
+# Entornos locales de IAs
+.gemini/
+
