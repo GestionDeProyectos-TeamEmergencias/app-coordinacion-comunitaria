@@ -17,9 +17,22 @@ firebase-debug.*.log
 build/
 .pub-cache/
 .pub/
+pubspec.lock
+
+# Código generado (build_runner)
+*.g.dart
+*.freezed.dart
+
+# Firebase config generado por FlutterFire CLI (contiene credenciales)
+lib/firebase_options.dart
+
+# Credenciales de plataforma (se agregan por cada developer según su proyecto Firebase)
 /android/app/src/main/res/values/secrets.xml
 /android/app/google-services.json
 /ios/Runner/GoogleService-Info.plist
+
+# Directorios de plataforma generados por flutter create (commitear solo la versión limpia)
+# android/ y ios/ SÍ se commitean — son necesarios para el build
 
 # =========================
 # IDEs y OS
