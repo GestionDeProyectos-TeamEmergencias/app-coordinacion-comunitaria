@@ -17,15 +17,41 @@ firebase-debug.*.log
 build/
 .pub-cache/
 .pub/
+# pubspec.lock se commitea en apps Flutter para garantizar versiones consistentes entre devs
+# pubspec.lock
+
+# Archivos generados por Flutter — no editar ni commitear
+.flutter-plugins-dependencies
+.flutter-plugins
+
+# Código generado (build_runner)
+*.g.dart
+*.freezed.dart
+
+# Firebase config generado por FlutterFire CLI (contiene credenciales)
+lib/firebase_options.dart
+
+# Credenciales de plataforma (se agregan por cada developer según su proyecto Firebase)
 /android/app/src/main/res/values/secrets.xml
 /android/app/google-services.json
 /ios/Runner/GoogleService-Info.plist
+
+# Directorios de plataforma generados por flutter create (commitear solo la versión limpia)
+# android/ y ios/ SÍ se commitean — son necesarios para el build
 
 # =========================
 # IDEs y OS
 # =========================
 .idea/
-.vscode/
+# .vscode/ ignorado excepto configuraciones compartidas del equipo
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/extensions.json
 *.iml
 .DS_Store
 Thumbs.db
+
+# Entornos locales de IAs
+.gemini/
+
