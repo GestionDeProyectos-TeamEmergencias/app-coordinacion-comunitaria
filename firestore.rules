@@ -1,0 +1,96 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Funciones auxiliares ───────────────────────────────────────────────────
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function callerData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isActive() {
+      return isAuthenticated() && callerData().status == 'active';
+    }
+
+    function isAdmin() {
+      return isActive() && callerData().role == 'administrador';
+    }
+
+    function isReferente() {
+      return isActive() && callerData().role == 'referente_barrial';
+    }
+
+    function isAdminOrReferente() {
+      return isAdmin() || isReferente();
+    }
+
+    // ── Colección: users ───────────────────────────────────────────────────────
+    // Un vecino solo puede ver su propio documento.
+    // Un admin puede ver y modificar cualquier usuario.
+
+    match /users/{userId} {
+      // Lectura: solo el propio usuario o un admin.
+      allow read: if isAuthenticated() &&
+        (request.auth.uid == userId || isAdmin());
+
+      // Creación: el usuario se crea a sí mismo durante el registro.
+      allow create: if isAuthenticated() &&
+        request.auth.uid == userId;
+
+      // Actualización: el usuario puede editar su propio perfil
+      // pero NO puede cambiar su rol ni su estado (eso solo lo hace el admin).
+      allow update: if isAuthenticated() && (
+        (request.auth.uid == userId &&
+          !request.resource.data.diff(resource.data)
+            .affectedKeys().hasAny(['role', 'status', 'reputationScore'])) ||
+        isAdmin()
+      );
+
+      // Eliminación: solo admins.
+      allow delete: if isAdmin();
+    }
+
+    // ── Colección: incidents ───────────────────────────────────────────────────
+    // Los vecinos solo ven sus propios incidentes.
+    // Referentes y admins ven todos.
+    // Solo referentes y admins pueden cambiar estado/prioridad.
+
+    match /incidents/{incidentId} {
+      // Lectura: usuario activo que sea dueño del incidente, referente, o admin.
+      allow read: if isActive() && (
+        resource.data.userId == request.auth.uid ||
+        isAdminOrReferente()
+      );
+
+      // Creación: cualquier usuario activo puede reportar,
+      // pero el userId del incidente debe ser el suyo.
+      allow create: if isActive() &&
+        request.resource.data.userId == request.auth.uid;
+
+      // Actualización:
+      // - Referentes y admins pueden actualizar cualquier campo.
+      // - El vecino dueño solo puede editar descripción/foto mientras el
+      //   incidente siga en estado 'recibido' (aún no procesado por NLP).
+      allow update: if isActive() && (
+        isAdminOrReferente() ||
+        (resource.data.userId == request.auth.uid &&
+          resource.data.status == 'recibido' &&
+          !request.resource.data.diff(resource.data)
+            .affectedKeys().hasAny(['status', 'priority', 'priorityScore', 'userId']))
+      );
+
+      // Eliminación: solo admins.
+      allow delete: if isAdmin();
+    }
+
+    // ── Denegación por defecto ─────────────────────────────────────────────────
+    // Cualquier colección no listada arriba queda bloqueada.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
