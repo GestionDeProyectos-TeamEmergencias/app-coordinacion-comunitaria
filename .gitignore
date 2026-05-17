@@ -17,7 +17,8 @@ firebase-debug.*.log
 build/
 .pub-cache/
 .pub/
-pubspec.lock
+# pubspec.lock se commitea en apps Flutter para garantizar versiones consistentes entre devs
+# pubspec.lock
 
 # Código generado (build_runner)
 *.g.dart
@@ -38,7 +39,11 @@ lib/firebase_options.dart
 # IDEs y OS
 # =========================
 .idea/
-.vscode/
+# .vscode/ ignorado excepto configuraciones compartidas del equipo
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/extensions.json
 *.iml
 .DS_Store
 Thumbs.db
