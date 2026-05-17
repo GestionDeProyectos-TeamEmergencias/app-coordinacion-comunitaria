@@ -52,8 +52,9 @@ class IncidentsRemoteDataSource {
 
   Future<IncidentEventModel> getIncidentById(String eventId) async {
     final doc = await _incidents.doc(eventId).get();
-    if (!doc.exists)
+    if (!doc.exists) {
       throw FirestoreException('Incidente $eventId no encontrado.');
+    }
     return IncidentEventModel.fromFirestore(doc);
   }
 

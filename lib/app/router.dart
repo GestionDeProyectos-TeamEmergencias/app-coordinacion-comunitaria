@@ -1,6 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/admin/presentation/pages/admin_dashboard_page.dart';
+import '../features/admin/presentation/pages/incident_moderation_page.dart';
+import '../features/admin/presentation/pages/users_management_page.dart';
 import '../features/auth/domain/entities/app_user.dart';
 import '../features/auth/presentation/pages/login_page.dart';
 import '../features/auth/presentation/pages/pending_approval_page.dart';
@@ -10,9 +13,6 @@ import '../features/incidents/presentation/pages/home_page.dart';
 import '../features/incidents/presentation/pages/incident_detail_page.dart';
 import '../features/incidents/presentation/pages/report_form_page.dart';
 import '../features/map/presentation/pages/map_page.dart';
-import '../features/admin/presentation/pages/admin_dashboard_page.dart';
-import '../features/admin/presentation/pages/users_management_page.dart';
-import '../features/admin/presentation/pages/incident_moderation_page.dart';
 
 // Rutas de la aplicación
 abstract final class AppRoutes {
@@ -44,8 +44,9 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       final user = authState.valueOrNull;
       if (user != null && user.status == UserStatus.pending) {
-        if (state.matchedLocation != AppRoutes.pending)
+        if (state.matchedLocation != AppRoutes.pending) {
           return AppRoutes.pending;
+        }
       }
 
       if (isLoggedIn && isOnAuthPage) return AppRoutes.home;

@@ -19,8 +19,6 @@ class MapPage extends ConsumerStatefulWidget {
 }
 
 class _MapPageState extends ConsumerState<MapPage> {
-  GoogleMapController? _mapController;
-
   // Centro inicial en Argentina (se centrará en el área de cobertura real).
   static const _initialPosition = CameraPosition(
     target: LatLng(-34.6037, -58.3816), // Buenos Aires
@@ -66,7 +64,6 @@ class _MapPageState extends ConsumerState<MapPage> {
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (incidents) => GoogleMap(
           initialCameraPosition: _initialPosition,
-          onMapCreated: (controller) => _mapController = controller,
           markers: _buildMarkers(incidents),
           myLocationEnabled: true,
           myLocationButtonEnabled: true,
@@ -82,7 +79,7 @@ class _LegendButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FloatingActionButton.extended(
-      onPressed: () => showModalBottomSheet(
+      onPressed: () => showModalBottomSheet<void>(
         context: context,
         builder: (_) => const _LegendSheet(),
       ),
@@ -106,11 +103,11 @@ class _LegendSheet extends StatelessWidget {
           Text('Colores por prioridad',
               style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
-          _LegendItem(color: AppColors.priorityUrgent, label: 'Urgente'),
-          _LegendItem(color: AppColors.priorityHigh, label: 'Alta'),
-          _LegendItem(color: AppColors.priorityMedium, label: 'Media'),
-          _LegendItem(color: AppColors.priorityLow, label: 'Baja'),
-          _LegendItem(color: Colors.blue, label: 'Sin clasificar'),
+          const _LegendItem(color: AppColors.priorityUrgent, label: 'Urgente'),
+          const _LegendItem(color: AppColors.priorityHigh, label: 'Alta'),
+          const _LegendItem(color: AppColors.priorityMedium, label: 'Media'),
+          const _LegendItem(color: AppColors.priorityLow, label: 'Baja'),
+          const _LegendItem(color: Colors.blue, label: 'Sin clasificar'),
         ],
       ),
     );

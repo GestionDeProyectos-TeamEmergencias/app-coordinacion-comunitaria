@@ -1,9 +1,8 @@
+import 'package:app_coordinacion_comunitaria/features/auth/presentation/pages/login_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-
-import 'package:app_coordinacion_comunitaria/features/auth/presentation/pages/login_page.dart';
 
 void main() {
   testWidgets('LoginPage muestra campos de email y contraseña', (tester) async {

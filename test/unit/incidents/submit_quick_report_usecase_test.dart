@@ -1,9 +1,8 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
-
 import 'package:app_coordinacion_comunitaria/features/incidents/domain/entities/incident_event.dart';
 import 'package:app_coordinacion_comunitaria/features/incidents/domain/repositories/incidents_repository.dart';
 import 'package:app_coordinacion_comunitaria/features/incidents/domain/usecases/submit_quick_report_usecase.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 
 class MockIncidentsRepository extends Mock implements IncidentsRepository {}
 

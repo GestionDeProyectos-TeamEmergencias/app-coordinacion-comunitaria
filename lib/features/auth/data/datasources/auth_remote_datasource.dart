@@ -24,9 +24,7 @@ class AuthRemoteDataSource {
           )
           .get();
       if (!doc.exists) return null;
-      return UserModel.fromFirestore(
-        doc as DocumentSnapshot<Map<String, dynamic>>,
-      );
+      return UserModel.fromFirestore(doc);
     });
   }
 

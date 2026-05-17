@@ -39,9 +39,9 @@ class HomePage extends ConsumerWidget {
       body: Column(
         children: [
           // Botón de reporte rápido (RF-REP-01)
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: const QuickReportButton(),
+          const Padding(
+            padding: EdgeInsets.all(16),
+            child: QuickReportButton(),
           ),
           const Divider(),
           // Lista de incidentes en tiempo real

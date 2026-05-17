@@ -24,7 +24,7 @@ class PendingApprovalPage extends ConsumerWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
-              Text(
+              const Text(
                 AppStrings.pendingApprovalBody,
                 textAlign: TextAlign.center,
               ),

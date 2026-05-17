@@ -19,7 +19,7 @@ class IncidentStatusBadge extends StatelessWidget {
 
     return Chip(
       label: Text(status.displayName),
-      backgroundColor: color.withOpacity(0.15),
+      backgroundColor: color.withValues(alpha: 0.15),
       side: BorderSide(color: color),
       labelStyle: TextStyle(color: color, fontWeight: FontWeight.w600),
       padding: EdgeInsets.zero,
@@ -43,7 +43,7 @@ class IncidentPriorityBadge extends StatelessWidget {
 
     return Chip(
       label: Text(priority.displayName),
-      backgroundColor: color.withOpacity(0.15),
+      backgroundColor: color.withValues(alpha: 0.15),
       side: BorderSide(color: color),
       labelStyle: TextStyle(color: color, fontWeight: FontWeight.w600),
       padding: EdgeInsets.zero,

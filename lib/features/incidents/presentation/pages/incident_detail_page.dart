@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/constants/app_strings.dart';
 import '../../../../core/widgets/app_loading.dart';
-import '../../../auth/domain/entities/app_user.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/incidents_provider.dart';
 import '../widgets/incident_status_badge.dart';

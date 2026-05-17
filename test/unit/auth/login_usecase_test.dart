@@ -1,10 +1,9 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
-
+import 'package:app_coordinacion_comunitaria/core/errors/app_exception.dart';
 import 'package:app_coordinacion_comunitaria/features/auth/domain/entities/app_user.dart';
 import 'package:app_coordinacion_comunitaria/features/auth/domain/repositories/auth_repository.dart';
 import 'package:app_coordinacion_comunitaria/features/auth/domain/usecases/login_usecase.dart';
-import 'package:app_coordinacion_comunitaria/core/errors/app_exception.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 
 class MockAuthRepository extends Mock implements AuthRepository {}
 

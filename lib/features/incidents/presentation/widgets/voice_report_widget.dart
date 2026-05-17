@@ -65,8 +65,8 @@ class _VoiceReportWidgetState extends State<VoiceReportWidget> {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: _isListening
-                ? Colors.red.withOpacity(0.1)
-                : Colors.grey.withOpacity(0.1),
+                ? Colors.red.withValues(alpha: 0.1)
+                : Colors.grey.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: _isListening ? Colors.red : Colors.grey,

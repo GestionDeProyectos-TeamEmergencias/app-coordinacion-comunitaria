@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/router.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/extensions/context_extensions.dart';
 import '../../../../core/widgets/app_button.dart';
-import '../../../../app/router.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/auth_form_field.dart';
 

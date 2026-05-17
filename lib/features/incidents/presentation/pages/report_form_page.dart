@@ -49,7 +49,8 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
     }
 
     final position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
+      locationSettings:
+          const LocationSettings(accuracy: LocationAccuracy.high),
     );
     final user = ref.read(authStateProvider).valueOrNull;
     if (user == null || !mounted) return;
@@ -125,7 +126,7 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
                   labelText: AppStrings.selectCategory,
                   border: OutlineInputBorder(),
                 ),
-                value: _category,
+                initialValue: _category,
                 items: IncidentCategory.values
                     .map(
                       (c) => DropdownMenuItem(
