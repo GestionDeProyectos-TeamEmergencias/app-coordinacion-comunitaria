@@ -61,7 +61,7 @@ jobs:
           fi
 
       - name: Verificar formato de código
-        run: dart format --set-exit-if-changed .
+        run: git ls-files '*.dart' | xargs dart format --set-exit-if-changed
 
       - name: Flutter analyze
         run: flutter analyze --fatal-infos
