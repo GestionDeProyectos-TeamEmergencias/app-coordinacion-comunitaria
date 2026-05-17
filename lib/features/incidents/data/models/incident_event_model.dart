@@ -55,33 +55,35 @@ class IncidentEventModel {
   }
 
   Map<String, dynamic> toFirestore() => {
-    'userId': userId,
-    'timestamp': Timestamp.fromDate(timestamp),
-    'latitude': latitude,
-    'longitude': longitude,
-    if (description != null) 'description': description,
-    if (category != null) 'category': category,
-    'sourceType': sourceType,
-    if (photoUrl != null) 'photoUrl': photoUrl,
-    'status': status,
-    if (priority != null) 'priority': priority,
-    if (priorityScore != null) 'priorityScore': priorityScore,
-  };
+        'userId': userId,
+        'timestamp': Timestamp.fromDate(timestamp),
+        'latitude': latitude,
+        'longitude': longitude,
+        if (description != null) 'description': description,
+        if (category != null) 'category': category,
+        'sourceType': sourceType,
+        if (photoUrl != null) 'photoUrl': photoUrl,
+        'status': status,
+        if (priority != null) 'priority': priority,
+        if (priorityScore != null) 'priorityScore': priorityScore,
+      };
 
   IncidentEvent toDomain() => IncidentEvent(
-    eventId: eventId,
-    userId: userId,
-    timestamp: timestamp,
-    latitude: latitude,
-    longitude: longitude,
-    description: description,
-    category: category != null ? IncidentCategory.fromString(category!) : null,
-    sourceType: SourceType.fromString(sourceType),
-    photoUrl: photoUrl,
-    status: IncidentStatus.fromString(status),
-    priority: priority != null ? IncidentPriority.fromString(priority!) : null,
-    priorityScore: priorityScore,
-  );
+        eventId: eventId,
+        userId: userId,
+        timestamp: timestamp,
+        latitude: latitude,
+        longitude: longitude,
+        description: description,
+        category:
+            category != null ? IncidentCategory.fromString(category!) : null,
+        sourceType: SourceType.fromString(sourceType),
+        photoUrl: photoUrl,
+        status: IncidentStatus.fromString(status),
+        priority:
+            priority != null ? IncidentPriority.fromString(priority!) : null,
+        priorityScore: priorityScore,
+      );
 
   factory IncidentEventModel.fromDomain(IncidentEvent event) =>
       IncidentEventModel(

@@ -36,7 +36,8 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
 
   Future<void> _pickPhoto() async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.camera, imageQuality: 70);
+    final picked =
+        await picker.pickImage(source: ImageSource.camera, imageQuality: 70);
     if (picked != null) setState(() => _photo = File(picked.path));
   }
 
@@ -54,13 +55,13 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
     if (user == null || !mounted) return;
 
     await ref.read(reportNotifierProvider.notifier).submitForm(
-      userId: user.userId,
-      latitude: position.latitude,
-      longitude: position.longitude,
-      description: _descCtrl.text.trim(),
-      category: _category!,
-      photoFile: _photo,
-    );
+          userId: user.userId,
+          latitude: position.latitude,
+          longitude: position.longitude,
+          description: _descCtrl.text.trim(),
+          category: _category!,
+          photoFile: _photo,
+        );
 
     if (!mounted) return;
     final error = ref.read(reportNotifierProvider).error;
@@ -88,8 +89,12 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
               // Toggle voz / texto
               SegmentedButton<bool>(
                 segments: const [
-                  ButtonSegment(value: false, label: Text('Texto'), icon: Icon(Icons.edit)),
-                  ButtonSegment(value: true, label: Text('Voz'), icon: Icon(Icons.mic)),
+                  ButtonSegment(
+                      value: false,
+                      label: Text('Texto'),
+                      icon: Icon(Icons.edit)),
+                  ButtonSegment(
+                      value: true, label: Text('Voz'), icon: Icon(Icons.mic)),
                 ],
                 selected: {_useVoice},
                 onSelectionChanged: (s) => setState(() => _useVoice = s.first),
@@ -110,8 +115,9 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
                     labelText: AppStrings.reportDescription,
                     border: OutlineInputBorder(),
                   ),
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Describí el incidente' : null,
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? 'Describí el incidente'
+                      : null,
                 ),
               const SizedBox(height: 16),
               DropdownButtonFormField<IncidentCategory>(
@@ -122,7 +128,8 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
                 value: _category,
                 items: IncidentCategory.values
                     .map(
-                      (c) => DropdownMenuItem(value: c, child: Text(c.displayName)),
+                      (c) => DropdownMenuItem(
+                          value: c, child: Text(c.displayName)),
                     )
                     .toList(),
                 onChanged: (v) => setState(() => _category = v),
@@ -131,7 +138,9 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
               // Foto opcional (RF-REP-03)
               OutlinedButton.icon(
                 icon: const Icon(Icons.camera_alt),
-                label: Text(_photo == null ? AppStrings.addPhoto : 'Foto seleccionada ✓'),
+                label: Text(_photo == null
+                    ? AppStrings.addPhoto
+                    : 'Foto seleccionada ✓'),
                 onPressed: _pickPhoto,
               ),
               if (_photo != null) ...[

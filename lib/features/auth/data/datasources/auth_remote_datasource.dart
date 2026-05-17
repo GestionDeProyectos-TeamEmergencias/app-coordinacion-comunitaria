@@ -68,9 +68,7 @@ class AuthRemoteDataSource {
         email: email,
         password: password,
       );
-      final doc = await _users
-          .doc(credential.user!.uid)
-          .get();
+      final doc = await _users.doc(credential.user!.uid).get();
       return UserModel.fromFirestore(doc);
     } on FirebaseAuthException catch (e) {
       throw AuthException(e.message ?? 'Error al iniciar sesión.');

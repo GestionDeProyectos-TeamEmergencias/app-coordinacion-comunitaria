@@ -25,7 +25,8 @@ final class VitalRiskDetectedException extends AppException {
 }
 
 final class NetworkException extends AppException {
-  const NetworkException([super.message = 'Error de red. Verificá tu conexión.']);
+  const NetworkException(
+      [super.message = 'Error de red. Verificá tu conexión.']);
 }
 
 final class FirestoreException extends AppException {

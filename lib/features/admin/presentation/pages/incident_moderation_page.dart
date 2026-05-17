@@ -13,7 +13,8 @@ class IncidentModerationPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text(AppStrings.incidentModeration)),
       // TODO(T-AUTH-07): implementar moderación de incidentes.
-      body: const AppLoading(message: 'Tarea T-AUTH-07 / T-REP-06 pendiente de implementación'),
+      body: const AppLoading(
+          message: 'Tarea T-AUTH-07 / T-REP-06 pendiente de implementación'),
     );
   }
 }

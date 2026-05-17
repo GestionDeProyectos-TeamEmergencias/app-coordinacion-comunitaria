@@ -27,18 +27,23 @@ void main() {
 
   test('devuelve AppUser cuando las credenciales son válidas', () async {
     when(
-      () => mockRepo.login(email: any(named: 'email'), password: any(named: 'password')),
+      () => mockRepo.login(
+          email: any(named: 'email'), password: any(named: 'password')),
     ).thenAnswer((_) async => tUser);
 
-    final result = await sut(email: 'test@example.com', password: 'password123');
+    final result =
+        await sut(email: 'test@example.com', password: 'password123');
 
     expect(result, tUser);
-    verify(() => mockRepo.login(email: 'test@example.com', password: 'password123')).called(1);
+    verify(() =>
+            mockRepo.login(email: 'test@example.com', password: 'password123'))
+        .called(1);
   });
 
   test('propaga AuthException cuando las credenciales son inválidas', () async {
     when(
-      () => mockRepo.login(email: any(named: 'email'), password: any(named: 'password')),
+      () => mockRepo.login(
+          email: any(named: 'email'), password: any(named: 'password')),
     ).thenThrow(const AuthException('Credenciales inválidas.'));
 
     expect(

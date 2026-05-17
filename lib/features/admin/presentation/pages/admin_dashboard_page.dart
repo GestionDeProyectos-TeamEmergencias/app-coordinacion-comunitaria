@@ -34,7 +34,8 @@ class AdminDashboardPage extends StatelessWidget {
             onTap: () {
               // TODO(T-NLP-09): implementar envío de notificaciones masivas
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Próximamente: notificaciones masivas')),
+                const SnackBar(
+                    content: Text('Próximamente: notificaciones masivas')),
               );
             },
           ),
@@ -73,7 +74,8 @@ class _DashboardCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
-        leading: Icon(icon, size: 36, color: Theme.of(context).colorScheme.primary),
+        leading:
+            Icon(icon, size: 36, color: Theme.of(context).colorScheme.primary),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Text(subtitle),
         trailing: const Icon(Icons.chevron_right),

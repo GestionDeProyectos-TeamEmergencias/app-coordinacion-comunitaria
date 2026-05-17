@@ -23,7 +23,8 @@ void main() {
     expect(find.text('Iniciar sesión'), findsOneWidget);
   });
 
-  testWidgets('muestra error de validación cuando el email es inválido', (tester) async {
+  testWidgets('muestra error de validación cuando el email es inválido',
+      (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         child: MaterialApp.router(

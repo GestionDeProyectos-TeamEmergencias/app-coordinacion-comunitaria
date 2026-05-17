@@ -18,7 +18,8 @@ class QuickReportButton extends ConsumerWidget {
       final granted = await Geolocator.requestPermission();
       if (granted == LocationPermission.denied) {
         if (context.mounted) {
-          context.showSnackBar('Permiso de ubicación requerido.', isError: true);
+          context.showSnackBar('Permiso de ubicación requerido.',
+              isError: true);
         }
         return null;
       }
@@ -46,10 +47,10 @@ class QuickReportButton extends ConsumerWidget {
               if (position == null || !context.mounted) return;
 
               await ref.read(reportNotifierProvider.notifier).submitQuick(
-                userId: user.userId,
-                latitude: position.latitude,
-                longitude: position.longitude,
-              );
+                    userId: user.userId,
+                    latitude: position.latitude,
+                    longitude: position.longitude,
+                  );
 
               if (!context.mounted) return;
               final error = ref.read(reportNotifierProvider).error;

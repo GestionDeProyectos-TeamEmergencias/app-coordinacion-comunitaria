@@ -26,7 +26,8 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<AppUser> login({required String email, required String password}) async {
+  Future<AppUser> login(
+      {required String email, required String password}) async {
     final model = await _dataSource.login(email: email, password: password);
     return model.toDomain();
   }

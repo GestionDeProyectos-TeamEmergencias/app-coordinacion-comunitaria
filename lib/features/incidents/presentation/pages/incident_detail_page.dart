@@ -51,7 +51,8 @@ class IncidentDetailPage extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
               if (incident.category != null)
-                _InfoRow(label: 'Categoría', value: incident.category!.displayName),
+                _InfoRow(
+                    label: 'Categoría', value: incident.category!.displayName),
               if (incident.description != null)
                 _InfoRow(label: 'Descripción', value: incident.description!),
               _InfoRow(
@@ -65,12 +66,14 @@ class IncidentDetailPage extends ConsumerWidget {
               ),
               _InfoRow(
                 label: 'Fecha',
-                value: '${incident.timestamp.day}/${incident.timestamp.month}/${incident.timestamp.year} '
+                value:
+                    '${incident.timestamp.day}/${incident.timestamp.month}/${incident.timestamp.year} '
                     '${incident.timestamp.hour.toString().padLeft(2, '0')}:${incident.timestamp.minute.toString().padLeft(2, '0')}',
               ),
               _InfoRow(
                 label: 'Ubicación',
-                value: '${incident.latitude.toStringAsFixed(5)}, ${incident.longitude.toStringAsFixed(5)}',
+                value:
+                    '${incident.latitude.toStringAsFixed(5)}, ${incident.longitude.toStringAsFixed(5)}',
               ),
               // Selector de estado solo para referentes y admin [T-REP-06]
               if (user?.role.canVerify == true) ...[

@@ -45,19 +45,15 @@ class IncidentsRemoteDataSource {
   }
 
   Stream<List<IncidentEventModel>> watchIncidents() {
-    return _incidents
-        .orderBy('timestamp', descending: true)
-        .snapshots()
-        .map(
-          (snap) => snap.docs
-              .map(IncidentEventModel.fromFirestore)
-              .toList(),
+    return _incidents.orderBy('timestamp', descending: true).snapshots().map(
+          (snap) => snap.docs.map(IncidentEventModel.fromFirestore).toList(),
         );
   }
 
   Future<IncidentEventModel> getIncidentById(String eventId) async {
     final doc = await _incidents.doc(eventId).get();
-    if (!doc.exists) throw FirestoreException('Incidente $eventId no encontrado.');
+    if (!doc.exists)
+      throw FirestoreException('Incidente $eventId no encontrado.');
     return IncidentEventModel.fromFirestore(doc);
   }
 

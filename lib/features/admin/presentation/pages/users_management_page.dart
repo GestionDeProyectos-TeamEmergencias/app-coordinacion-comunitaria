@@ -13,7 +13,8 @@ class UsersManagementPage extends StatelessWidget {
       appBar: AppBar(title: const Text(AppStrings.usersManagement)),
       // TODO(T-AUTH-08): implementar lista de usuarios con filtros y acciones.
       // Acciones: promover, degradar, bloquear, desbloquear.
-      body: const AppLoading(message: 'Tarea T-AUTH-08 pendiente de implementación'),
+      body: const AppLoading(
+          message: 'Tarea T-AUTH-08 pendiente de implementación'),
     );
   }
 }

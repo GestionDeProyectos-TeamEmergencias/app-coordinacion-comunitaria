@@ -5,18 +5,18 @@ import 'package:equatable/equatable.dart';
 // o explícitamente nulos.
 
 enum SourceType {
-  quick,  // RF-REP-01: botón rápido
-  form,   // RF-REP-03: formulario detallado
-  voice;  // RF-REP-02: voz con Speech-to-Text on-device
+  quick, // RF-REP-01: botón rápido
+  form, // RF-REP-03: formulario detallado
+  voice; // RF-REP-02: voz con Speech-to-Text on-device
 
   String get value => name;
 
   static SourceType fromString(String value) => switch (value) {
-    'quick' => SourceType.quick,
-    'form' => SourceType.form,
-    'voice' => SourceType.voice,
-    _ => SourceType.quick,
-  };
+        'quick' => SourceType.quick,
+        'form' => SourceType.form,
+        'voice' => SourceType.voice,
+        _ => SourceType.quick,
+      };
 }
 
 enum IncidentCategory {
@@ -27,29 +27,29 @@ enum IncidentCategory {
   seguridad;
 
   static IncidentCategory fromString(String value) => switch (value) {
-    'electrico' => IncidentCategory.electrico,
-    'vial' => IncidentCategory.vial,
-    'sanitario' => IncidentCategory.sanitario,
-    'espacios_verdes' => IncidentCategory.espaciosVerdes,
-    'seguridad' => IncidentCategory.seguridad,
-    _ => IncidentCategory.vial,
-  };
+        'electrico' => IncidentCategory.electrico,
+        'vial' => IncidentCategory.vial,
+        'sanitario' => IncidentCategory.sanitario,
+        'espacios_verdes' => IncidentCategory.espaciosVerdes,
+        'seguridad' => IncidentCategory.seguridad,
+        _ => IncidentCategory.vial,
+      };
 
   String get firestoreValue => switch (this) {
-    IncidentCategory.electrico => 'electrico',
-    IncidentCategory.vial => 'vial',
-    IncidentCategory.sanitario => 'sanitario',
-    IncidentCategory.espaciosVerdes => 'espacios_verdes',
-    IncidentCategory.seguridad => 'seguridad',
-  };
+        IncidentCategory.electrico => 'electrico',
+        IncidentCategory.vial => 'vial',
+        IncidentCategory.sanitario => 'sanitario',
+        IncidentCategory.espaciosVerdes => 'espacios_verdes',
+        IncidentCategory.seguridad => 'seguridad',
+      };
 
   String get displayName => switch (this) {
-    IncidentCategory.electrico => 'Eléctrico',
-    IncidentCategory.vial => 'Vial',
-    IncidentCategory.sanitario => 'Sanitario',
-    IncidentCategory.espaciosVerdes => 'Espacios verdes',
-    IncidentCategory.seguridad => 'Seguridad',
-  };
+        IncidentCategory.electrico => 'Eléctrico',
+        IncidentCategory.vial => 'Vial',
+        IncidentCategory.sanitario => 'Sanitario',
+        IncidentCategory.espaciosVerdes => 'Espacios verdes',
+        IncidentCategory.seguridad => 'Seguridad',
+      };
 }
 
 enum IncidentStatus {
@@ -59,26 +59,26 @@ enum IncidentStatus {
   solucionado;
 
   static IncidentStatus fromString(String value) => switch (value) {
-    'recibido' => IncidentStatus.recibido,
-    'programado' => IncidentStatus.programado,
-    'en_reparacion' => IncidentStatus.enReparacion,
-    'solucionado' => IncidentStatus.solucionado,
-    _ => IncidentStatus.recibido,
-  };
+        'recibido' => IncidentStatus.recibido,
+        'programado' => IncidentStatus.programado,
+        'en_reparacion' => IncidentStatus.enReparacion,
+        'solucionado' => IncidentStatus.solucionado,
+        _ => IncidentStatus.recibido,
+      };
 
   String get firestoreValue => switch (this) {
-    IncidentStatus.recibido => 'recibido',
-    IncidentStatus.programado => 'programado',
-    IncidentStatus.enReparacion => 'en_reparacion',
-    IncidentStatus.solucionado => 'solucionado',
-  };
+        IncidentStatus.recibido => 'recibido',
+        IncidentStatus.programado => 'programado',
+        IncidentStatus.enReparacion => 'en_reparacion',
+        IncidentStatus.solucionado => 'solucionado',
+      };
 
   String get displayName => switch (this) {
-    IncidentStatus.recibido => 'Recibido',
-    IncidentStatus.programado => 'Programado',
-    IncidentStatus.enReparacion => 'En reparación',
-    IncidentStatus.solucionado => 'Solucionado',
-  };
+        IncidentStatus.recibido => 'Recibido',
+        IncidentStatus.programado => 'Programado',
+        IncidentStatus.enReparacion => 'En reparación',
+        IncidentStatus.solucionado => 'Solucionado',
+      };
 }
 
 enum IncidentPriority {
@@ -88,19 +88,19 @@ enum IncidentPriority {
   baja;
 
   static IncidentPriority fromString(String value) => switch (value) {
-    'urgente' => IncidentPriority.urgente,
-    'alta' => IncidentPriority.alta,
-    'media' => IncidentPriority.media,
-    'baja' => IncidentPriority.baja,
-    _ => IncidentPriority.baja,
-  };
+        'urgente' => IncidentPriority.urgente,
+        'alta' => IncidentPriority.alta,
+        'media' => IncidentPriority.media,
+        'baja' => IncidentPriority.baja,
+        _ => IncidentPriority.baja,
+      };
 
   String get displayName => switch (this) {
-    IncidentPriority.urgente => 'Urgente',
-    IncidentPriority.alta => 'Alta',
-    IncidentPriority.media => 'Media',
-    IncidentPriority.baja => 'Baja',
-  };
+        IncidentPriority.urgente => 'Urgente',
+        IncidentPriority.alta => 'Alta',
+        IncidentPriority.media => 'Media',
+        IncidentPriority.baja => 'Baja',
+      };
 }
 
 class IncidentEvent extends Equatable {
@@ -164,8 +164,17 @@ class IncidentEvent extends Equatable {
 
   @override
   List<Object?> get props => [
-    eventId, userId, timestamp, latitude, longitude,
-    description, category, sourceType, photoUrl,
-    status, priority, priorityScore,
-  ];
+        eventId,
+        userId,
+        timestamp,
+        latitude,
+        longitude,
+        description,
+        category,
+        sourceType,
+        photoUrl,
+        status,
+        priority,
+        priorityScore,
+      ];
 }

@@ -32,7 +32,8 @@ class PendingApprovalPage extends ConsumerWidget {
               OutlinedButton.icon(
                 icon: const Icon(Icons.logout),
                 label: const Text(AppStrings.logout),
-                onPressed: () => ref.read(authNotifierProvider.notifier).logout(),
+                onPressed: () =>
+                    ref.read(authNotifierProvider.notifier).logout(),
               ),
             ],
           ),

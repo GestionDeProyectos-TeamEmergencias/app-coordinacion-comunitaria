@@ -6,17 +6,17 @@ enum UserRole {
   administrador;
 
   static UserRole fromString(String value) => switch (value) {
-    'vecino_informante' => UserRole.vecinoInformante,
-    'referente_barrial' => UserRole.referenteBarrial,
-    'administrador' => UserRole.administrador,
-    _ => UserRole.vecinoInformante,
-  };
+        'vecino_informante' => UserRole.vecinoInformante,
+        'referente_barrial' => UserRole.referenteBarrial,
+        'administrador' => UserRole.administrador,
+        _ => UserRole.vecinoInformante,
+      };
 
   String get firestoreValue => switch (this) {
-    UserRole.vecinoInformante => 'vecino_informante',
-    UserRole.referenteBarrial => 'referente_barrial',
-    UserRole.administrador => 'administrador',
-  };
+        UserRole.vecinoInformante => 'vecino_informante',
+        UserRole.referenteBarrial => 'referente_barrial',
+        UserRole.administrador => 'administrador',
+      };
 
   bool get canReport => true;
   bool get canVerify => this == referenteBarrial || this == administrador;
@@ -29,10 +29,10 @@ enum UserStatus {
   blocked;
 
   static UserStatus fromString(String value) => switch (value) {
-    'active' => UserStatus.active,
-    'blocked' => UserStatus.blocked,
-    _ => UserStatus.pending,
-  };
+        'active' => UserStatus.active,
+        'blocked' => UserStatus.blocked,
+        _ => UserStatus.pending,
+      };
 }
 
 class AppUser extends Equatable {
@@ -85,7 +85,13 @@ class AppUser extends Equatable {
 
   @override
   List<Object?> get props => [
-    userId, email, displayName, role, status, reputationScore,
-    coverageAreaCenter, coverageRadiusKm,
-  ];
+        userId,
+        email,
+        displayName,
+        role,
+        status,
+        reputationScore,
+        coverageAreaCenter,
+        coverageRadiusKm,
+      ];
 }

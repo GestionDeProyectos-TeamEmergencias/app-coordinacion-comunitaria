@@ -25,8 +25,10 @@ void main() {
     );
   });
 
-  test('crea un IncidentEvent con sourceType=quick y lo envía al repositorio', () async {
-    when(() => mockRepo.submitIncident(any())).thenAnswer((_) async => 'event-id-1');
+  test('crea un IncidentEvent con sourceType=quick y lo envía al repositorio',
+      () async {
+    when(() => mockRepo.submitIncident(any()))
+        .thenAnswer((_) async => 'event-id-1');
 
     final result = await sut(
       userId: 'uid-1',
@@ -35,8 +37,9 @@ void main() {
     );
 
     expect(result, 'event-id-1');
-    final captured = verify(() => mockRepo.submitIncident(captureAny())).captured.first
-        as IncidentEvent;
+    final captured = verify(() => mockRepo.submitIncident(captureAny()))
+        .captured
+        .first as IncidentEvent;
     expect(captured.sourceType, SourceType.quick);
     expect(captured.userId, 'uid-1');
   });

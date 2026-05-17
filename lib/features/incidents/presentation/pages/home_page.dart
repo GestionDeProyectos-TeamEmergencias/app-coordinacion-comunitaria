@@ -47,7 +47,8 @@ class HomePage extends ConsumerWidget {
           // Lista de incidentes en tiempo real
           Expanded(
             child: incidentsAsync.when(
-              loading: () => const AppLoading(message: 'Cargando incidentes...'),
+              loading: () =>
+                  const AppLoading(message: 'Cargando incidentes...'),
               error: (e, _) => Center(child: Text('Error: $e')),
               data: (incidents) => incidents.isEmpty
                   ? const Center(child: Text('No hay incidentes reportados.'))
@@ -58,14 +59,17 @@ class HomePage extends ConsumerWidget {
                         return ListTile(
                           leading: const Icon(Icons.report_problem),
                           title: Text(
-                            incident.description ?? incident.category?.displayName ?? 'Reporte rápido',
+                            incident.description ??
+                                incident.category?.displayName ??
+                                'Reporte rápido',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                           subtitle: Text(
                             '${incident.timestamp.day}/${incident.timestamp.month}/${incident.timestamp.year}',
                           ),
-                          trailing: IncidentStatusBadge(status: incident.status),
+                          trailing:
+                              IncidentStatusBadge(status: incident.status),
                           onTap: () => context.go(
                             AppRoutes.incidentDetailPath(incident.eventId!),
                           ),

@@ -32,9 +32,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     await ref.read(authNotifierProvider.notifier).login(
-      email: _emailCtrl.text.trim(),
-      password: _passwordCtrl.text,
-    );
+          email: _emailCtrl.text.trim(),
+          password: _passwordCtrl.text,
+        );
     final error = ref.read(authNotifierProvider).error;
     if (error != null && mounted) {
       context.showSnackBar(error.toString(), isError: true);
@@ -82,11 +82,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   controller: _passwordCtrl,
                   label: AppStrings.password,
                   obscureText: _obscurePassword,
-                  validator: (v) =>
-                      (v == null || v.length < 6) ? 'Mínimo 6 caracteres' : null,
+                  validator: (v) => (v == null || v.length < 6)
+                      ? 'Mínimo 6 caracteres'
+                      : null,
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                      _obscurePassword
+                          ? Icons.visibility
+                          : Icons.visibility_off,
                     ),
                     onPressed: () =>
                         setState(() => _obscurePassword = !_obscurePassword),

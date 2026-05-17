@@ -44,7 +44,8 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       final user = authState.valueOrNull;
       if (user != null && user.status == UserStatus.pending) {
-        if (state.matchedLocation != AppRoutes.pending) return AppRoutes.pending;
+        if (state.matchedLocation != AppRoutes.pending)
+          return AppRoutes.pending;
       }
 
       if (isLoggedIn && isOnAuthPage) return AppRoutes.home;
@@ -52,10 +53,15 @@ final routerProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(path: AppRoutes.login, builder: (_, __) => const LoginPage()),
-      GoRoute(path: AppRoutes.register, builder: (_, __) => const RegisterPage()),
-      GoRoute(path: AppRoutes.pending, builder: (_, __) => const PendingApprovalPage()),
+      GoRoute(
+          path: AppRoutes.register, builder: (_, __) => const RegisterPage()),
+      GoRoute(
+          path: AppRoutes.pending,
+          builder: (_, __) => const PendingApprovalPage()),
       GoRoute(path: AppRoutes.home, builder: (_, __) => const HomePage()),
-      GoRoute(path: AppRoutes.reportForm, builder: (_, __) => const ReportFormPage()),
+      GoRoute(
+          path: AppRoutes.reportForm,
+          builder: (_, __) => const ReportFormPage()),
       GoRoute(path: AppRoutes.map, builder: (_, __) => const MapPage()),
       GoRoute(
         path: AppRoutes.incidentDetail,
@@ -63,9 +69,15 @@ final routerProvider = Provider<GoRouter>((ref) {
           incidentId: state.pathParameters['id']!,
         ),
       ),
-      GoRoute(path: AppRoutes.admin, builder: (_, __) => const AdminDashboardPage()),
-      GoRoute(path: AppRoutes.adminUsers, builder: (_, __) => const UsersManagementPage()),
-      GoRoute(path: AppRoutes.adminIncidents, builder: (_, __) => const IncidentModerationPage()),
+      GoRoute(
+          path: AppRoutes.admin,
+          builder: (_, __) => const AdminDashboardPage()),
+      GoRoute(
+          path: AppRoutes.adminUsers,
+          builder: (_, __) => const UsersManagementPage()),
+      GoRoute(
+          path: AppRoutes.adminIncidents,
+          builder: (_, __) => const IncidentModerationPage()),
     ],
   );
 });

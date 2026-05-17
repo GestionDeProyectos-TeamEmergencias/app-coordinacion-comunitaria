@@ -44,26 +44,26 @@ class UserModel {
   }
 
   Map<String, dynamic> toFirestore() => {
-    'email': email,
-    'displayName': displayName,
-    'role': role,
-    'status': status,
-    'reputationScore': reputationScore,
-    if (coverageLat != null) 'coverageLat': coverageLat,
-    if (coverageLng != null) 'coverageLng': coverageLng,
-    if (coverageRadiusKm != null) 'coverageRadiusKm': coverageRadiusKm,
-  };
+        'email': email,
+        'displayName': displayName,
+        'role': role,
+        'status': status,
+        'reputationScore': reputationScore,
+        if (coverageLat != null) 'coverageLat': coverageLat,
+        if (coverageLng != null) 'coverageLng': coverageLng,
+        if (coverageRadiusKm != null) 'coverageRadiusKm': coverageRadiusKm,
+      };
 
   AppUser toDomain() => AppUser(
-    userId: userId,
-    email: email,
-    displayName: displayName,
-    role: UserRole.fromString(role),
-    status: UserStatus.fromString(status),
-    reputationScore: reputationScore,
-    coverageAreaCenter: (coverageLat != null && coverageLng != null)
-        ? (latitude: coverageLat!, longitude: coverageLng!)
-        : null,
-    coverageRadiusKm: coverageRadiusKm,
-  );
+        userId: userId,
+        email: email,
+        displayName: displayName,
+        role: UserRole.fromString(role),
+        status: UserStatus.fromString(status),
+        reputationScore: reputationScore,
+        coverageAreaCenter: (coverageLat != null && coverageLng != null)
+            ? (latitude: coverageLat!, longitude: coverageLng!)
+            : null,
+        coverageRadiusKm: coverageRadiusKm,
+      );
 }

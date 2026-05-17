@@ -34,10 +34,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     await ref.read(authNotifierProvider.notifier).register(
-      email: _emailCtrl.text.trim(),
-      password: _passwordCtrl.text,
-      displayName: _nameCtrl.text.trim(),
-    );
+          email: _emailCtrl.text.trim(),
+          password: _passwordCtrl.text,
+          displayName: _nameCtrl.text.trim(),
+        );
     final error = ref.read(authNotifierProvider).error;
     if (error != null && mounted) {
       context.showSnackBar(error.toString(), isError: true);
@@ -61,8 +61,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                 AuthFormField(
                   controller: _nameCtrl,
                   label: AppStrings.displayName,
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Ingresá tu nombre' : null,
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? 'Ingresá tu nombre'
+                      : null,
                 ),
                 const SizedBox(height: 16),
                 AuthFormField(
@@ -77,11 +78,14 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                   controller: _passwordCtrl,
                   label: AppStrings.password,
                   obscureText: _obscurePassword,
-                  validator: (v) =>
-                      (v == null || v.length < 6) ? 'Mínimo 6 caracteres' : null,
+                  validator: (v) => (v == null || v.length < 6)
+                      ? 'Mínimo 6 caracteres'
+                      : null,
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                      _obscurePassword
+                          ? Icons.visibility
+                          : Icons.visibility_off,
                     ),
                     onPressed: () =>
                         setState(() => _obscurePassword = !_obscurePassword),
