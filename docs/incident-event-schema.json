@@ -1,0 +1,213 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:coordinacion-comunitaria:schemas:incident-event:1.0.0",
+  "$comment": "T-INF-04 — Contrato de interfaz 'Evento de Incidente'. Punto de unificación de RF-REP-01, RF-REP-02 y RF-REP-03, implementando RF-PRO-01.",
+  "title": "EventoDeIncidente",
+  "description": "Objeto JSON homogéneo enviado por el frontend Flutter a las Cloud Functions para el procesamiento del incidente urbano. Normaliza los tres mecanismos de reporte: botón rápido (RF-REP-01), voz (RF-REP-02) y formulario (RF-REP-03), tal como exige RF-PRO-01. Los campos opcionales no disponibles para un sourceType dado DEBEN enviarse explícitamente como null.",
+
+  "type": "object",
+  "required": [
+    "eventId",
+    "schemaVersion",
+    "sourceType",
+    "timestamp",
+    "userId",
+    "location",
+    "description",
+    "category",
+    "photoUrl"
+  ],
+  "additionalProperties": false,
+
+  "properties": {
+    "eventId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "UUID v4 generado en el cliente antes del envío. Garantiza idempotencia en Cloud Functions (AGENTS.md §4)."
+    },
+
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.0.0",
+      "description": "Versión del esquema de contrato de interfaz. Incrementar en futuros cambios incompatibles."
+    },
+
+    "sourceType": {
+      "type": "string",
+      "enum": ["quick_button", "voice", "form"],
+      "description": "Mecanismo de captura del reporte. Determina cuáles campos opcionales serán null. quick_button → RF-REP-01 | voice → RF-REP-02 | form → RF-REP-03."
+    },
+
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Momento de captura del evento en el dispositivo, ISO 8601 UTC. Ejemplo: '2026-05-17T14:32:00Z'."
+    },
+
+    "userId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "UID del vecino informante emitido por Firebase Auth. El backend DEBE revalidar que coincide con el JWT de la request (AGENTS.md §6). Nunca loguear este valor como PII."
+    },
+
+    "location": {
+      "type": "object",
+      "description": "Coordenadas GPS capturadas automáticamente al momento del reporte. Precisión objetivo: ≤10 m (RNF-PRE-01). El backend debe revalidar que las coordenadas caen dentro del área de cobertura configurada (RF-MOD-02).",
+      "required": ["latitude", "longitude", "accuracy"],
+      "additionalProperties": false,
+      "properties": {
+        "latitude": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90,
+          "description": "Latitud en grados decimales, datum WGS84."
+        },
+        "longitude": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180,
+          "description": "Longitud en grados decimales, datum WGS84."
+        },
+        "accuracy": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "description": "Precisión GPS en metros reportada por el SO. Null si el SO no la provee."
+        }
+      }
+    },
+
+    "description": {
+      "type": ["string", "null"],
+      "maxLength": 1000,
+      "description": "Descripción textual del incidente. null para 'quick_button'. Transcripción on-device (package speech_to_text, procesamiento 100% local) para 'voice'. Texto libre del formulario para 'form'."
+    },
+
+    "category": {
+      "$ref": "#/$defs/IncidentCategory",
+      "description": "Categoría de mantenimiento urbano seleccionada por el usuario (RF-ADM-03). null para 'quick_button' y 'voice'. Opcional (puede ser null) en 'form' si el usuario no seleccionó ninguna."
+    },
+
+    "photoUrl": {
+      "type": ["string", "null"],
+      "format": "uri",
+      "description": "URI de Firebase Storage de la fotografía adjunta al reporte. null para 'quick_button' y 'voice'. Opcional (puede ser null) en 'form' si el usuario no adjuntó foto."
+    }
+  },
+
+  "if": {
+    "$comment": "quick_button — Reporte Preliminar (RF-REP-01): solo captura userId, timestamp y location. Sin texto, categoría ni foto.",
+    "properties": { "sourceType": { "const": "quick_button" } },
+    "required": ["sourceType"]
+  },
+  "then": {
+    "properties": {
+      "description": { "type": "null" },
+      "category": { "type": "null" },
+      "photoUrl": { "type": "null" }
+    }
+  },
+  "else": {
+    "if": {
+      "$comment": "voice — Reporte Abreviado (RF-REP-02): captura userId, timestamp, location y texto transcripto. Sin categoría ni foto.",
+      "properties": { "sourceType": { "const": "voice" } },
+      "required": ["sourceType"]
+    },
+    "then": {
+      "properties": {
+        "description": { "type": "string", "minLength": 1 },
+        "category": { "type": "null" },
+        "photoUrl": { "type": "null" }
+      }
+    }
+  },
+
+  "examples": [
+    {
+      "eventId": "a1b2c3d4-e5f6-4789-8abc-def012345678",
+      "schemaVersion": "1.0.0",
+      "sourceType": "quick_button",
+      "timestamp": "2026-05-17T14:32:00Z",
+      "userId": "firebase_uid_abc123",
+      "location": {
+        "latitude": -34.595722,
+        "longitude": -60.944444,
+        "accuracy": 8.5
+      },
+      "description": null,
+      "category": null,
+      "photoUrl": null
+    },
+    {
+      "eventId": "b2c3d4e5-f6a7-4890-9bcd-ef0123456789",
+      "schemaVersion": "1.0.0",
+      "sourceType": "voice",
+      "timestamp": "2026-05-17T15:10:22Z",
+      "userId": "firebase_uid_def456",
+      "location": {
+        "latitude": -34.596100,
+        "longitude": -60.945800,
+        "accuracy": 12.3
+      },
+      "description": "Hay un cable pelado en la vereda de Rivadavia al 500",
+      "category": null,
+      "photoUrl": null
+    },
+    {
+      "eventId": "c3d4e5f6-a7b8-4901-abcd-f01234567890",
+      "schemaVersion": "1.0.0",
+      "sourceType": "form",
+      "timestamp": "2026-05-17T16:45:05Z",
+      "userId": "firebase_uid_ghi789",
+      "location": {
+        "latitude": -34.597500,
+        "longitude": -60.942000,
+        "accuracy": 5.0
+      },
+      "description": "Bache profundo en la esquina de San Martín y Belgrano, ocupa casi todo el carril derecho",
+      "category": "pavimentacion",
+      "photoUrl": "https://storage.googleapis.com/proyecto-incidentes.appspot.com/incidents/img_001.jpg"
+    }
+  ],
+
+  "$defs": {
+    "IncidentCategory": {
+      "description": "Categorías de mantenimiento urbano configurables por el Administrador Vecinal (RF-ADM-03). El campo acepta null.",
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "pavimentacion",
+            "alumbrado_electrico",
+            "saneamiento",
+            "espacios_verdes",
+            "infraestructura_vial",
+            "otro"
+          ]
+        },
+        { "type": "null" }
+      ]
+    },
+
+    "PriorityLevel": {
+      "$comment": "REFERENCIA INTERNA — No es parte del payload enviado por el cliente. Lo calcula Cloud Functions tras recibir el EventoDeIncidente (RF-PRI-02). Se persiste en Firestore junto al evento.",
+      "description": "Niveles de prioridad operativa asignados por el Motor de Priorización (RF-PRI-02). Ejemplo: 'cable pelado' → urgente; 'basura acumulada' → media.",
+      "type": "string",
+      "enum": ["urgente", "alta", "media", "baja"]
+    },
+
+    "PriorityScore": {
+      "$comment": "REFERENCIA INTERNA — No es parte del payload del cliente. Lo calcula RF-PRI-03 en Cloud Functions.",
+      "description": "Valor numérico de prioridad calculado por RF-PRI-03. Pondera palabras clave, zona geográfica, historial de reportes y reputación del vecino. Permite ordenar incidentes en el panel de administración.",
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+
+    "IncidentStatus": {
+      "$comment": "REFERENCIA INTERNA — No es parte del payload del cliente. El ciclo de vida lo gestiona el Administrador Vecinal en Firestore (RF-ADM-02).",
+      "description": "Estados del ciclo de vida del incidente. Flujo: recibido → programado → en_reparacion → solucionado.",
+      "type": "string",
+      "enum": ["recibido", "programado", "en_reparacion", "solucionado"]
+    }
+  }
+}
