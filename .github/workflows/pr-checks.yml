@@ -41,7 +41,9 @@ jobs:
         run: flutter pub get
 
       - name: Restaurar firebase_options.dart
-        run: echo "${{ secrets.FIREBASE_OPTIONS_DART }}" > lib/firebase_options.dart
+        env:
+          FIREBASE_OPTIONS_DART: ${{ secrets.FIREBASE_OPTIONS_DART }}
+        run: printf '%s' "$FIREBASE_OPTIONS_DART" > lib/firebase_options.dart
 
       - name: Verificar código generado actualizado
         run: |
