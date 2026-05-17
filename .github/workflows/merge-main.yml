@@ -23,6 +23,9 @@ jobs:
       - name: Instalar dependencias
         run: flutter pub get
 
+      - name: Restaurar firebase_options.dart
+        run: echo "${{ secrets.FIREBASE_OPTIONS_DART }}" > lib/firebase_options.dart
+
       - name: Generar código
         run: dart run build_runner build --delete-conflicting-outputs
 
