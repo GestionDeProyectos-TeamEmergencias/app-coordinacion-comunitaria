@@ -20,6 +20,10 @@ build/
 # pubspec.lock se commitea en apps Flutter para garantizar versiones consistentes entre devs
 # pubspec.lock
 
+# Archivos generados por Flutter — no editar ni commitear
+.flutter-plugins-dependencies
+.flutter-plugins
+
 # Código generado (build_runner)
 *.g.dart
 *.freezed.dart
