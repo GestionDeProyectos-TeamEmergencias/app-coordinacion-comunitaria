@@ -1,0 +1,40 @@
+# Auto-labeler — asigna labels según los archivos modificados en el PR
+
+# ── Por módulo ─────────────────────────────────────────────────────────────────
+auth:
+  - changed-files:
+    - any-glob-to-any-file: 'lib/features/auth/**'
+
+incidents:
+  - changed-files:
+    - any-glob-to-any-file: 'lib/features/incidents/**'
+
+map:
+  - changed-files:
+    - any-glob-to-any-file: 'lib/features/map/**'
+
+admin:
+  - changed-files:
+    - any-glob-to-any-file: 'lib/features/admin/**'
+
+# ── Por capa ───────────────────────────────────────────────────────────────────
+infra:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'firebase.json'
+      - 'firestore.rules'
+      - 'android/**'
+      - 'ios/**'
+      - '.github/**'
+
+docs:
+  - changed-files:
+    - any-glob-to-any-file: 'docs/**'
+
+tests:
+  - changed-files:
+    - any-glob-to-any-file: 'test/**'
+
+dependencies:
+  - changed-files:
+    - any-glob-to-any-file: 'pubspec.yaml'

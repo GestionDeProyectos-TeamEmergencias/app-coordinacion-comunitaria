@@ -1,0 +1,61 @@
+name: Merge a Main
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  # ── 1. Build release APK ───────────────────────────────────────────────────
+  build-release:
+    name: Build APK release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.9'
+          channel: stable
+          cache: true
+
+      - name: Instalar dependencias
+        run: flutter pub get
+
+      - name: Generar código
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Build APK release
+        run: flutter build apk --release
+
+      - name: Subir APK como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-${{ github.sha }}
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 30
+
+  # ── 2. Deploy Firestore rules si cambiaron ─────────────────────────────────
+  deploy-firestore-rules:
+    name: Deploy Firestore rules
+    runs-on: ubuntu-latest
+    if: |
+      contains(github.event.head_commit.modified, 'firestore.rules') ||
+      contains(github.event.head_commit.added, 'firestore.rules')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Deploy Firestore rules
+        run: firebase deploy --only firestore:rules --project errr-a6946
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}

@@ -1,0 +1,67 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  # ── 1. Verificar formato del título del PR ─────────────────────────────────
+  pr-title:
+    name: Validar título del PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificar formato [T-XXX-XX]
+        run: |
+          TITLE="${{ github.event.pull_request.title }}"
+          if echo "$TITLE" | grep -qE '\[T-[A-Z]+-[0-9]+\]'; then
+            echo "✅ Título válido: $TITLE"
+          else
+            echo "❌ El título del PR debe incluir el ID de la tarea Jira."
+            echo "   Formato requerido: feat: [T-AUTH-01] Descripción"
+            echo "   Título actual: $TITLE"
+            exit 1
+          fi
+
+  # ── 2. Análisis estático y tests ───────────────────────────────────────────
+  flutter-checks:
+    name: Flutter analyze & test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.9'
+          channel: stable
+          cache: true
+
+      - name: Instalar dependencias
+        run: flutter pub get
+
+      - name: Verificar código generado actualizado
+        run: |
+          dart run build_runner build --delete-conflicting-outputs
+          if ! git diff --exit-code; then
+            echo "❌ Hay archivos generados desactualizados."
+            echo "   Corré: dart run build_runner build --delete-conflicting-outputs"
+            echo "   Y commiteá los archivos generados."
+            exit 1
+          fi
+
+      - name: Verificar formato de código
+        run: dart format --set-exit-if-changed .
+
+      - name: Flutter analyze
+        run: flutter analyze --fatal-infos
+
+      - name: Flutter test
+        run: flutter test --coverage
+
+      - name: Subir cobertura (opcional)
+        if: success()
+        uses: codecov/codecov-action@v4
+        continue-on-error: true
+        with:
+          file: coverage/lcov.info
