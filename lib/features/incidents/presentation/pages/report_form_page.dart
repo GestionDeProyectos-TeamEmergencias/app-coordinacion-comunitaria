@@ -49,8 +49,7 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
     }
 
     final position = await Geolocator.getCurrentPosition(
-      locationSettings:
-          const LocationSettings(accuracy: LocationAccuracy.high),
+      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
     );
     final user = ref.read(authStateProvider).valueOrNull;
     if (user == null || !mounted) return;
