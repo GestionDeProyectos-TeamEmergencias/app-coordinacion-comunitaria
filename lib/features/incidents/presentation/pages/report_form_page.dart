@@ -69,7 +69,7 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
       context.showSnackBar(error.toString(), isError: true);
     } else {
       context.showSnackBar(AppStrings.reportSentSuccess);
-      context.pop();
+      context.go('/home');
     }
   }
 

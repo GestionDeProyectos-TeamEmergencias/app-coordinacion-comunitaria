@@ -54,6 +54,12 @@ abstract final class AppStrings {
   // Mapa
   static const mapTitle = 'Mapa de incidencias';
 
+  // Navegación principal
+  static const navHome = 'Inicio';
+  static const navReport = 'Reportar';
+  static const navMap = 'Mapa';
+  static const navProfile = 'Perfil';
+
   // Admin
   static const adminDashboard = 'Panel de administración';
   static const usersManagement = 'Gestión de usuarios';
