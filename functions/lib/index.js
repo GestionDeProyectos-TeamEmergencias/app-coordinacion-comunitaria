@@ -38,22 +38,33 @@ const https_1 = require("firebase-functions/v2/https");
 const logger = __importStar(require("firebase-functions/logger"));
 const genkit_1 = require("genkit");
 const google_genai_1 = require("@genkit-ai/google-genai");
-// Inicialización de Genkit con el plugin de Google Gen AI (Gemini)
+// Inicialización de Genkit con el plugin de Google Gen AI
 const ai = (0, genkit_1.genkit)({
     plugins: [(0, google_genai_1.googleAI)()],
+});
+// Definición del esquema tipado esperado para la clasificación
+const IncidentClassificationSchema = genkit_1.z.object({
+    category: genkit_1.z.enum(["Vandalismo", "Infraestructura", "Seguridad", "Otro"]),
+    priority: genkit_1.z.enum(["Baja", "Media", "Alta"]),
+    reasoning: genkit_1.z.string().describe("Breve justificación de la clasificación"),
 });
 exports.classifyIncident = (0, https_1.onRequest)(async (req, res) => {
     try {
         const description = req.body.description || req.query.description || "Hubo un corte de luz en la calle principal";
-        // Smoke test: Generación de contenido con Gemini
+        // Generación de contenido con esquema tipado usando Gemini 2.5 Flash-Lite
         const response = await ai.generate({
-            model: google_genai_1.googleAI.model('gemini-2.5-flash'),
-            prompt: `Actúa como un asistente para un sistema de coordinación comunitaria. Clasifica el siguiente reporte de incidente vecinal en una categoría corta (por ejemplo: Vandalismo, Infraestructura, Seguridad, Otro) y asigna una prioridad (Baja, Media, Alta). Reporte: "${description}"`,
+            model: google_genai_1.googleAI.model('gemini-2.5-flash-lite'),
+            prompt: `Actúa como un asistente para un sistema de coordinación comunitaria. 
+      Analiza el siguiente reporte de incidente vecinal y clasifícalo.
+      Reporte: "${description}"`,
+            output: {
+                schema: IncidentClassificationSchema
+            }
         });
         res.status(200).json({
             success: true,
             report: description,
-            classification: response.text
+            classification: response.output
         });
     }
     catch (error) {
