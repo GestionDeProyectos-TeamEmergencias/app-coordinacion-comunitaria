@@ -73,6 +73,34 @@ class AuthRemoteDataSource {
     }
   }
 
+  // ── Gestión de usuarios pendientes (T-AUTH-01) ────────────────────────────
+
+  /// Stream en tiempo real de documentos con status == "pending".
+  Stream<List<UserModel>> get pendingUsersStream =>
+      _users.where('status', isEqualTo: 'pending').snapshots().map(
+            (snapshot) => snapshot.docs
+                .map((doc) => UserModel.fromFirestore(doc))
+                .toList(),
+          );
+
+  /// Cambia el status del usuario a "active" (aprobación). [T-AUTH-01]
+  Future<void> approveUser(String uid) async {
+    try {
+      await _users.doc(uid).update({'status': 'active'});
+    } on FirebaseException catch (e) {
+      throw FirestoreException(e.message ?? 'Error al aprobar usuario.');
+    }
+  }
+
+  /// Cambia el status del usuario a "rejected" (rechazo). [T-AUTH-01]
+  Future<void> rejectUser(String uid) async {
+    try {
+      await _users.doc(uid).update({'status': 'rejected'});
+    } on FirebaseException catch (e) {
+      throw FirestoreException(e.message ?? 'Error al rechazar usuario.');
+    }
+  }
+
   Future<void> logout() => _auth.signOut();
 
   Future<UserModel?> getCurrentUser() async {

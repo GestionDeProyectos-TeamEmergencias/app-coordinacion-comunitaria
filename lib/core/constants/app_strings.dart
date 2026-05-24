@@ -65,6 +65,26 @@ abstract final class AppStrings {
   static const usersManagement = 'Gestión de usuarios';
   static const incidentModeration = 'Moderación de incidentes';
 
+  // Registro pendiente / rechazado [T-AUTH-01]
+  static const rejectedTitle = 'Solicitud rechazada';
+  static const rejectedBody =
+      'Tu solicitud de cuenta fue rechazada por el administrador. '
+      'Podés comunicarte con la organización para más información.';
+
+  // Flujo de aprobación [T-AUTH-01]
+  static const pendingUsers = 'Usuarios pendientes';
+  static const noPendingUsers = 'No hay solicitudes pendientes de aprobación';
+  static const approveUser = 'Aprobar';
+  static const rejectUser = 'Rechazar';
+  static const approveConfirmTitle = '¿Aprobar esta cuenta?';
+  static const approveConfirmBody =
+      'El usuario obtendrá acceso completo como vecino informante.';
+  static const rejectConfirmTitle = '¿Rechazar esta cuenta?';
+  static const rejectConfirmBody =
+      'El usuario verá un mensaje de rechazo al iniciar sesión.';
+  static const userApproved = 'Cuenta aprobada correctamente.';
+  static const userRejected = 'Cuenta rechazada.';
+
   // Errores genéricos
   static const errorUnknown = 'Ocurrió un error inesperado. Intentá de nuevo.';
   static const errorNoInternet = 'Sin conexión a internet.';

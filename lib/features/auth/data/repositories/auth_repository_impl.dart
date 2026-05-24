@@ -40,4 +40,16 @@ class AuthRepositoryImpl implements AuthRepository {
     final model = await _dataSource.getCurrentUser();
     return model?.toDomain();
   }
+
+  // ── Gestión de usuarios pendientes (T-AUTH-01) ────────────────────────────
+
+  @override
+  Stream<List<AppUser>> get pendingUsersStream => _dataSource.pendingUsersStream
+      .map((models) => models.map((m) => m.toDomain()).toList());
+
+  @override
+  Future<void> approveUser(String uid) => _dataSource.approveUser(uid);
+
+  @override
+  Future<void> rejectUser(String uid) => _dataSource.rejectUser(uid);
 }

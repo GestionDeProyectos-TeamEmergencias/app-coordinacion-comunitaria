@@ -5,9 +5,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/datasources/auth_remote_datasource.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/entities/app_user.dart';
+import '../../domain/usecases/approve_user_usecase.dart';
+import '../../domain/usecases/get_pending_users_usecase.dart';
 import '../../domain/usecases/login_usecase.dart';
 import '../../domain/usecases/logout_usecase.dart';
 import '../../domain/usecases/register_usecase.dart';
+import '../../domain/usecases/reject_user_usecase.dart';
 
 // ── Infraestructura ────────────────────────────────────────────────────────────
 
@@ -44,10 +47,29 @@ final logoutUseCaseProvider = Provider<LogoutUseCase>((ref) {
   return LogoutUseCase(ref.watch(_authRepositoryProvider));
 });
 
+// ── Use cases — gestión de usuarios pendientes (T-AUTH-01) ───────────────────
+
+final getPendingUsersUseCaseProvider = Provider<GetPendingUsersUseCase>((ref) {
+  return GetPendingUsersUseCase(ref.watch(_authRepositoryProvider));
+});
+
+final approveUserUseCaseProvider = Provider<ApproveUserUseCase>((ref) {
+  return ApproveUserUseCase(ref.watch(_authRepositoryProvider));
+});
+
+final rejectUserUseCaseProvider = Provider<RejectUserUseCase>((ref) {
+  return RejectUserUseCase(ref.watch(_authRepositoryProvider));
+});
+
 // ── Estado de autenticación (stream) ──────────────────────────────────────────
 
 final authStateProvider = StreamProvider<AppUser?>((ref) {
   return ref.watch(_authRepositoryProvider).authStateChanges;
+});
+
+/// Stream en tiempo real de usuarios pendientes de aprobación. [T-AUTH-01]
+final pendingUsersProvider = StreamProvider<List<AppUser>>((ref) {
+  return ref.watch(getPendingUsersUseCaseProvider)();
 });
 
 // ── Notifier para operaciones de auth ─────────────────────────────────────────
@@ -90,4 +112,32 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
 final authNotifierProvider =
     StateNotifierProvider<AuthNotifier, AsyncValue<void>>(
   (ref) => AuthNotifier(ref),
+);
+
+// ── Notifier para operaciones del admin sobre usuarios (T-AUTH-01) ────────────
+
+/// Maneja las acciones de aprobación y rechazo de cuentas pendientes.
+class UserManagementNotifier extends StateNotifier<AsyncValue<void>> {
+  UserManagementNotifier(this._ref) : super(const AsyncValue.data(null));
+
+  final Ref _ref;
+
+  Future<void> approveUser(String uid) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(
+      () => _ref.read(approveUserUseCaseProvider)(uid),
+    );
+  }
+
+  Future<void> rejectUser(String uid) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(
+      () => _ref.read(rejectUserUseCaseProvider)(uid),
+    );
+  }
+}
+
+final userManagementNotifierProvider =
+    StateNotifierProvider<UserManagementNotifier, AsyncValue<void>>(
+  (ref) => UserManagementNotifier(ref),
 );
