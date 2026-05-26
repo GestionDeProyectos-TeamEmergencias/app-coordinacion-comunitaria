@@ -33,12 +33,19 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.classifyIncident = void 0;
+exports.normalizeIncident = exports.classifyIncident = void 0;
 const https_1 = require("firebase-functions/v2/https");
+const firestore_1 = require("firebase-functions/v2/firestore");
 const logger = __importStar(require("firebase-functions/logger"));
+const admin = __importStar(require("firebase-admin"));
+const firestore_2 = require("firebase-admin/firestore");
 const genkit_1 = require("genkit");
 const google_genai_1 = require("@genkit-ai/google-genai");
-// Inicialización de Genkit con el plugin de Google Gen AI
+const incidentNormalization_1 = require("./incidentNormalization");
+const incidentEnrichment_1 = require("./incidentEnrichment");
+const incidentDuplicates_1 = require("./incidentDuplicates");
+admin.initializeApp();
+// Inicializacion de Genkit con el plugin de Google Gen AI
 const ai = (0, genkit_1.genkit)({
     plugins: [(0, google_genai_1.googleAI)()],
 });
@@ -72,4 +79,56 @@ exports.classifyIncident = (0, https_1.onRequest)(async (req, res) => {
         res.status(500).json({ success: false, error: error.message });
     }
 });
+exports.normalizeIncident = (0, firestore_1.onDocumentCreated)("incidents/{incidentId}", async (event) => {
+    const incidentId = event.params.incidentId;
+    const snapshot = event.data;
+    if (!snapshot) {
+        logger.warn("Missing incident snapshot", { incidentId });
+        return;
+    }
+    const data = snapshot.data();
+    if (data.normalizedAt || data.normalizedEvent) {
+        return;
+    }
+    const firestore = admin.firestore();
+    try {
+        const { normalizedEvent, warnings } = (0, incidentNormalization_1.normalizeIncidentEvent)(incidentId, data);
+        const now = new Date();
+        const enrichment = await (0, incidentEnrichment_1.buildEnrichment)(firestore, normalizedEvent.userId, now);
+        const duplicateCheck = await (0, incidentDuplicates_1.detectDuplicateIncidents)(firestore, {
+            incidentId,
+            latitude: normalizedEvent.location.latitude,
+            longitude: normalizedEvent.location.longitude,
+            timestamp: new Date(normalizedEvent.timestamp),
+            radiusMeters: getDuplicateRadiusMeters(),
+            windowHours: getDuplicateWindowHours(),
+        });
+        await firestore.collection("incidents").doc(incidentId).update({
+            normalizedEvent,
+            normalizationWarnings: warnings,
+            enrichment,
+            duplicateCheck,
+            normalizedAt: firestore_2.FieldValue.serverTimestamp(),
+        });
+    }
+    catch (error) {
+        logger.error("Normalization failed", { incidentId, error });
+        await firestore.collection("incidents").doc(incidentId).update({
+            normalizationError: {
+                message: error instanceof Error ? error.message : "Unknown error",
+                at: firestore_2.FieldValue.serverTimestamp(),
+            },
+        });
+    }
+});
+function getDuplicateRadiusMeters() {
+    var _a;
+    const value = Number((_a = process.env.DUPLICATE_RADIUS_METERS) !== null && _a !== void 0 ? _a : "100");
+    return Number.isFinite(value) && value > 0 ? value : 100;
+}
+function getDuplicateWindowHours() {
+    var _a;
+    const value = Number((_a = process.env.DUPLICATE_WINDOW_HOURS) !== null && _a !== void 0 ? _a : "24");
+    return Number.isFinite(value) && value > 0 ? value : 24;
+}
 //# sourceMappingURL=index.js.map
