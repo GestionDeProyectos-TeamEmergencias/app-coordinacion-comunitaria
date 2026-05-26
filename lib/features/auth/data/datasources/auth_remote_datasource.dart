@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -13,19 +15,51 @@ class AuthRemoteDataSource {
   CollectionReference<Map<String, dynamic>> get _users =>
       _firestore.collection('users');
 
+  /// Stream en tiempo real del usuario autenticado. [T-AUTH-01]
+  ///
+  /// Combina Firebase Auth state changes con un listener en tiempo real del
+  /// documento Firestore del usuario, de modo que cuando el admin aprueba o
+  /// rechaza la cuenta, el cambio se propaga automáticamente sin reiniciar la app.
   Stream<UserModel?> get authStateChanges {
-    return _auth.authStateChanges().asyncMap((firebaseUser) async {
-      if (firebaseUser == null) return null;
-      final doc = await _users
-          .doc(firebaseUser.uid)
-          .withConverter<Map<String, dynamic>>(
-            fromFirestore: (s, _) => s.data()!,
-            toFirestore: (d, _) => d,
-          )
-          .get();
-      if (!doc.exists) return null;
-      return UserModel.fromFirestore(doc);
-    });
+    StreamSubscription<User?>? authSub;
+    StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? docSub;
+
+    // ignore: close_sinks  — el ciclo de vida lo gestiona onCancel
+    late final StreamController<UserModel?> controller;
+    controller = StreamController<UserModel?>.broadcast(
+      onListen: () {
+        authSub = _auth.authStateChanges().listen(
+          (firebaseUser) {
+            // Cuando cambia el usuario autenticado, cancelamos el listener
+            // anterior del documento y abrimos uno nuevo.
+            docSub?.cancel();
+            docSub = null;
+
+            if (firebaseUser == null) {
+              controller.add(null);
+              return;
+            }
+
+            docSub = _users.doc(firebaseUser.uid).snapshots().listen(
+                  (doc) => controller.add(
+                    doc.exists ? UserModel.fromFirestore(doc) : null,
+                  ),
+                  // ignore: avoid_types_on_closure_parameters
+                  onError: (Object e, StackTrace st) =>
+                      controller.addError(e, st),
+                );
+          },
+          // ignore: avoid_types_on_closure_parameters
+          onError: (Object e, StackTrace st) => controller.addError(e, st),
+        );
+      },
+      onCancel: () {
+        docSub?.cancel();
+        authSub?.cancel();
+      },
+    );
+
+    return controller.stream;
   }
 
   Future<UserModel> register({

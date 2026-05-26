@@ -37,9 +37,14 @@ service cloud.firestore {
       allow read: if isAuthenticated() &&
         (request.auth.uid == userId || isAdmin());
 
-      // Creación: el usuario se crea a sí mismo durante el registro.
+      // Creación: el usuario se crea a sí mismo durante el registro. [T-AUTH-01]
+      // Se fuerza role=vecino_informante, status=pending y reputationScore=100
+      // para impedir que un cliente malicioso se auto-asigne privilegios.
       allow create: if isAuthenticated() &&
-        request.auth.uid == userId;
+        request.auth.uid == userId &&
+        request.resource.data.role == 'vecino_informante' &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.reputationScore == 100.0;
 
       // Actualización: el usuario puede editar su propio perfil
       // pero NO puede cambiar su rol ni su estado (eso solo lo hace el admin).
