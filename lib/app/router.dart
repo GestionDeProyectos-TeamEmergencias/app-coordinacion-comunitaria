@@ -8,6 +8,7 @@ import '../features/auth/domain/entities/app_user.dart';
 import '../features/auth/presentation/pages/login_page.dart';
 import '../features/auth/presentation/pages/pending_approval_page.dart';
 import '../features/auth/presentation/pages/register_page.dart';
+import '../features/auth/presentation/pages/rejected_page.dart';
 import '../features/auth/presentation/providers/auth_provider.dart';
 import '../features/incidents/presentation/pages/home_page.dart';
 import '../features/incidents/presentation/pages/incident_detail_page.dart';
@@ -22,6 +23,7 @@ abstract final class AppRoutes {
   static const login = '/login';
   static const register = '/register';
   static const pending = '/pending';
+  static const rejected = '/rejected';
   static const home = '/home';
   static const reportForm = '/report/form';
   static const map = '/map';
@@ -55,7 +57,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         return loc == AppRoutes.pending ? null : AppRoutes.pending;
       }
 
-      if (isOnAuthPage || loc == AppRoutes.splash || loc == AppRoutes.pending) {
+      // Cuenta rechazada: redirigir a página de rechazo. [T-AUTH-01]
+      if (user.status == UserStatus.rejected) {
+        return loc == AppRoutes.rejected ? null : AppRoutes.rejected;
+      }
+
+      if (isOnAuthPage ||
+          loc == AppRoutes.splash ||
+          loc == AppRoutes.pending ||
+          loc == AppRoutes.rejected) {
         return AppRoutes.home;
       }
 
@@ -77,6 +87,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.pending,
         builder: (_, __) => const PendingApprovalPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.rejected,
+        builder: (_, __) => const RejectedPage(),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
