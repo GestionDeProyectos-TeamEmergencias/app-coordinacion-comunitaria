@@ -34,6 +34,15 @@ export async function detectDuplicateIncidents(
     .get();
 
   const nearbyIds: string[] = [];
+  const latOffset = input.radiusMeters / 111000;
+  const cosLatitude = Math.cos((input.latitude * Math.PI) / 180);
+  const safeCosLatitude = Math.max(Math.abs(cosLatitude), 1e-6);
+  const lonOffset = input.radiusMeters / (111000 * safeCosLatitude);
+
+  const minLat = input.latitude - latOffset;
+  const maxLat = input.latitude + latOffset;
+  const minLon = input.longitude - lonOffset;
+  const maxLon = input.longitude + lonOffset;
 
   snapshot.forEach((doc) => {
     if (doc.id === input.incidentId) {
@@ -49,6 +58,10 @@ export async function detectDuplicateIncidents(
     );
 
     if (latitude === null || longitude === null) {
+      return;
+    }
+
+    if (latitude < minLat || latitude > maxLat || longitude < minLon || longitude > maxLon) {
       return;
     }
 

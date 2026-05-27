@@ -107,6 +107,10 @@ function parseTimestamp(value: unknown): Date | null {
     return null;
   }
 
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value;
+  }
+
   if (typeof value === "object" && value !== null) {
     const maybeTimestamp = value as { toDate?: () => Date };
     if (typeof maybeTimestamp.toDate === "function") {

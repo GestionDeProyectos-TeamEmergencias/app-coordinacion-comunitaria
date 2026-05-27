@@ -59,19 +59,22 @@ async function loadIncidentHistory(
   const since = new Date(now.getTime());
   since.setDate(since.getDate() - 30);
 
-  const totalSnap = await firestore
-    .collection("incidents")
-    .where("userId", "==", userId)
-    .get();
-
-  const recentSnap = await firestore
-    .collection("incidents")
-    .where("userId", "==", userId)
-    .where("timestamp", ">=", since)
-    .get();
+  const [totalCountSnap, recentCountSnap] = await Promise.all([
+    firestore
+      .collection("incidents")
+      .where("userId", "==", userId)
+      .count()
+      .get(),
+    firestore
+      .collection("incidents")
+      .where("userId", "==", userId)
+      .where("timestamp", ">=", since)
+      .count()
+      .get(),
+  ]);
 
   return {
-    totalReports: totalSnap.size,
-    reportsLast30Days: recentSnap.size,
+    totalReports: totalCountSnap.data().count,
+    reportsLast30Days: recentCountSnap.data().count,
   };
 }
