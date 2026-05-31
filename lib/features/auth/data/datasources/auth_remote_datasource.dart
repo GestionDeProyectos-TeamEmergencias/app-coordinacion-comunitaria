@@ -69,8 +69,35 @@ class AuthRemoteDataSource {
       final doc = await _users.doc(credential.user!.uid).get();
       return UserModel.fromFirestore(doc);
     } on FirebaseAuthException catch (e) {
-      throw AuthException(e.message ?? 'Error al iniciar sesión.');
+      String errorMessage;
+
+    // Intercept the Firebase error code and swap it for a friendly message
+    switch (e.code) {
+      case 'invalid-credential':
+        errorMessage = 'El correo o la contraseña son incorrectos. Por favor, verifica tus datos e intenta de nuevo.';
+        break;
+      case 'invalid-email':
+        errorMessage = 'El formato del correo electrónico no es válido.';
+        break;
+      case 'user-disabled':
+        errorMessage = 'Esta cuenta ha sido deshabilitada por la administración vecinal.';
+        break;
+      case 'too-many-requests':
+        errorMessage = 'Demasiados intentos fallidos. Por favor, esperá unos minutos e intenta de nuevo.';
+        break;
+      case 'network-request-failed':
+        errorMessage = 'Error de conexión. Revisa tu internet e intenta de nuevo.';
+        break;
+      default:
+        errorMessage = 'Ocurrió un error inesperado al iniciar sesión. (Código: ${e.code})';
     }
+
+    // Throw the new translated string instead of e.message
+    throw AuthException(errorMessage);
+  } catch (e) {
+    // A good fallback just in case something fails outside of Firebase Auth
+    throw const AuthException('Ocurrió un error inesperado. Por favor, intentá de nuevo.');
+  }
   }
 
   Future<void> logout() => _auth.signOut();
