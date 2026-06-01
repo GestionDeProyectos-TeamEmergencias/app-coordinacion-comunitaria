@@ -38,3 +38,16 @@ tests:
 dependencies:
   - changed-files:
     - any-glob-to-any-file: 'pubspec.yaml'
+
+# ── Clasificaciones generales de Capas ─────────────────────────────────────────
+backend:
+  - changed-files:
+    - any-glob-to-any-file: 'functions/**'
+
+frontend:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'lib/**'
+      - 'assets/**'
+      - 'pubspec.yaml'
+
