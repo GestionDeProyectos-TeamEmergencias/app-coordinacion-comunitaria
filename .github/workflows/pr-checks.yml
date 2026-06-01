@@ -75,3 +75,45 @@ jobs:
         continue-on-error: true
         with:
           file: coverage/lcov.info
+
+  # ── 3. Validación y Pruebas del Backend (Node.js/TypeScript) ────────────────
+  backend-checks:
+    name: Backend compile & test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verificar si existe el directorio de backend
+        id: check-backend
+        run: |
+          if [ -f "functions/package.json" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup Node.js
+        if: steps.check-backend.outputs.exists == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: functions/package-lock.json
+
+      - name: Instalar dependencias
+        if: steps.check-backend.outputs.exists == 'true'
+        run: npm ci
+        working-directory: functions
+
+      - name: Verificar compilación TypeScript
+        if: steps.check-backend.outputs.exists == 'true'
+        run: npm run build
+        working-directory: functions
+
+      - name: Ejecutar pruebas unitarias (Jest)
+        if: steps.check-backend.outputs.exists == 'true'
+        run: npm run test
+        working-directory: functions
+
+
