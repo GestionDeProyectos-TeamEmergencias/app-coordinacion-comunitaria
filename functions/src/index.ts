@@ -3,19 +3,16 @@ import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
-import { genkit, z } from "genkit";
+import { z } from "genkit";
 import { googleAI } from "@genkit-ai/google-genai";
 
+import { ai } from "./genkit";
 import { normalizeIncidentEvent } from "./incidentNormalization";
 import { buildEnrichment } from "./incidentEnrichment";
 import { detectDuplicateIncidents } from "./incidentDuplicates";
+import { semanticExtractionFlow, mapSemanticCategoryToNormalized } from "./semanticExtraction";
 
 admin.initializeApp();
-
-// Inicializacion de Genkit con el plugin de Google Gen AI
-const ai = genkit({
-  plugins: [googleAI()],
-});
 
 // Definición del esquema tipado esperado para la clasificación
 const IncidentClassificationSchema = z.object({
@@ -89,11 +86,29 @@ export const normalizeIncident = onDocumentCreated(
         windowHours: getDuplicateWindowHours(),
       });
 
+      // Ejecución del flujo de extracción semántica (T-NLP-03)
+      const semanticResult = await semanticExtractionFlow({
+        description: normalizedEvent.description,
+      });
+
+      // Si la categoría normalizada original es nula, la enriquecemos con la extraída por el LLM
+      if (!normalizedEvent.category && semanticResult.category) {
+        normalizedEvent.category = mapSemanticCategoryToNormalized(semanticResult.category);
+      }
+
+      const semanticExtraction = {
+        category: semanticResult.category,
+        intention: semanticResult.intention,
+        detectedTerms: semanticResult.detectedTerms,
+        extractedAt: new Date().toISOString(),
+      };
+
       await firestore.collection("incidents").doc(incidentId).update({
         normalizedEvent,
         normalizationWarnings: warnings,
         enrichment,
         duplicateCheck,
+        semanticExtraction,
         normalizedAt: FieldValue.serverTimestamp(),
       });
     } catch (error) {
