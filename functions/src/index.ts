@@ -1,54 +1,16 @@
-import { onRequest } from "firebase-functions/v2/https";
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
-import { genkit, z } from "genkit";
-import { googleAI } from "@genkit-ai/google-genai";
 
 import { normalizeIncidentEvent } from "./incidentNormalization";
 import { buildEnrichment } from "./incidentEnrichment";
 import { detectDuplicateIncidents } from "./incidentDuplicates";
+import { semanticExtractionFlow, mapSemanticCategoryToNormalized } from "./semanticExtraction";
 
 admin.initializeApp();
 
-// Inicializacion de Genkit con el plugin de Google Gen AI
-const ai = genkit({
-  plugins: [googleAI()],
-});
 
-// Definición del esquema tipado esperado para la clasificación
-const IncidentClassificationSchema = z.object({
-  category: z.enum(["Vandalismo", "Infraestructura", "Seguridad", "Otro"]),
-  priority: z.enum(["Baja", "Media", "Alta"]),
-  reasoning: z.string().describe("Breve justificación de la clasificación"),
-});
-
-export const classifyIncident = onRequest(async (req, res) => {
-  try {
-    const description = req.body.description || req.query.description || "Hubo un corte de luz en la calle principal";
-    
-    // Generación de contenido con esquema tipado usando Gemini 2.5 Flash-Lite
-    const response = await ai.generate({
-      model: googleAI.model('gemini-2.5-flash-lite'),
-      prompt: `Actúa como un asistente para un sistema de coordinación comunitaria. 
-      Analiza el siguiente reporte de incidente vecinal y clasifícalo.
-      Reporte: "${description}"`,
-      output: {
-        schema: IncidentClassificationSchema
-      }
-    });
-
-    res.status(200).json({ 
-      success: true,
-      report: description,
-      classification: response.output 
-    });
-  } catch (error: any) {
-    logger.error("Error al procesar el incidente con Genkit", error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
 
 export const normalizeIncident = onDocumentCreated(
   "incidents/{incidentId}",
@@ -89,11 +51,37 @@ export const normalizeIncident = onDocumentCreated(
         windowHours: getDuplicateWindowHours(),
       });
 
+      // Ejecución del flujo de extracción semántica (T-NLP-03)
+      let semanticExtraction: object | null = null;
+      try {
+        const semanticResult = await semanticExtractionFlow({
+          description: normalizedEvent.description,
+        });
+
+        // Si la categoría normalizada original es nula, la enriquecemos con la extraída por el LLM
+        if (!normalizedEvent.category && semanticResult.category) {
+          normalizedEvent.category = mapSemanticCategoryToNormalized(semanticResult.category);
+        }
+
+        semanticExtraction = {
+          category: semanticResult.category,
+          intention: semanticResult.intention,
+          detectedTerms: semanticResult.detectedTerms,
+          extractedAt: new Date().toISOString(),
+        };
+      } catch (semanticError) {
+        logger.warn("Semantic extraction failed, continuing without it", {
+          incidentId,
+          error: semanticError,
+        });
+      }
+
       await firestore.collection("incidents").doc(incidentId).update({
         normalizedEvent,
         normalizationWarnings: warnings,
         enrichment,
         duplicateCheck,
+        ...(semanticExtraction ? { semanticExtraction } : {}),
         normalizedAt: FieldValue.serverTimestamp(),
       });
     } catch (error) {
