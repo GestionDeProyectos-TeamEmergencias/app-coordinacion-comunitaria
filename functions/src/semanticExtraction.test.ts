@@ -67,7 +67,7 @@ describe("Semantic Extraction (T-NLP-03)", () => {
       
       const generateArgs = generateSpy.mock.calls[0][0] as any;
       expect(generateArgs.prompt).toContain("Hay un bache gigante en la calle principal.");
-      expect(generateArgs.model.name).toBe("googleai/gemini-2.5-flash-lite");
+      expect(generateArgs.model).toBe("googleai/gemini-2.5-flash-lite");
     });
 
     test("lanza error si la respuesta del modelo está vacía o es inválida", async () => {

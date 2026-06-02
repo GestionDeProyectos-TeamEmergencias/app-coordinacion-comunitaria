@@ -1,11 +1,10 @@
 import { z } from "genkit";
 import { ai } from "./genkit";
-import { googleAI } from "@genkit-ai/google-genai";
 import { CategoryNormalized } from "./incidentNormalization";
 
 // Definición del esquema tipado esperado para los términos detectados
 export const DetectedTermSchema = z.object({
-  term: z.string().describe("Palabra clave significativa del incidente (ej. 'bache', 'luminaria', 'basura')."),
+  term: z.string().min(1).describe("Palabra clave significativa del incidente (ej. 'bache', 'luminaria', 'basura')."),
   weight: z.number().min(0).max(1).describe("Peso o relevancia semántica del término en una escala de 0.0 a 1.0.")
 });
 
@@ -20,9 +19,14 @@ export const SemanticExtractionSchema = z.object({
     "otro"
   ]).describe("La categoría del incidente urbano basada en el análisis semántico."),
   
-  intention: z.string().describe(
-    "Breve frase resumida que represente la intención directa del reporte en español (ej. 'Reportar bache profundo'). Máximo 10 palabras."
-  ),
+  intention: z.string()
+    .refine(
+      (val) => val.trim().split(/\s+/).length <= 12,
+      { message: "La intención no debe superar las 10 palabras." }
+    )
+    .describe(
+      "Breve frase resumida que represente la intención directa del reporte en español (ej. 'Reportar bache profundo'). Máximo 10 palabras."
+    ),
   
   detectedTerms: z.array(DetectedTermSchema).describe(
     "Lista de términos o palabras clave detectados en la descripción con sus pesos de relevancia (requisito RF-PRI-01)."
@@ -31,18 +35,11 @@ export const SemanticExtractionSchema = z.object({
 
 export type SemanticExtractionResult = z.infer<typeof SemanticExtractionSchema>;
 
-export interface FullSemanticExtraction {
-  category: "eléctrico" | "vial" | "sanitario" | "espacios verdes" | "seguridad" | "otro";
-  intention: string;
-  detectedTerms: Array<{ term: string; weight: number }>;
-  extractedAt: string;
-}
-
 /**
  * Mapea la categoría semántica extraída por la IA a la categoría normalizada interna del sistema.
  */
 export function mapSemanticCategoryToNormalized(
-  category: "eléctrico" | "vial" | "sanitario" | "espacios verdes" | "seguridad" | "otro"
+  category: SemanticExtractionResult["category"]
 ): Exclude<CategoryNormalized, null> {
   switch (category) {
     case "eléctrico":
@@ -72,7 +69,8 @@ export const semanticExtractionFlow = ai.defineFlow(
     outputSchema: SemanticExtractionSchema
   },
   async (input) => {
-    const description = input.description?.trim();
+    // Truncamos la descripción a 1500 caracteres para prevenir DoS de LLM
+    const description = input.description?.trim().substring(0, 1500);
 
     // Caso de borde: Si la descripción está vacía, no invocamos la IA para ahorrar recursos y latencia
     if (!description) {
@@ -85,7 +83,7 @@ export const semanticExtractionFlow = ai.defineFlow(
 
     // Invocación a Gemini 2.5 Flash-Lite a través del SDK de Genkit con esquema tipado
     const response = await ai.generate({
-      model: googleAI.model("gemini-2.5-flash-lite"),
+      model: "googleai/gemini-2.5-flash-lite",
       prompt: `
         Actúas como un clasificador semántico experto en un sistema de gestión comunitaria urbana no crítica.
         Analiza la descripción del incidente urbano reportado por un vecino y extrae la categoría semántica, la intención y las palabras clave estructuradas.
@@ -108,7 +106,9 @@ export const semanticExtractionFlow = ai.defineFlow(
           Respuesta esperada: { "category": "eléctrico", "intention": "Solicitar reparación de luminaria de alumbrado parpadeante", "detectedTerms": [{"term": "lámpara", "weight": 0.9}, {"term": "parpadea", "weight": 0.8}, {"term": "poste", "weight": 0.6}] }
 
         Descripción del incidente a analizar:
-        "${description}"
+        <descripcion>
+        ${description}
+        </descripcion>
       `,
       output: {
         schema: SemanticExtractionSchema
