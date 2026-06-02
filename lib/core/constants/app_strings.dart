@@ -90,4 +90,11 @@ abstract final class AppStrings {
   static const errorNoInternet = 'Sin conexión a internet.';
   static const errorOutOfCoverage =
       'Tu ubicación está fuera del área de cobertura configurada.';
+
+  // Unauthorized Access
+  static const unauthorizedAccess = 'Acceso no autorizado';
+  static const unauthorizedAccessTitle = 'Permiso denegado';
+  static const unauthorizedAccessMessage =
+      'No tenés los permisos necesarios para acceder a esta sección.';
+  static const goToHome = 'Ir a Inicio';
 }
