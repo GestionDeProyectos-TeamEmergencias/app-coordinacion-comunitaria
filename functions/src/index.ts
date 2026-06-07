@@ -6,7 +6,8 @@ import { FieldValue } from "firebase-admin/firestore";
 import { normalizeIncidentEvent } from "./incidentNormalization";
 import { buildEnrichment } from "./incidentEnrichment";
 import { detectDuplicateIncidents } from "./incidentDuplicates";
-import { semanticExtractionFlow, mapSemanticCategoryToNormalized } from "./semanticExtraction";
+import { semanticExtractionFlow, mapSemanticCategoryToNormalized, SemanticExtractionResult } from "./semanticExtraction";
+import { priorityCalculationFlow, PriorityResult } from "./priorityCalculation";
 
 admin.initializeApp();
 
@@ -52,7 +53,7 @@ export const normalizeIncident = onDocumentCreated(
       });
 
       // Ejecución del flujo de extracción semántica (T-NLP-03)
-      let semanticExtraction: object | null = null;
+      let semanticExtraction: (SemanticExtractionResult & { extractedAt: string }) | null = null;
       try {
         const semanticResult = await semanticExtractionFlow({
           description: normalizedEvent.description,
@@ -76,12 +77,34 @@ export const normalizeIncident = onDocumentCreated(
         });
       }
 
+      // Ejecución del cálculo de prioridad (T-NLP-04)
+      let priorityCalculation: (PriorityResult & { calculatedAt: string }) | null = null;
+      try {
+        const priorityResult = await priorityCalculationFlow({
+          semanticExtraction,
+          category: normalizedEvent.category,
+          enrichment,
+          duplicateCheck,
+        });
+
+        priorityCalculation = {
+          ...priorityResult,
+          calculatedAt: new Date().toISOString(),
+        };
+      } catch (priorityError) {
+        logger.warn("Priority calculation failed", {
+          incidentId,
+          error: priorityError,
+        });
+      }
+
       await firestore.collection("incidents").doc(incidentId).update({
         normalizedEvent,
         normalizationWarnings: warnings,
         enrichment,
         duplicateCheck,
         ...(semanticExtraction ? { semanticExtraction } : {}),
+        ...(priorityCalculation ? { priority: priorityCalculation.priority, priorityScore: priorityCalculation.priorityScore, priorityCalculation } : {}),
         normalizedAt: FieldValue.serverTimestamp(),
       });
     } catch (error) {
