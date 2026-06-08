@@ -9,6 +9,7 @@ import { detectDuplicateIncidents } from "./incidentDuplicates";
 import { semanticExtractionFlow, mapSemanticCategoryToNormalized, SemanticExtractionResult } from "./semanticExtraction";
 import { priorityCalculationFlow, PriorityResult } from "./priorityCalculation";
 import { findNearbyReferentes, sendIncidentAlertToReferentes } from "./pushNotifications";
+export { broadcastNotification } from "./adminBroadcast";
 
 admin.initializeApp();
 
