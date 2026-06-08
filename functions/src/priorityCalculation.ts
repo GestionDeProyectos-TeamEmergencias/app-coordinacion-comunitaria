@@ -38,7 +38,7 @@ export const priorityCalculationFlow = ai.defineFlow(
       "otro": 10,
     };
 
-    if (input.category && categoryBaseScores[input.category]) {
+    if (input.category && input.category in categoryBaseScores) {
       const baseScore = categoryBaseScores[input.category];
       score += baseScore;
       reasons.push(`Categoría '${input.category}' (+${baseScore})`);
@@ -50,7 +50,7 @@ export const priorityCalculationFlow = ai.defineFlow(
     // 2. Semantic Weight adjusting (0-30 pts)
     if (input.semanticExtraction && input.semanticExtraction.detectedTerms.length > 0) {
       const terms = input.semanticExtraction.detectedTerms;
-      const sortedTerms = terms.sort((a, b) => b.weight - a.weight);
+      const sortedTerms = [...terms].sort((a, b) => b.weight - a.weight);
       // Top 3 terms contribute
       let termsScore = 0;
       for (let i = 0; i < Math.min(3, sortedTerms.length); i++) {
