@@ -8,10 +8,9 @@ import { buildEnrichment } from "./incidentEnrichment";
 import { detectDuplicateIncidents } from "./incidentDuplicates";
 import { semanticExtractionFlow, mapSemanticCategoryToNormalized, SemanticExtractionResult } from "./semanticExtraction";
 import { priorityCalculationFlow, PriorityResult } from "./priorityCalculation";
+import { findNearbyReferentes, sendIncidentAlertToReferentes } from "./pushNotifications";
 
 admin.initializeApp();
-
-
 
 export const normalizeIncident = onDocumentCreated(
   "incidents/{incidentId}",
@@ -107,6 +106,32 @@ export const normalizeIncident = onDocumentCreated(
         ...(priorityCalculation ? { priority: priorityCalculation.priority, priorityScore: priorityCalculation.priorityScore, priorityCalculation } : {}),
         normalizedAt: FieldValue.serverTimestamp(),
       });
+
+      // T-NLP-07: Envío de alertas push a referentes cercanos si se calculó la prioridad
+      if (priorityCalculation) {
+        // Obtenemos el radio desde las variables de entorno (por defecto 2000 metros)
+        const radiusMeters = Number(process.env.ALERT_RADIUS_METERS ?? "2000");
+        
+        // Buscamos referentes en el área
+        const referentes = await findNearbyReferentes(
+          firestore,
+          normalizedEvent.location.latitude,
+          normalizedEvent.location.longitude,
+          radiusMeters
+        );
+
+        // Si hay referentes, enviamos las notificaciones
+        if (referentes.length > 0) {
+          await sendIncidentAlertToReferentes(
+            admin.messaging(),
+            incidentId,
+            priorityCalculation.priority,
+            normalizedEvent.location.latitude,
+            normalizedEvent.location.longitude,
+            referentes
+          );
+        }
+      }
     } catch (error) {
       logger.error("Normalization failed", { incidentId, error });
       await firestore.collection("incidents").doc(incidentId).update({
