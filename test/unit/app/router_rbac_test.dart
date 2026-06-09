@@ -1,6 +1,5 @@
 import 'package:app_coordinacion_comunitaria/app/router.dart';
 import 'package:app_coordinacion_comunitaria/features/auth/domain/entities/app_user.dart';
-import 'package:app_coordinacion_comunitaria/features/auth/presentation/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';

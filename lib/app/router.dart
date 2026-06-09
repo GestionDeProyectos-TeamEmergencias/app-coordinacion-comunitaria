@@ -75,7 +75,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // Rutas de administrador
       if (loc.startsWith(AppRoutes.admin)) {
-        if (user!.role != UserRole.administrador) {
+        if (user.role != UserRole.administrador) {
           return AppRoutes.unauthorized;
         }
       }
@@ -83,7 +83,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Rutas de moderación (Referente Barrial o Administrador)
       if (loc.startsWith(AppRoutes.incidentDetail.split(':')[0]) ||
           loc == AppRoutes.adminIncidents) {
-        if (!user!.role.canVerify) {
+        if (!user.role.canVerify) {
           return AppRoutes.unauthorized;
         }
       }
@@ -158,6 +158,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.adminIncidents,
         builder: (_, __) => const IncidentModerationPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.unauthorized,
+        builder: (_, __) => const UnauthorizedAccessPage(),
       ),
     ],
   );
