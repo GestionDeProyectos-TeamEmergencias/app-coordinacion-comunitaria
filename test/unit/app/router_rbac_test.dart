@@ -93,34 +93,34 @@ void main() {
       when(() => mockVecino.role).thenReturn(UserRole.vecinoInformante);
       when(() => mockVecino.status).thenReturn(UserStatus.active);
 
-
       mockReferente = MockAppUser();
       when(() => mockReferente.role).thenReturn(UserRole.referenteBarrial);
       when(() => mockReferente.status).thenReturn(UserStatus.active);
 
-
       mockAdmin = MockAppUser();
       when(() => mockAdmin.role).thenReturn(UserRole.administrador);
       when(() => mockAdmin.status).thenReturn(UserStatus.active);
-
     });
 
     testWidgets('unauthenticated user is redirected to login', (tester) async {
-      final router = _setupRouter(const AsyncLoading()); // Simulate loading state
+      final router =
+          _setupRouter(const AsyncLoading()); // Simulate loading state
       await tester.pumpWidget(ProviderScope(
         child: MaterialApp.router(routerConfig: router),
       ));
       await tester.pumpAndSettle(); // Wait for redirect
 
-      expect(router.routerDelegate.currentConfiguration.uri.toString(), AppRoutes.splash);
-      
+      expect(router.routerDelegate.currentConfiguration.uri.toString(),
+          AppRoutes.splash);
+
       final router2 = _setupRouter(const AsyncData(null)); // Simulate no user
       await tester.pumpWidget(ProviderScope(
         child: MaterialApp.router(routerConfig: router2),
       ));
       await tester.pumpAndSettle(); // Wait for redirect
 
-      expect(router2.routerDelegate.currentConfiguration.uri.toString(), AppRoutes.login);
+      expect(router2.routerDelegate.currentConfiguration.uri.toString(),
+          AppRoutes.login);
     });
 
     testWidgets(
@@ -135,36 +135,44 @@ void main() {
       // Accessible routes
       router.go(AppRoutes.home);
       await tester.pumpAndSettle();
-      expect(router.routerDelegate.currentConfiguration.uri.toString(), AppRoutes.home);
+      expect(router.routerDelegate.currentConfiguration.uri.toString(),
+          AppRoutes.home);
 
       router.go(AppRoutes.map);
       await tester.pumpAndSettle();
-      expect(router.routerDelegate.currentConfiguration.uri.toString(), AppRoutes.map);
+      expect(router.routerDelegate.currentConfiguration.uri.toString(),
+          AppRoutes.map);
 
       router.go(AppRoutes.profile);
       await tester.pumpAndSettle();
-      expect(router.routerDelegate.currentConfiguration.uri.toString(), AppRoutes.profile);
+      expect(router.routerDelegate.currentConfiguration.uri.toString(),
+          AppRoutes.profile);
 
       router.go(AppRoutes.reportForm);
       await tester.pumpAndSettle();
-      expect(router.routerDelegate.currentConfiguration.uri.toString(), AppRoutes.reportForm);
+      expect(router.routerDelegate.currentConfiguration.uri.toString(),
+          AppRoutes.reportForm);
 
       // Inaccessible routes should redirect to unauthorized
       router.go(AppRoutes.admin);
       await tester.pumpAndSettle();
-      expect(router.routerDelegate.currentConfiguration.uri.toString(), AppRoutes.unauthorized);
+      expect(router.routerDelegate.currentConfiguration.uri.toString(),
+          AppRoutes.unauthorized);
 
       router.go(AppRoutes.adminUsers);
       await tester.pumpAndSettle();
-      expect(router.routerDelegate.currentConfiguration.uri.toString(), AppRoutes.unauthorized);
+      expect(router.routerDelegate.currentConfiguration.uri.toString(),
+          AppRoutes.unauthorized);
 
       router.go(AppRoutes.adminIncidents);
       await tester.pumpAndSettle();
-      expect(router.routerDelegate.currentConfiguration.uri.toString(), AppRoutes.unauthorized);
+      expect(router.routerDelegate.currentConfiguration.uri.toString(),
+          AppRoutes.unauthorized);
 
       router.go(AppRoutes.incidentDetailPath('123'));
       await tester.pumpAndSettle();
-      expect(router.routerDelegate.currentConfiguration.uri.toString(), AppRoutes.unauthorized);
+      expect(router.routerDelegate.currentConfiguration.uri.toString(),
+          AppRoutes.unauthorized);
     });
 
     testWidgets(
@@ -179,36 +187,44 @@ void main() {
       // Accessible routes
       router.go(AppRoutes.home);
       await tester.pumpAndSettle();
-      expect(router.routerDelegate.currentConfiguration.uri.toString(), AppRoutes.home);
+      expect(router.routerDelegate.currentConfiguration.uri.toString(),
+          AppRoutes.home);
 
       router.go(AppRoutes.map);
       await tester.pumpAndSettle();
-      expect(router.routerDelegate.currentConfiguration.uri.toString(), AppRoutes.map);
+      expect(router.routerDelegate.currentConfiguration.uri.toString(),
+          AppRoutes.map);
 
       router.go(AppRoutes.profile);
       await tester.pumpAndSettle();
-      expect(router.routerDelegate.currentConfiguration.uri.toString(), AppRoutes.profile);
+      expect(router.routerDelegate.currentConfiguration.uri.toString(),
+          AppRoutes.profile);
 
       router.go(AppRoutes.reportForm);
       await tester.pumpAndSettle();
-      expect(router.routerDelegate.currentConfiguration.uri.toString(), AppRoutes.reportForm);
+      expect(router.routerDelegate.currentConfiguration.uri.toString(),
+          AppRoutes.reportForm);
 
       router.go(AppRoutes.incidentDetailPath('123'));
       await tester.pumpAndSettle();
-      expect(router.routerDelegate.currentConfiguration.uri.toString(), AppRoutes.incidentDetailPath('123'));
+      expect(router.routerDelegate.currentConfiguration.uri.toString(),
+          AppRoutes.incidentDetailPath('123'));
 
       // Inaccessible routes should redirect to unauthorized
       router.go(AppRoutes.admin);
       await tester.pumpAndSettle();
-      expect(router.routerDelegate.currentConfiguration.uri.toString(), AppRoutes.unauthorized);
+      expect(router.routerDelegate.currentConfiguration.uri.toString(),
+          AppRoutes.unauthorized);
 
       router.go(AppRoutes.adminUsers);
       await tester.pumpAndSettle();
-      expect(router.routerDelegate.currentConfiguration.uri.toString(), AppRoutes.unauthorized);
+      expect(router.routerDelegate.currentConfiguration.uri.toString(),
+          AppRoutes.unauthorized);
 
       router.go(AppRoutes.adminIncidents);
       await tester.pumpAndSettle();
-      expect(router.routerDelegate.currentConfiguration.uri.toString(), AppRoutes.unauthorized);
+      expect(router.routerDelegate.currentConfiguration.uri.toString(),
+          AppRoutes.unauthorized);
     });
 
     testWidgets('administrador can access all routes', (tester) async {
@@ -221,35 +237,43 @@ void main() {
       // Accessible routes
       router.go(AppRoutes.home);
       await tester.pumpAndSettle();
-      expect(router.routerDelegate.currentConfiguration.uri.toString(), AppRoutes.home);
+      expect(router.routerDelegate.currentConfiguration.uri.toString(),
+          AppRoutes.home);
 
       router.go(AppRoutes.map);
       await tester.pumpAndSettle();
-      expect(router.routerDelegate.currentConfiguration.uri.toString(), AppRoutes.map);
+      expect(router.routerDelegate.currentConfiguration.uri.toString(),
+          AppRoutes.map);
 
       router.go(AppRoutes.profile);
       await tester.pumpAndSettle();
-      expect(router.routerDelegate.currentConfiguration.uri.toString(), AppRoutes.profile);
+      expect(router.routerDelegate.currentConfiguration.uri.toString(),
+          AppRoutes.profile);
 
       router.go(AppRoutes.reportForm);
       await tester.pumpAndSettle();
-      expect(router.routerDelegate.currentConfiguration.uri.toString(), AppRoutes.reportForm);
+      expect(router.routerDelegate.currentConfiguration.uri.toString(),
+          AppRoutes.reportForm);
 
       router.go(AppRoutes.incidentDetailPath('123'));
       await tester.pumpAndSettle();
-      expect(router.routerDelegate.currentConfiguration.uri.toString(), AppRoutes.incidentDetailPath('123'));
+      expect(router.routerDelegate.currentConfiguration.uri.toString(),
+          AppRoutes.incidentDetailPath('123'));
 
       router.go(AppRoutes.admin);
       await tester.pumpAndSettle();
-      expect(router.routerDelegate.currentConfiguration.uri.toString(), AppRoutes.admin);
+      expect(router.routerDelegate.currentConfiguration.uri.toString(),
+          AppRoutes.admin);
 
       router.go(AppRoutes.adminUsers);
       await tester.pumpAndSettle();
-      expect(router.routerDelegate.currentConfiguration.uri.toString(), AppRoutes.adminUsers);
+      expect(router.routerDelegate.currentConfiguration.uri.toString(),
+          AppRoutes.adminUsers);
 
       router.go(AppRoutes.adminIncidents);
       await tester.pumpAndSettle();
-      expect(router.routerDelegate.currentConfiguration.uri.toString(), AppRoutes.adminIncidents);
+      expect(router.routerDelegate.currentConfiguration.uri.toString(),
+          AppRoutes.adminIncidents);
     });
   });
 }
