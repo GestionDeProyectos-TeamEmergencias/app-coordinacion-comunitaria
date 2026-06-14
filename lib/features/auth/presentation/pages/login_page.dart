@@ -48,7 +48,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final TextEditingController resetEmailController = TextEditingController();
     final resetFormKey = GlobalKey<FormState>(); // Para validación local
 
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) {
         return AlertDialog(
