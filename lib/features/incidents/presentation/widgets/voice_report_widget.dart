@@ -52,7 +52,6 @@ class _VoiceReportWidgetState extends State<VoiceReportWidget> {
     try {
       final available = await _speech.initialize(
         debugLogging: false,
-
         onStatus: (status) {
           if (!mounted) return;
 
@@ -67,14 +66,12 @@ class _VoiceReportWidgetState extends State<VoiceReportWidget> {
             }
           }
         },
-
         onError: (error) {
           if (!mounted) return;
 
           setState(() {
             _isListening = false;
-            _errorMessage =
-                'Error en el reconocimiento de voz.\n'
+            _errorMessage = 'Error en el reconocimiento de voz.\n'
                 'Verificá permisos y micrófono.';
           });
         },
@@ -87,8 +84,7 @@ class _VoiceReportWidgetState extends State<VoiceReportWidget> {
         _initializing = false;
 
         if (!available) {
-          _errorMessage =
-              'Reconocimiento de voz no disponible.\n'
+          _errorMessage = 'Reconocimiento de voz no disponible.\n'
               'Verificá permisos del micrófono.';
         }
       });
@@ -98,8 +94,7 @@ class _VoiceReportWidgetState extends State<VoiceReportWidget> {
       setState(() {
         _available = false;
         _initializing = false;
-        _errorMessage =
-            'No se pudo inicializar el reconocimiento de voz.';
+        _errorMessage = 'No se pudo inicializar el reconocimiento de voz.';
       });
     }
   }
@@ -129,9 +124,7 @@ class _VoiceReportWidgetState extends State<VoiceReportWidget> {
 
     await _speech.listen(
       localeId: 'es_AR',
-
       listenMode: ListenMode.confirmation,
-
       onResult: (SpeechRecognitionResult result) {
         if (!mounted) return;
 
@@ -172,70 +165,43 @@ class _VoiceReportWidgetState extends State<VoiceReportWidget> {
         AnimatedContainer(
           duration: const Duration(milliseconds: 300),
           padding: const EdgeInsets.all(16),
-
           decoration: BoxDecoration(
             color: _isListening
                 ? Colors.red.withValues(alpha: 0.1)
                 : Colors.grey.withValues(alpha: 0.1),
-
             borderRadius: BorderRadius.circular(12),
-
             border: Border.all(
-              color: _isListening
-                  ? Colors.red
-                  : Colors.grey,
+              color: _isListening ? Colors.red : Colors.grey,
             ),
           ),
-
           child: _buildContent(context),
         ),
-
         const SizedBox(height: 16),
-
         if (_initializing)
           const CircularProgressIndicator()
-
         else if (_available)
           FloatingActionButton.extended(
             onPressed: _toggleListening,
-
-            backgroundColor:
-                _isListening ? Colors.red : null,
-
+            backgroundColor: _isListening ? Colors.red : null,
             icon: Icon(
-              _isListening
-                  ? Icons.stop
-                  : Icons.mic,
+              _isListening ? Icons.stop : Icons.mic,
             ),
-
             label: Text(
-              _isListening
-                  ? 'Detener'
-                  : 'Hablar',
+              _isListening ? 'Detener' : 'Hablar',
             ),
           )
-
         else ...[
           if (_errorMessage != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
-
               child: Text(
                 _errorMessage!,
-
                 textAlign: TextAlign.center,
-
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .error,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.error,
                     ),
               ),
             ),
-
           TextButton.icon(
             onPressed: _retry,
             icon: const Icon(Icons.refresh),
@@ -257,34 +223,22 @@ class _VoiceReportWidgetState extends State<VoiceReportWidget> {
     if (!_available && _errorMessage != null) {
       return Text(
         _errorMessage!,
-
         textAlign: TextAlign.center,
-
-        style: Theme.of(context)
-            .textTheme
-            .bodyLarge,
+        style: Theme.of(context).textTheme.bodyLarge,
       );
     }
 
     if (_text.isEmpty) {
       return Text(
-        _isListening
-            ? 'Escuchando...'
-            : 'Presioná el botón para hablar',
-
+        _isListening ? 'Escuchando...' : 'Presioná el botón para hablar',
         textAlign: TextAlign.center,
-
-        style: Theme.of(context)
-            .textTheme
-            .bodyLarge,
+        style: Theme.of(context).textTheme.bodyLarge,
       );
     }
 
     return Text(
       _text,
-      style: Theme.of(context)
-          .textTheme
-          .bodyLarge,
+      style: Theme.of(context).textTheme.bodyLarge,
     );
   }
 }

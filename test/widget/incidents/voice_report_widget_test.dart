@@ -32,9 +32,8 @@ void main() {
       expect(tester.takeException(), isNull);
 
       // Verificar que el mensaje de error o reintento aparece
-      final hasError = find.textContaining('reconocimiento de voz')
-          .evaluate()
-          .isNotEmpty;
+      final hasError =
+          find.textContaining('reconocimiento de voz').evaluate().isNotEmpty;
       final hasRetry = find.text('Reintentar').evaluate().isNotEmpty;
 
       // Al menos uno de estos estados debe aparecer
