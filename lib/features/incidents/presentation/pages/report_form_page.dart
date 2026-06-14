@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../app/router.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/extensions/context_extensions.dart';
 import '../../../../core/widgets/app_button.dart';
@@ -69,7 +70,7 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
       context.showSnackBar(error.toString(), isError: true);
     } else {
       context.showSnackBar(AppStrings.reportSentSuccess);
-      context.go('/home');
+      context.go(AppRoutes.home);
     }
   }
 
