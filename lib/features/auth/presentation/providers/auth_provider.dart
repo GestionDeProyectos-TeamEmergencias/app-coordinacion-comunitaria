@@ -1,3 +1,4 @@
+import 'package:app_coordinacion_comunitaria/features/auth/domain/usecases/reset_password_usecase.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -44,6 +45,10 @@ final logoutUseCaseProvider = Provider<LogoutUseCase>((ref) {
   return LogoutUseCase(ref.watch(_authRepositoryProvider));
 });
 
+final resetPasswordUseCaseProvider = Provider<ResetPasswordUseCase>((ref) {
+  return ResetPasswordUseCase(ref.watch(_authRepositoryProvider));
+});
+
 // ── Estado de autenticación (stream) ──────────────────────────────────────────
 
 final authStateProvider = StreamProvider<AppUser?>((ref) {
@@ -88,10 +93,13 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
 
   Future<void> resetPassword({required String email}) async {
     try {
-      await _ref.read(_authDataSourceProvider).resetPassword(email: email);
-      
+      //await _ref.read(_authDataSourceProvider).resetPassword(email: email);
+      state = const AsyncValue.loading();
+      state = await AsyncValue.guard(
+        () => _ref.read(resetPasswordUseCaseProvider)(email: email),
+      );
     } catch (e) {
-      rethrow; 
+      rethrow;
     }
   }
 }

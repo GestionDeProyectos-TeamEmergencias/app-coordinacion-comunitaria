@@ -71,32 +71,38 @@ class AuthRemoteDataSource {
     } on FirebaseAuthException catch (e) {
       String errorMessage;
 
-    // Intercept the Firebase error code and swap it for a friendly message
+      // Intercept the Firebase error code and swap it for a friendly message
       switch (e.code) {
         case 'invalid-credential':
-          errorMessage = 'El correo o la contraseña son incorrectos. Por favor, verifica tus datos e intenta de nuevo.';
+          errorMessage =
+              'El correo o la contraseña son incorrectos. Por favor, verifica tus datos e intenta de nuevo.';
           break;
         case 'invalid-email':
           errorMessage = 'El formato del correo electrónico no es válido.';
           break;
         case 'user-disabled':
-          errorMessage = 'Esta cuenta ha sido deshabilitada por la administración vecinal.';
+          errorMessage =
+              'Esta cuenta ha sido deshabilitada por la administración vecinal.';
           break;
         case 'too-many-requests':
-          errorMessage = 'Demasiados intentos fallidos. Por favor, esperá unos minutos e intenta de nuevo.';
+          errorMessage =
+              'Demasiados intentos fallidos. Por favor, esperá unos minutos e intenta de nuevo.';
           break;
         case 'network-request-failed':
-          errorMessage = 'Error de conexión. Revisa tu internet e intenta de nuevo.';
+          errorMessage =
+              'Error de conexión. Revisa tu internet e intenta de nuevo.';
           break;
         default:
-          errorMessage = 'Ocurrió un error inesperado al iniciar sesión. (Código: ${e.code})';
+          errorMessage =
+              'Ocurrió un error inesperado al iniciar sesión. (Código: ${e.code})';
       }
 
       // Throw the new translated string instead of e.message
       throw AuthException(errorMessage);
     } catch (e) {
       // A good fallback just in case something fails outside of Firebase Auth
-      throw const AuthException('Ocurrió un error inesperado. Por favor, intentá de nuevo.');
+      throw const AuthException(
+          'Ocurrió un error inesperado. Por favor, intentá de nuevo.');
     }
   }
 
@@ -125,18 +131,21 @@ class AuthRemoteDataSource {
         case 'invalid-email':
           errorMessage = 'El formato del correo electrónico no es válido.';
           break;
-        // Note: Depending on your Firebase email enumeration protection settings, 
+        // Note: Depending on your Firebase email enumeration protection settings,
         // 'auth/user-not-found' might not be thrown anymore. It's good to catch it just in case.
-        case 'user-not-found': 
-          errorMessage = 'No encontramos ninguna cuenta vinculada a este correo.';
+        case 'user-not-found':
+          errorMessage =
+              'No encontramos ninguna cuenta vinculada a este correo.';
           break;
         default:
-          errorMessage = 'Ocurrió un error al enviar el enlace. (Código: ${e.code})';
+          errorMessage =
+              'Ocurrió un error al enviar el enlace. (Código: ${e.code})';
       }
-      
+
       throw AuthException(errorMessage);
     } catch (e) {
-      throw const AuthException('Ocurrió un error inesperado. Por favor, intentá de nuevo.');
+      throw const AuthException(
+          'Ocurrió un error inesperado. Por favor, intentá de nuevo.');
     }
   }
 }

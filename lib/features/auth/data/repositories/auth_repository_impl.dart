@@ -40,4 +40,10 @@ class AuthRepositoryImpl implements AuthRepository {
     final model = await _dataSource.getCurrentUser();
     return model?.toDomain();
   }
+
+  @override
+  Future<void> resetPassword({required String email}) {
+    return _dataSource.resetPassword(
+        email: email); // Asegúrate de usar el nombre de tu variable local
+  }
 }

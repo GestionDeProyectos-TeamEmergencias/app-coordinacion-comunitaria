@@ -1,4 +1,3 @@
-
 import 'package:app_coordinacion_comunitaria/features/auth/presentation/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -43,68 +42,79 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   void _showResetPasswordDialog(BuildContext context) {
-  final TextEditingController resetEmailController = TextEditingController();
+    final TextEditingController resetEmailController = TextEditingController();
+    final resetFormKey = GlobalKey<FormState>(); // Para validación local
 
-  showDialog(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: const Text('Recuperar contraseña'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Ingresá tu correo electrónico y te enviaremos un enlace para restablecerla.'),
-            const SizedBox(height: 16),
-            TextField(
-              controller: resetEmailController,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                labelText: 'Correo electrónico',
-                hintText: 'ejemplo@correo.com',
-                border: OutlineInputBorder(),
-              ),
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Recuperar contraseña'),
+          content: Form(
+            key: resetFormKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                    'Ingresá tu correo electrónico y te enviaremos un enlace para restablecerla.'),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: resetEmailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    labelText: 'Correo electrónico',
+                    hintText: 'ejemplo@correo.com',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (v) => (v == null || !v.contains('@'))
+                      ? 'Ingresá un correo electrónico válido'
+                      : null,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (!resetFormKey.currentState!.validate()) return;
+
+                await ref.read(authNotifierProvider.notifier).resetPassword(
+                      email: resetEmailController.text.trim(),
+                    );
+
+                final error = ref.read(authNotifierProvider).error;
+
+                if (context.mounted) {
+                  if (error != null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(error.toString()),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  } else {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                            '¡Enlace enviado! Revisá tu bandeja de entrada.'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text('Enviar enlace'),
             ),
           ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context), // Close dialog
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final email = resetEmailController.text;
-              
-              try {
-                await ref.read(authNotifierProvider.notifier).resetPassword(email: email);
-                
-                // Close the dialog on success
-                if (context.mounted) Navigator.pop(context);
-                
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('¡Enlace enviado! Revisá tu bandeja de entrada.'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                }
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(e.toString()),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            },
-            child: const Text('Enviar enlace'),
-          ),
-        ],
-      );
-    },
-  );
-}
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
