@@ -26,11 +26,14 @@ enum UserRole {
 enum UserStatus {
   pending,
   active,
-  blocked;
+  blocked,
+  // Cuenta rechazada por el Administrador Vecinal. [T-AUTH-01]
+  rejected;
 
   static UserStatus fromString(String value) => switch (value) {
         'active' => UserStatus.active,
         'blocked' => UserStatus.blocked,
+        'rejected' => UserStatus.rejected,
         _ => UserStatus.pending,
       };
 }
@@ -60,6 +63,7 @@ class AppUser extends Equatable {
   bool get isActive => status == UserStatus.active;
   bool get isPending => status == UserStatus.pending;
   bool get isBlocked => status == UserStatus.blocked;
+  bool get isRejected => status == UserStatus.rejected;
 
   AppUser copyWith({
     String? userId,

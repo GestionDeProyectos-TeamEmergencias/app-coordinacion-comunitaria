@@ -35,8 +35,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           email: _emailCtrl.text.trim(),
           password: _passwordCtrl.text,
         );
+    // Si el login fue exitoso el router ya navegó y el widget está disposed.
+    // Hay que comprobar mounted ANTES de usar ref o context. [T-AUTH-01]
+    if (!mounted) return;
     final error = ref.read(authNotifierProvider).error;
-    if (error != null && mounted) {
+    if (error != null) {
       context.showSnackBar(error.toString(), isError: true);
     }
   }

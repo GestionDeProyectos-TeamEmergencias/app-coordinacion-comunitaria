@@ -8,20 +8,26 @@ import '../features/auth/domain/entities/app_user.dart';
 import '../features/auth/presentation/pages/login_page.dart';
 import '../features/auth/presentation/pages/pending_approval_page.dart';
 import '../features/auth/presentation/pages/register_page.dart';
+import '../features/auth/presentation/pages/rejected_page.dart';
 import '../features/auth/presentation/providers/auth_provider.dart';
 import '../features/incidents/presentation/pages/home_page.dart';
 import '../features/incidents/presentation/pages/incident_detail_page.dart';
 import '../features/incidents/presentation/pages/report_form_page.dart';
 import '../features/map/presentation/pages/map_page.dart';
+import '../features/profile/presentation/pages/profile_page.dart';
+import '../features/splash/presentation/pages/splash_page.dart';
+import 'main_shell.dart';
 
-// Rutas de la aplicación
 abstract final class AppRoutes {
+  static const splash = '/splash';
   static const login = '/login';
   static const register = '/register';
   static const pending = '/pending';
+  static const rejected = '/rejected';
   static const home = '/home';
   static const reportForm = '/report/form';
   static const map = '/map';
+  static const profile = '/profile';
   static const incidentDetail = '/incident/:id';
   static const admin = '/admin';
   static const adminUsers = '/admin/users';
@@ -36,34 +42,86 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: AppRoutes.home,
     redirect: (context, state) {
-      final isLoggedIn = authState.valueOrNull != null;
-      final isOnAuthPage = state.matchedLocation == AppRoutes.login ||
-          state.matchedLocation == AppRoutes.register;
+      final isLoading = authState.isLoading;
+      final loc = state.matchedLocation;
 
-      if (!isLoggedIn && !isOnAuthPage) return AppRoutes.login;
+      // Show splash while Firebase Auth resolves (T-REP-01)
+      if (isLoading) return loc == AppRoutes.splash ? null : AppRoutes.splash;
 
       final user = authState.valueOrNull;
-      if (user != null && user.status == UserStatus.pending) {
-        if (state.matchedLocation != AppRoutes.pending) {
-          return AppRoutes.pending;
-        }
+      final isOnAuthPage = loc == AppRoutes.login || loc == AppRoutes.register;
+
+      if (user == null) return isOnAuthPage ? null : AppRoutes.login;
+
+      if (user.status == UserStatus.pending) {
+        return loc == AppRoutes.pending ? null : AppRoutes.pending;
       }
 
-      if (isLoggedIn && isOnAuthPage) return AppRoutes.home;
+      // Cuenta rechazada: redirigir a página de rechazo. [T-AUTH-01]
+      if (user.status == UserStatus.rejected) {
+        return loc == AppRoutes.rejected ? null : AppRoutes.rejected;
+      }
+
+      if (isOnAuthPage ||
+          loc == AppRoutes.splash ||
+          loc == AppRoutes.pending ||
+          loc == AppRoutes.rejected) {
+        return AppRoutes.home;
+      }
+
       return null;
     },
     routes: [
-      GoRoute(path: AppRoutes.login, builder: (_, __) => const LoginPage()),
       GoRoute(
-          path: AppRoutes.register, builder: (_, __) => const RegisterPage()),
+        path: AppRoutes.splash,
+        builder: (_, __) => const SplashPage(),
+      ),
       GoRoute(
-          path: AppRoutes.pending,
-          builder: (_, __) => const PendingApprovalPage()),
-      GoRoute(path: AppRoutes.home, builder: (_, __) => const HomePage()),
+        path: AppRoutes.login,
+        builder: (_, __) => const LoginPage(),
+      ),
       GoRoute(
-          path: AppRoutes.reportForm,
-          builder: (_, __) => const ReportFormPage()),
-      GoRoute(path: AppRoutes.map, builder: (_, __) => const MapPage()),
+        path: AppRoutes.register,
+        builder: (_, __) => const RegisterPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.pending,
+        builder: (_, __) => const PendingApprovalPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.rejected,
+        builder: (_, __) => const RejectedPage(),
+      ),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) =>
+            MainShell(navigationShell: navigationShell),
+        branches: [
+          StatefulShellBranch(routes: [
+            GoRoute(
+              path: AppRoutes.home,
+              builder: (_, __) => const HomePage(),
+            ),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(
+              path: AppRoutes.reportForm,
+              builder: (_, __) => const ReportFormPage(),
+            ),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(
+              path: AppRoutes.map,
+              builder: (_, __) => const MapPage(),
+            ),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(
+              path: AppRoutes.profile,
+              builder: (_, __) => const ProfilePage(),
+            ),
+          ]),
+        ],
+      ),
       GoRoute(
         path: AppRoutes.incidentDetail,
         builder: (_, state) => IncidentDetailPage(
@@ -71,14 +129,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
-          path: AppRoutes.admin,
-          builder: (_, __) => const AdminDashboardPage()),
+        path: AppRoutes.admin,
+        builder: (_, __) => const AdminDashboardPage(),
+      ),
       GoRoute(
-          path: AppRoutes.adminUsers,
-          builder: (_, __) => const UsersManagementPage()),
+        path: AppRoutes.adminUsers,
+        builder: (_, __) => const UsersManagementPage(),
+      ),
       GoRoute(
-          path: AppRoutes.adminIncidents,
-          builder: (_, __) => const IncidentModerationPage()),
+        path: AppRoutes.adminIncidents,
+        builder: (_, __) => const IncidentModerationPage(),
+      ),
     ],
   );
 });

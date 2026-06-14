@@ -46,4 +46,15 @@ class AuthRepositoryImpl implements AuthRepository {
     return _dataSource.resetPassword(
         email: email); // Asegúrate de usar el nombre de tu variable local
   }
+  // ── Gestión de usuarios pendientes (T-AUTH-01) ────────────────────────────
+
+  @override
+  Stream<List<AppUser>> get pendingUsersStream => _dataSource.pendingUsersStream
+      .map((models) => models.map((m) => m.toDomain()).toList());
+
+  @override
+  Future<void> approveUser(String uid) => _dataSource.approveUser(uid);
+
+  @override
+  Future<void> rejectUser(String uid) => _dataSource.rejectUser(uid);
 }

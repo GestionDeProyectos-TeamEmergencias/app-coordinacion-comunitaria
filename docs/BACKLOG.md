@@ -73,7 +73,7 @@
 
 | Clave | Tarea | Estado | Responsable | Prioridad |
 |---|---|---|---|---|
-| KAN-54 | [T-NLP-01] Configuración de Firebase Genkit y Gemini | ⬜ Por hacer | Eric Doyle | Medium |
+| KAN-54 | [T-NLP-01] Configuración de Firebase Genkit y Gemini | 🔍 En revisión | Eric Doyle | Medium |
 | KAN-55 | [T-NLP-02] Cloud Function: normalización y enriquecimiento del evento | ⬜ Por hacer | Lucas Lovizzio | Medium |
 | KAN-56 | [T-NLP-03] Genkit Flow: extracción semántica de categoría e intención | ⬜ Por hacer | Eric Doyle | Medium |
 | KAN-58 | [T-NLP-04] Genkit Flow: clasificación de prioridad y score | ⬜ Por hacer | Lucas Lovizzio | Medium |

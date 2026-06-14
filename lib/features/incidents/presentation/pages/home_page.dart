@@ -80,23 +80,6 @@ class HomePage extends ConsumerWidget {
           ),
         ],
       ),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          FloatingActionButton.extended(
-            heroTag: 'voice',
-            onPressed: () => context.go(AppRoutes.reportForm),
-            icon: const Icon(Icons.edit_note),
-            label: const Text('Reporte detallado'),
-          ),
-          const SizedBox(height: 8),
-          FloatingActionButton(
-            heroTag: 'map',
-            onPressed: () => context.go(AppRoutes.map),
-            child: const Icon(Icons.map),
-          ),
-        ],
-      ),
     );
   }
 }

@@ -11,4 +11,14 @@ abstract interface class AuthRepository {
   Future<AppUser?> getCurrentUser();
 
   Future<void> resetPassword({required String email});
+  // ── Gestión de usuarios pendientes (T-AUTH-01) ────────────────────────────
+
+  /// Stream en tiempo real de usuarios con status "pending".
+  Stream<List<AppUser>> get pendingUsersStream;
+
+  /// Aprueba una cuenta: status → "active".
+  Future<void> approveUser(String uid);
+
+  /// Rechaza una cuenta: status → "rejected".
+  Future<void> rejectUser(String uid);
 }

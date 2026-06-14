@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\neoss\\\\Desktop\\\\Proyecto de GP\\\\app-coordinacion-comunitaria\\\\lib\" -Recurse -Filter \"*.dart\")",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Sort-Object)",
+      "Bash(New-Item -ItemType Directory -Force \"C:\\\\Users\\\\neoss\\\\Desktop\\\\Proyecto de GP\\\\app-coordinacion-comunitaria\\\\lib\\\\features\\\\profile\\\\presentation\\\\pages\")",
+      "Bash(Out-Null)",
+      "Bash(New-Item -ItemType Directory -Force \"C:\\\\Users\\\\neoss\\\\Desktop\\\\Proyecto de GP\\\\app-coordinacion-comunitaria\\\\lib\\\\app\")",
+      "PowerShell(New-Item *)"
+    ]
+  }
+}
