@@ -6,6 +6,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { normalizeIncidentEvent } from "./incidentNormalization";
 import { buildEnrichment } from "./incidentEnrichment";
 import { detectDuplicateIncidents } from "./incidentDuplicates";
+import { vitalRiskDetectionFlow } from "./vitalRiskDetection";
 import { semanticExtractionFlow, mapSemanticCategoryToNormalized, SemanticExtractionResult } from "./semanticExtraction";
 import { priorityCalculationFlow, PriorityResult } from "./priorityCalculation";
 
@@ -51,6 +52,34 @@ export const normalizeIncident = onDocumentCreated(
         radiusMeters: getDuplicateRadiusMeters(),
         windowHours: getDuplicateWindowHours(),
       });
+
+      // Detección de riesgo vital (T-NLP-05) — Cortocircuito temprano del pipeline
+      const vitalRisk = await vitalRiskDetectionFlow({
+        description: normalizedEvent.description,
+      });
+
+      if (vitalRisk.isVitalRisk) {
+        logger.warn("Vital risk detected — interrupting pipeline", {
+          incidentId,
+          riskCategory: vitalRisk.riskCategory,
+          matchedTerms: vitalRisk.matchedTerms,
+        });
+
+        await firestore.collection("incidents").doc(incidentId).update({
+          normalizedEvent,
+          normalizationWarnings: warnings,
+          enrichment,
+          duplicateCheck,
+          status: "vital_risk_detected",
+          vitalRisk: {
+            ...vitalRisk,
+            detectedAt: new Date().toISOString(),
+          },
+          processedAt: FieldValue.serverTimestamp(),
+        });
+
+        return; // ❌ Interrumpir flujo — No generar alerta comunitaria
+      }
 
       // Ejecución del flujo de extracción semántica (T-NLP-03)
       let semanticExtraction: (SemanticExtractionResult & { extractedAt: string }) | null = null;
