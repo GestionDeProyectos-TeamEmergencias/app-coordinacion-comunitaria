@@ -50,6 +50,8 @@ final logoutUseCaseProvider = Provider<LogoutUseCase>((ref) {
 
 final resetPasswordUseCaseProvider = Provider<ResetPasswordUseCase>((ref) {
   return ResetPasswordUseCase(ref.watch(_authRepositoryProvider));
+});
+
 // ── Use cases — gestión de usuarios pendientes (T-AUTH-01) ───────────────────
 
 final getPendingUsersUseCaseProvider = Provider<GetPendingUsersUseCase>((ref) {
