@@ -9,6 +9,7 @@ import '../features/auth/presentation/pages/login_page.dart';
 import '../features/auth/presentation/pages/pending_approval_page.dart';
 import '../features/auth/presentation/pages/register_page.dart';
 import '../features/auth/presentation/pages/rejected_page.dart';
+import '../features/auth/presentation/pages/unauthorized_access_page.dart';
 import '../features/auth/presentation/providers/auth_provider.dart';
 import '../features/incidents/presentation/pages/home_page.dart';
 import '../features/incidents/presentation/pages/incident_detail_page.dart';
@@ -32,6 +33,7 @@ abstract final class AppRoutes {
   static const admin = '/admin';
   static const adminUsers = '/admin/users';
   static const adminIncidents = '/admin/incidents';
+  static const unauthorized = '/unauthorized';
 
   static String incidentDetailPath(String id) => '/incident/$id';
 }
@@ -67,6 +69,23 @@ final routerProvider = Provider<GoRouter>((ref) {
           loc == AppRoutes.pending ||
           loc == AppRoutes.rejected) {
         return AppRoutes.home;
+      }
+
+      // --- RBAC: Restricciones de acceso por rol (T-AUTH-03) ---
+
+      // Rutas de administrador
+      if (loc.startsWith(AppRoutes.admin)) {
+        if (user.role != UserRole.administrador) {
+          return AppRoutes.unauthorized;
+        }
+      }
+
+      // Rutas de moderación (Referente Barrial o Administrador)
+      if (loc.startsWith(AppRoutes.incidentDetail.split(':')[0]) ||
+          loc == AppRoutes.adminIncidents) {
+        if (!user.role.canVerify) {
+          return AppRoutes.unauthorized;
+        }
       }
 
       return null;
@@ -139,6 +158,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.adminIncidents,
         builder: (_, __) => const IncidentModerationPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.unauthorized,
+        builder: (_, __) => const UnauthorizedAccessPage(),
       ),
     ],
   );
