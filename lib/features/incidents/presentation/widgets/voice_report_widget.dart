@@ -124,7 +124,7 @@ class _VoiceReportWidgetState extends State<VoiceReportWidget> {
 
     await _speech.listen(
       localeId: 'es_AR',
-      listenMode: ListenMode.confirmation,
+      listenOptions: SpeechListenOptions(listenMode: ListenMode.confirmation),
       onResult: (SpeechRecognitionResult result) {
         if (!mounted) return;
 
