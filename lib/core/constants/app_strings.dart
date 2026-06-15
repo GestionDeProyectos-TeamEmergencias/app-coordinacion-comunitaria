@@ -30,6 +30,8 @@ abstract final class AppStrings {
   static const photoSelected = 'Foto seleccionada ✓';
   static const locationUnavailable =
       'No se pudo obtener tu ubicación. Verificá el GPS.';
+  static const locationTimeout =
+      'Tiempo de espera agotado al buscar ubicación. Intentá salir al exterior.';
 
   // Categorías
   static const categoryElectrico = 'Eléctrico';

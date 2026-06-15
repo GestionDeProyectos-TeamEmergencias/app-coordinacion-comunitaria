@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -37,8 +38,11 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
 
   Future<void> _pickPhoto() async {
     final picker = ImagePicker();
-    final picked =
-        await picker.pickImage(source: ImageSource.camera, imageQuality: 70);
+    final picked = await picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 70,
+        maxWidth: 1024,
+        maxHeight: 1024);
     if (picked != null) setState(() => _photo = File(picked.path));
   }
 
@@ -70,6 +74,11 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
           timeLimit: Duration(seconds: 5),
         ),
       );
+    } on TimeoutException catch (_) {
+      if (mounted) {
+        context.showSnackBar(AppStrings.locationTimeout, isError: true);
+      }
+      return null;
     } catch (_) {
       if (mounted) {
         context.showSnackBar(AppStrings.locationUnavailable, isError: true);
