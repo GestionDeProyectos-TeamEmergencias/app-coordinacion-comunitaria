@@ -46,6 +46,7 @@ class AppUser extends Equatable {
     required this.role,
     required this.status,
     this.reputationScore = 100.0,
+    this.falseReportsCount = 0,
     this.coverageAreaCenter,
     this.coverageRadiusKm,
   });
@@ -56,6 +57,7 @@ class AppUser extends Equatable {
   final UserRole role;
   final UserStatus status;
   final double reputationScore;
+  final int falseReportsCount;
   // Posición central del área de cobertura (Firestore GeoPoint se mapea a lat/lng)
   final ({double latitude, double longitude})? coverageAreaCenter;
   final double? coverageRadiusKm;
@@ -72,6 +74,7 @@ class AppUser extends Equatable {
     UserRole? role,
     UserStatus? status,
     double? reputationScore,
+    int? falseReportsCount,
     ({double latitude, double longitude})? coverageAreaCenter,
     double? coverageRadiusKm,
   }) {
@@ -82,6 +85,7 @@ class AppUser extends Equatable {
       role: role ?? this.role,
       status: status ?? this.status,
       reputationScore: reputationScore ?? this.reputationScore,
+      falseReportsCount: falseReportsCount ?? this.falseReportsCount,
       coverageAreaCenter: coverageAreaCenter ?? this.coverageAreaCenter,
       coverageRadiusKm: coverageRadiusKm ?? this.coverageRadiusKm,
     );
@@ -95,6 +99,7 @@ class AppUser extends Equatable {
         role,
         status,
         reputationScore,
+        falseReportsCount,
         coverageAreaCenter,
         coverageRadiusKm,
       ];
