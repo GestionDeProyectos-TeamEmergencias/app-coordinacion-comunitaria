@@ -114,15 +114,10 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
   }
 
   Future<void> resetPassword({required String email}) async {
-    try {
-      //await _ref.read(_authDataSourceProvider).resetPassword(email: email);
-      state = const AsyncValue.loading();
-      state = await AsyncValue.guard(
-        () => _ref.read(resetPasswordUseCaseProvider)(email: email),
-      );
-    } catch (e) {
-      rethrow;
-    }
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(
+      () => _ref.read(resetPasswordUseCaseProvider)(email: email),
+    );
   }
 }
 

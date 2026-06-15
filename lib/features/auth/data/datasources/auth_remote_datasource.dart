@@ -179,7 +179,7 @@ class AuthRemoteDataSource {
   }
 
   Future<void> resetPassword({required String email}) async {
-    if (email.isEmpty) {
+    if (email.trim().isEmpty) {
       throw const AuthException('Por favor, ingresá un correo electrónico.');
     }
 
