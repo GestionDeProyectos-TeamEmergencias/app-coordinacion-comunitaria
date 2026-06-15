@@ -53,6 +53,11 @@ abstract final class AppStrings {
 
   // Mapa
   static const mapTitle = 'Mapa de incidencias';
+  static const loadingMap = 'Cargando mapa...';
+  static const mapLegend = 'Leyenda';
+  static const mapLegendTitle = 'Colores por prioridad';
+  static const mapNoPriority = 'Sin clasificar';
+  static const mapDefaultCategory = 'Incidente';
 
   // Navegación principal
   static const navHome = 'Inicio';

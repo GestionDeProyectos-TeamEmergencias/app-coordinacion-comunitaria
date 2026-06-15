@@ -44,6 +44,11 @@ final incidentsStreamProvider = StreamProvider<List<IncidentEvent>>((ref) {
   return ref.watch(_incidentsRepositoryProvider).watchIncidents();
 });
 
+final activeIncidentsStreamProvider =
+    StreamProvider<List<IncidentEvent>>((ref) {
+  return ref.watch(_incidentsRepositoryProvider).watchActiveIncidents();
+});
+
 final incidentByIdProvider =
     FutureProvider.family<IncidentEvent, String>((ref, id) {
   return ref.watch(_incidentsRepositoryProvider).getIncidentById(id);

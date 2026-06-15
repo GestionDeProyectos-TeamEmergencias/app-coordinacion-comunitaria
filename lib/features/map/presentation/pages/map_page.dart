@@ -42,7 +42,8 @@ class _MapPageState extends ConsumerState<MapPage> {
         position: LatLng(incident.latitude, incident.longitude),
         icon: BitmapDescriptor.defaultMarkerWithHue(color),
         infoWindow: InfoWindow(
-          title: incident.category?.displayName ?? 'Incidente',
+          title:
+              incident.category?.displayName ?? AppStrings.mapDefaultCategory,
           snippet: incident.description ?? incident.status.displayName,
           onTap: incident.eventId != null
               ? () =>
@@ -55,12 +56,12 @@ class _MapPageState extends ConsumerState<MapPage> {
 
   @override
   Widget build(BuildContext context) {
-    final incidentsAsync = ref.watch(incidentsStreamProvider);
+    final incidentsAsync = ref.watch(activeIncidentsStreamProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text(AppStrings.mapTitle)),
       body: incidentsAsync.when(
-        loading: () => const AppLoading(message: 'Cargando mapa...'),
+        loading: () => const AppLoading(message: AppStrings.loadingMap),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (incidents) => GoogleMap(
           initialCameraPosition: _initialPosition,
@@ -84,7 +85,7 @@ class _LegendButton extends StatelessWidget {
         builder: (_) => const _LegendSheet(),
       ),
       icon: const Icon(Icons.info_outline),
-      label: const Text('Leyenda'),
+      label: const Text(AppStrings.mapLegend),
     );
   }
 }
@@ -100,14 +101,21 @@ class _LegendSheet extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Colores por prioridad',
+          Text(AppStrings.mapLegendTitle,
               style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 12),
-          const _LegendItem(color: AppColors.priorityUrgent, label: 'Urgente'),
-          const _LegendItem(color: AppColors.priorityHigh, label: 'Alta'),
-          const _LegendItem(color: AppColors.priorityMedium, label: 'Media'),
-          const _LegendItem(color: AppColors.priorityLow, label: 'Baja'),
-          const _LegendItem(color: Colors.blue, label: 'Sin clasificar'),
+          const _LegendItem(
+              color: AppColors.priorityUrgent,
+              label: AppStrings.priorityUrgent),
+          const _LegendItem(
+              color: AppColors.priorityHigh, label: AppStrings.priorityHigh),
+          const _LegendItem(
+              color: AppColors.priorityMedium,
+              label: AppStrings.priorityMedium),
+          const _LegendItem(
+              color: AppColors.priorityLow, label: AppStrings.priorityLow),
+          const _LegendItem(
+              color: Colors.blue, label: AppStrings.mapNoPriority),
         ],
       ),
     );
