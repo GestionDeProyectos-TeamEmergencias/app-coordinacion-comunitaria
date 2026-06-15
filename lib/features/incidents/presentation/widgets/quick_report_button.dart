@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
@@ -52,9 +54,14 @@ class QuickReportButton extends ConsumerWidget {
           timeLimit: Duration(seconds: 3),
         ),
       );
+    } on TimeoutException catch (_) {
+      if (context.mounted) {
+        context.showSnackBar(AppStrings.errorLocationTimeout, isError: true);
+      }
+      return null;
     } catch (_) {
       if (context.mounted) {
-        context.showSnackBar(AppStrings.errorNoInternet, isError: true);
+        context.showSnackBar(AppStrings.errorLocationUnknown, isError: true);
       }
       return null;
     }
