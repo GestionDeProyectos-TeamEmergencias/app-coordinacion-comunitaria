@@ -42,10 +42,8 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<void> resetPassword({required String email}) {
-    return _dataSource.resetPassword(
-        email: email); // Asegúrate de usar el nombre de tu variable local
-  }
+  Future<void> resetPassword({required String email}) =>
+      _dataSource.resetPassword(email: email);
   // ── Gestión de usuarios pendientes (T-AUTH-01) ────────────────────────────
 
   @override
