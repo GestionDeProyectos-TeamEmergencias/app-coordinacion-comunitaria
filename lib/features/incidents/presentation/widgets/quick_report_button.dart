@@ -13,23 +13,51 @@ class QuickReportButton extends ConsumerWidget {
   const QuickReportButton({super.key});
 
   Future<Position?> _getLocation(BuildContext context) async {
-    final permission = await Geolocator.checkPermission();
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      if (context.mounted) {
+        context.showSnackBar(AppStrings.locationServiceDisabled, isError: true);
+      }
+      return null;
+    }
+
+    var permission = await Geolocator.checkPermission();
+
+    if (permission == LocationPermission.deniedForever) {
+      if (context.mounted) {
+        context.showSnackBar(AppStrings.locationPermissionPermanentlyDenied,
+            isError: true);
+        await Geolocator.openAppSettings();
+      }
+      return null;
+    }
+
     if (permission == LocationPermission.denied) {
-      final granted = await Geolocator.requestPermission();
-      if (granted == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
         if (context.mounted) {
-          context.showSnackBar('Permiso de ubicación requerido.',
+          context.showSnackBar(AppStrings.locationPermissionRequired,
               isError: true);
         }
         return null;
       }
     }
-    return Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        timeLimit: Duration(seconds: 10),
-      ),
-    );
+
+    try {
+      return await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          // medium: triangulación por red (< 500 ms). Cumple RNF-REN-01 ≤ 3 s.
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 3),
+        ),
+      );
+    } catch (_) {
+      if (context.mounted) {
+        context.showSnackBar(AppStrings.errorNoInternet, isError: true);
+      }
+      return null;
+    }
   }
 
   @override

@@ -42,4 +42,18 @@ void main() {
     expect(captured.sourceType, SourceType.quick);
     expect(captured.userId, 'uid-1');
   });
+
+  test('propaga excepción cuando el repositorio falla', () async {
+    when(() => mockRepo.submitIncident(any()))
+        .thenThrow(Exception('Error de red'));
+
+    expect(
+      () => sut(
+        userId: 'uid-1',
+        latitude: -34.6037,
+        longitude: -58.3816,
+      ),
+      throwsA(isA<Exception>()),
+    );
+  });
 }

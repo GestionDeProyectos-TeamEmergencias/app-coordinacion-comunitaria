@@ -23,6 +23,12 @@ abstract final class AppStrings {
   static const addPhoto = 'Agregar foto';
   static const sendReport = 'Enviar reporte';
   static const reportSentSuccess = 'Reporte enviado correctamente.';
+  static const locationPermissionRequired =
+      'Permiso de ubicación requerido para reportar.';
+  static const locationPermissionPermanentlyDenied =
+      'Permiso de ubicación bloqueado. Habilitalo desde Configuración.';
+  static const locationServiceDisabled =
+      'El GPS está desactivado. Activalo desde Configuración.';
 
   // Categorías
   static const categoryElectrico = 'Eléctrico';
