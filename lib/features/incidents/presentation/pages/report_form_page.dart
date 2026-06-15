@@ -42,16 +42,52 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
     if (picked != null) setState(() => _photo = File(picked.path));
   }
 
+  Future<Position?> _getPosition() async {
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      if (mounted) {
+        context.showSnackBar(AppStrings.locationUnavailable, isError: true);
+      }
+      return null;
+    }
+
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      if (mounted) {
+        context.showSnackBar(AppStrings.locationUnavailable, isError: true);
+      }
+      return null;
+    }
+
+    try {
+      return await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 5),
+        ),
+      );
+    } catch (_) {
+      if (mounted) {
+        context.showSnackBar(AppStrings.locationUnavailable, isError: true);
+      }
+      return null;
+    }
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_category == null) {
-      context.showSnackBar('Seleccioná una categoría.', isError: true);
+      context.showSnackBar(AppStrings.selectCategoryError, isError: true);
       return;
     }
 
-    final position = await Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
-    );
+    final position = await _getPosition();
+    if (position == null || !mounted) return;
+
     final user = ref.read(authStateProvider).valueOrNull;
     if (user == null || !mounted) return;
 
@@ -92,10 +128,12 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
                 segments: const [
                   ButtonSegment(
                       value: false,
-                      label: Text('Texto'),
+                      label: Text(AppStrings.reportModeText),
                       icon: Icon(Icons.edit)),
                   ButtonSegment(
-                      value: true, label: Text('Voz'), icon: Icon(Icons.mic)),
+                      value: true,
+                      label: Text(AppStrings.reportModeVoice),
+                      icon: Icon(Icons.mic)),
                 ],
                 selected: {_useVoice},
                 onSelectionChanged: (s) => setState(() => _useVoice = s.first),
@@ -117,7 +155,7 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
                     border: OutlineInputBorder(),
                   ),
                   validator: (v) => (v == null || v.trim().isEmpty)
-                      ? 'Describí el incidente'
+                      ? AppStrings.descriptionError
                       : null,
                 ),
               const SizedBox(height: 16),
@@ -141,7 +179,7 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
                 icon: const Icon(Icons.camera_alt),
                 label: Text(_photo == null
                     ? AppStrings.addPhoto
-                    : 'Foto seleccionada ✓'),
+                    : AppStrings.photoSelected),
                 onPressed: _pickPhoto,
               ),
               if (_photo != null) ...[

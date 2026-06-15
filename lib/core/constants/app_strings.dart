@@ -23,6 +23,13 @@ abstract final class AppStrings {
   static const addPhoto = 'Agregar foto';
   static const sendReport = 'Enviar reporte';
   static const reportSentSuccess = 'Reporte enviado correctamente.';
+  static const reportModeText = 'Texto';
+  static const reportModeVoice = 'Voz';
+  static const selectCategoryError = 'Seleccioná una categoría.';
+  static const descriptionError = 'Describí el incidente';
+  static const photoSelected = 'Foto seleccionada ✓';
+  static const locationUnavailable =
+      'No se pudo obtener tu ubicación. Verificá el GPS.';
 
   // Categorías
   static const categoryElectrico = 'Eléctrico';
