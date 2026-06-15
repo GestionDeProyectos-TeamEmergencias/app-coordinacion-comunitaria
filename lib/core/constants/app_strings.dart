@@ -96,7 +96,8 @@ abstract final class AppStrings {
   static const errorNoInternet = 'Sin conexión a internet.';
   static const errorLocationTimeout =
       'Tiempo de espera agotado. Intentá salir al exterior e intentá nuevamente.';
-  static const errorLocationUnknown = 'Error inesperado al obtener la ubicación.';
+  static const errorLocationUnknown =
+      'Error inesperado al obtener la ubicación.';
   static const errorOutOfCoverage =
       'Tu ubicación está fuera del área de cobertura configurada.';
 
