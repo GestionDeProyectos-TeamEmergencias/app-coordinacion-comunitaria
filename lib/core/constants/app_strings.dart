@@ -29,6 +29,15 @@ abstract final class AppStrings {
       'Permiso de ubicación bloqueado. Habilitalo desde Configuración.';
   static const locationServiceDisabled =
       'El GPS está desactivado. Activalo desde Configuración.';
+  static const reportModeText = 'Texto';
+  static const reportModeVoice = 'Voz';
+  static const selectCategoryError = 'Seleccioná una categoría.';
+  static const descriptionError = 'Describí el incidente';
+  static const photoSelected = 'Foto seleccionada ✓';
+  static const locationUnavailable =
+      'No se pudo obtener tu ubicación. Verificá el GPS.';
+  static const locationTimeout =
+      'Tiempo de espera agotado al buscar ubicación. Intentá salir al exterior.';
 
   // Categorías
   static const categoryElectrico = 'Eléctrico';
