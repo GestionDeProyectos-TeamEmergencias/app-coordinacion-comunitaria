@@ -13,6 +13,8 @@ class UserModel {
     required this.role,
     required this.status,
     required this.reputationScore,
+    required this.falseReportsCount,
+    required this.isBlocked,
     this.coverageLat,
     this.coverageLng,
     this.coverageRadiusKm,
@@ -24,6 +26,8 @@ class UserModel {
   final String role;
   final String status;
   final double reputationScore;
+  final int falseReportsCount;
+  final bool isBlocked;
   final double? coverageLat;
   final double? coverageLng;
   final double? coverageRadiusKm;
@@ -37,6 +41,8 @@ class UserModel {
       role: data['role'] as String? ?? 'vecino_informante',
       status: data['status'] as String? ?? 'pending',
       reputationScore: (data['reputationScore'] as num?)?.toDouble() ?? 100.0,
+      falseReportsCount: data['falseReportsCount'] as int? ?? 0,
+      isBlocked: data['isBlocked'] as bool? ?? false,
       coverageLat: (data['coverageLat'] as num?)?.toDouble(),
       coverageLng: (data['coverageLng'] as num?)?.toDouble(),
       coverageRadiusKm: (data['coverageRadiusKm'] as num?)?.toDouble(),
@@ -49,6 +55,8 @@ class UserModel {
         'role': role,
         'status': status,
         'reputationScore': reputationScore,
+        'falseReportsCount': falseReportsCount,
+        'isBlocked': isBlocked,
         if (coverageLat != null) 'coverageLat': coverageLat,
         if (coverageLng != null) 'coverageLng': coverageLng,
         if (coverageRadiusKm != null) 'coverageRadiusKm': coverageRadiusKm,
@@ -61,6 +69,7 @@ class UserModel {
         role: UserRole.fromString(role),
         status: UserStatus.fromString(status),
         reputationScore: reputationScore,
+        falseReportsCount: falseReportsCount,
         coverageAreaCenter: (coverageLat != null && coverageLng != null)
             ? (latitude: coverageLat!, longitude: coverageLng!)
             : null,
