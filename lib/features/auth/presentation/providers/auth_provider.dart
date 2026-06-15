@@ -1,3 +1,4 @@
+import 'package:app_coordinacion_comunitaria/features/auth/domain/usecases/reset_password_usecase.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -45,6 +46,10 @@ final registerUseCaseProvider = Provider<RegisterUseCase>((ref) {
 
 final logoutUseCaseProvider = Provider<LogoutUseCase>((ref) {
   return LogoutUseCase(ref.watch(_authRepositoryProvider));
+});
+
+final resetPasswordUseCaseProvider = Provider<ResetPasswordUseCase>((ref) {
+  return ResetPasswordUseCase(ref.watch(_authRepositoryProvider));
 });
 
 // ── Use cases — gestión de usuarios pendientes (T-AUTH-01) ───────────────────
@@ -105,6 +110,13 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(
       () => _ref.read(logoutUseCaseProvider)(),
+    );
+  }
+
+  Future<void> resetPassword({required String email}) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(
+      () => _ref.read(resetPasswordUseCaseProvider)(email: email),
     );
   }
 }
