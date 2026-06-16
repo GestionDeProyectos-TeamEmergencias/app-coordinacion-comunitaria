@@ -10,9 +10,11 @@ import { vitalRiskDetectionFlow } from "./vitalRiskDetection";
 import { semanticExtractionFlow, mapSemanticCategoryToNormalized, SemanticExtractionResult } from "./semanticExtraction";
 import { priorityCalculationFlow, PriorityResult } from "./priorityCalculation";
 
+import { moderateFalseReport } from "./moderation";
+
 admin.initializeApp();
 
-
+export { moderateFalseReport };
 
 export const normalizeIncident = onDocumentCreated(
   "incidents/{incidentId}",
