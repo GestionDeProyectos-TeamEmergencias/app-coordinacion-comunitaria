@@ -80,6 +80,8 @@ class AuthRemoteDataSource {
         role: 'vecino_informante',
         status: 'pending',
         reputationScore: 100.0,
+        falseReportsCount: 0,
+        isBlocked: false,
       );
       await _users.doc(uid).set({
         ...model.toFirestore(),
