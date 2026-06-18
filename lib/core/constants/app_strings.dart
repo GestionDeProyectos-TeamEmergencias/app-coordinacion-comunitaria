@@ -23,6 +23,21 @@ abstract final class AppStrings {
   static const addPhoto = 'Agregar foto';
   static const sendReport = 'Enviar reporte';
   static const reportSentSuccess = 'Reporte enviado correctamente.';
+  static const locationPermissionRequired =
+      'Permiso de ubicación requerido para reportar.';
+  static const locationPermissionPermanentlyDenied =
+      'Permiso de ubicación bloqueado. Habilitalo desde Configuración.';
+  static const locationServiceDisabled =
+      'El GPS está desactivado. Activalo desde Configuración.';
+  static const reportModeText = 'Texto';
+  static const reportModeVoice = 'Voz';
+  static const selectCategoryError = 'Seleccioná una categoría.';
+  static const descriptionError = 'Describí el incidente';
+  static const photoSelected = 'Foto seleccionada ✓';
+  static const locationUnavailable =
+      'No se pudo obtener tu ubicación. Verificá el GPS.';
+  static const locationTimeout =
+      'Tiempo de espera agotado al buscar ubicación. Intentá salir al exterior.';
 
   // Categorías
   static const categoryElectrico = 'Eléctrico';
@@ -93,6 +108,10 @@ abstract final class AppStrings {
   // Errores genéricos
   static const errorUnknown = 'Ocurrió un error inesperado. Intentá de nuevo.';
   static const errorNoInternet = 'Sin conexión a internet.';
+  static const errorLocationTimeout =
+      'Tiempo de espera agotado. Intentá salir al exterior e intentá nuevamente.';
+  static const errorLocationUnknown =
+      'Error inesperado al obtener la ubicación.';
   static const errorOutOfCoverage =
       'Tu ubicación está fuera del área de cobertura configurada.';
 
