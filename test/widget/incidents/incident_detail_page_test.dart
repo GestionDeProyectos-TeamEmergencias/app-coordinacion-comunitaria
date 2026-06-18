@@ -126,8 +126,8 @@ void main() {
       await tester.pump();
 
       expect(find.text(AppStrings.updateStatusTitle), findsOneWidget);
-      expect(find.byType(DropdownButtonFormField<IncidentStatus>),
-          findsOneWidget);
+      expect(
+          find.byType(DropdownButtonFormField<IncidentStatus>), findsOneWidget);
     });
   });
 }
