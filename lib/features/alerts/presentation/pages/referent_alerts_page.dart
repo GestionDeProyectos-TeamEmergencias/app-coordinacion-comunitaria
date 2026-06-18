@@ -56,7 +56,8 @@ class ReferentAlertsPage extends ConsumerWidget {
           return Column(
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Text(
                   AppStrings.referentAlertsSubtitle,
                   style: Theme.of(context).textTheme.bodyMedium,

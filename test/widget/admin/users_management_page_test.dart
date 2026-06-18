@@ -28,12 +28,12 @@ Widget _wrap({
     overrides: [
       pendingUsersProvider.overrideWith((ref) => Stream.value(pending)),
       activeUsersProvider(null).overrideWith((ref) => Stream.value(active)),
-      activeUsersProvider(UserRole.vecinoInformante)
-          .overrideWith((ref) => Stream.value(active
+      activeUsersProvider(UserRole.vecinoInformante).overrideWith((ref) =>
+          Stream.value(active
               .where((u) => u.role == UserRole.vecinoInformante)
               .toList())),
-      activeUsersProvider(UserRole.referenteBarrial)
-          .overrideWith((ref) => Stream.value(active
+      activeUsersProvider(UserRole.referenteBarrial).overrideWith((ref) =>
+          Stream.value(active
               .where((u) => u.role == UserRole.referenteBarrial)
               .toList())),
     ],
