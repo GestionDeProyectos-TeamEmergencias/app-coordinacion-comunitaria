@@ -134,6 +134,7 @@ abstract final class AppStrings {
   static const userPromoted = 'Usuario promovido a referente barrial.';
   static const userDemoted = 'Usuario degradado a vecino informante.';
   static const noActiveUsers = 'No hay usuarios activos en este filtro.';
+  static const lowReputationWarning = 'Reputación baja:';
 
   // Pantalla de gestión de alertas [T-AUTH-04 / RF-ROL-02]
   static const referentAlertsTitle = 'Alertas geolocalizadas';

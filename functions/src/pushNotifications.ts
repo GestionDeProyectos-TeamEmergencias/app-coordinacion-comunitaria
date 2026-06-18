@@ -55,6 +55,7 @@ export async function findNearbyReferentes(
     const snapshot = await firestore
       .collection("users")
       .where("role", "==", "referente_barrial")
+      .where("status", "==", "active")
       .get();
 
     const referentes: Referente[] = [];
@@ -66,19 +67,22 @@ export async function findNearbyReferentes(
         return;
       }
 
-      if (data.location && typeof data.location.latitude === "number" && typeof data.location.longitude === "number") {
+      const lat = typeof data.coverageLat === "number" ? data.coverageLat : undefined;
+      const lng = typeof data.coverageLng === "number" ? data.coverageLng : undefined;
+
+      if (lat !== undefined && lng !== undefined) {
         const distance = calculateDistance(
           latitude,
           longitude,
-          data.location.latitude,
-          data.location.longitude
+          lat,
+          lng
         );
 
         if (distance <= radiusMeters) {
           referentes.push({
             uid: doc.id,
             fcmTokens: data.fcmTokens,
-            location: data.location,
+            location: { latitude: lat, longitude: lng },
           });
         }
       }
@@ -122,7 +126,6 @@ export async function sendIncidentAlertToReferentes(
       priority: priority,
       latitude: latitude.toString(),
       longitude: longitude.toString(),
-      click_action: "FLUTTER_NOTIFICATION_CLICK", // Clave para la app móvil
     },
     android: {
       priority: "high",
@@ -139,6 +142,17 @@ export async function sendIncidentAlertToReferentes(
 
   try {
     const response = await messaging.sendEachForMulticast(payload);
+    
+    if (response.failureCount > 0) {
+      const deadTokens = response.responses
+        .map((r, i) => (!r.success && r.error?.code === "messaging/registration-token-not-registered" ? allTokens[i] : null))
+        .filter((t) => t !== null);
+        
+      if (deadTokens.length > 0) {
+        logger.warn("Dead FCM tokens detected, marked for cleanup", { deadTokens });
+      }
+    }
+
     logger.info("Successfully sent push notifications", {
       incidentId,
       successCount: response.successCount,

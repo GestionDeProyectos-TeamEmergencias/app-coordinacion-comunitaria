@@ -43,45 +43,55 @@ describe("Push Notifications (T-NLP-07)", () => {
           id: "user1",
           data: () => ({
             role: "referente_barrial",
+            status: "active",
             fcmTokens: ["token_1"],
-            location: { latitude: -34.6081, longitude: -58.3703 }, // ~1140m away
+            coverageLat: -34.6081,
+            coverageLng: -58.3703, // ~1140m away
           }),
         },
         {
           id: "user2",
           data: () => ({
             role: "referente_barrial",
+            status: "active",
             fcmTokens: ["token_2", "token_3"],
-            location: { latitude: -34.6038, longitude: -58.3817 }, // ~15m away
+            coverageLat: -34.6038,
+            coverageLng: -58.3817, // ~15m away
           }),
         },
         {
           id: "user3",
           data: () => ({
             role: "referente_barrial",
+            status: "active",
             fcmTokens: ["token_4"],
-            location: { latitude: -38.0000, longitude: -57.5500 }, // Mar del Plata, very far
+            coverageLat: -38.0000,
+            coverageLng: -57.5500, // Mar del Plata, very far
           }),
         },
         {
           id: "user_no_tokens",
           data: () => ({
             role: "referente_barrial",
+            status: "active",
             fcmTokens: [],
-            location: { latitude: -34.6038, longitude: -58.3817 }, // Close, but no tokens
+            coverageLat: -34.6038,
+            coverageLng: -58.3817, // Close, but no tokens
           }),
         },
       ];
 
       const mockQueryGet = jest.fn().mockResolvedValue(mockDocs);
-      const mockWhere = jest.fn().mockReturnValue({ get: mockQueryGet });
-      (mockFirestore.collection as jest.Mock).mockReturnValue({ where: mockWhere });
+      const mockWhereStatus = jest.fn().mockReturnValue({ get: mockQueryGet });
+      const mockWhereRole = jest.fn().mockReturnValue({ where: mockWhereStatus });
+      (mockFirestore.collection as jest.Mock).mockReturnValue({ where: mockWhereRole });
 
       // Test with a 2km radius
       const referentes = await findNearbyReferentes(mockFirestore, incidentLat, incidentLon, 2000);
 
       expect(mockFirestore.collection).toHaveBeenCalledWith("users");
-      expect(mockWhere).toHaveBeenCalledWith("role", "==", "referente_barrial");
+      expect(mockWhereRole).toHaveBeenCalledWith("role", "==", "referente_barrial");
+      expect(mockWhereStatus).toHaveBeenCalledWith("status", "==", "active");
       
       expect(referentes).toHaveLength(2); // user1 and user2
       expect(referentes[0].uid).toBe("user1");
