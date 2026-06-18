@@ -1,3 +1,4 @@
+import 'package:app_coordinacion_comunitaria/features/auth/domain/usecases/reset_password_usecase.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,9 +7,12 @@ import '../../data/datasources/auth_remote_datasource.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/entities/app_user.dart';
 import '../../domain/usecases/approve_user_usecase.dart';
+import '../../domain/usecases/demote_to_vecino_usecase.dart';
+import '../../domain/usecases/get_active_users_usecase.dart';
 import '../../domain/usecases/get_pending_users_usecase.dart';
 import '../../domain/usecases/login_usecase.dart';
 import '../../domain/usecases/logout_usecase.dart';
+import '../../domain/usecases/promote_to_referent_usecase.dart';
 import '../../domain/usecases/register_usecase.dart';
 import '../../domain/usecases/reject_user_usecase.dart';
 
@@ -47,6 +51,10 @@ final logoutUseCaseProvider = Provider<LogoutUseCase>((ref) {
   return LogoutUseCase(ref.watch(_authRepositoryProvider));
 });
 
+final resetPasswordUseCaseProvider = Provider<ResetPasswordUseCase>((ref) {
+  return ResetPasswordUseCase(ref.watch(_authRepositoryProvider));
+});
+
 // ── Use cases — gestión de usuarios pendientes (T-AUTH-01) ───────────────────
 
 final getPendingUsersUseCaseProvider = Provider<GetPendingUsersUseCase>((ref) {
@@ -61,6 +69,21 @@ final rejectUserUseCaseProvider = Provider<RejectUserUseCase>((ref) {
   return RejectUserUseCase(ref.watch(_authRepositoryProvider));
 });
 
+// ── Use cases — gestión de roles (T-AUTH-04) ──────────────────────────────────
+
+final promoteToReferentUseCaseProvider =
+    Provider<PromoteToReferentUseCase>((ref) {
+  return PromoteToReferentUseCase(ref.watch(_authRepositoryProvider));
+});
+
+final demoteToVecinoUseCaseProvider = Provider<DemoteToVecinoUseCase>((ref) {
+  return DemoteToVecinoUseCase(ref.watch(_authRepositoryProvider));
+});
+
+final getActiveUsersUseCaseProvider = Provider<GetActiveUsersUseCase>((ref) {
+  return GetActiveUsersUseCase(ref.watch(_authRepositoryProvider));
+});
+
 // ── Estado de autenticación (stream) ──────────────────────────────────────────
 
 final authStateProvider = StreamProvider<AppUser?>((ref) {
@@ -70,6 +93,12 @@ final authStateProvider = StreamProvider<AppUser?>((ref) {
 /// Stream en tiempo real de usuarios pendientes de aprobación. [T-AUTH-01]
 final pendingUsersProvider = StreamProvider<List<AppUser>>((ref) {
   return ref.watch(getPendingUsersUseCaseProvider)();
+});
+
+/// Stream en tiempo real de usuarios activos, filtrado por rol opcional. [T-AUTH-04]
+final activeUsersProvider =
+    StreamProvider.family<List<AppUser>, UserRole?>((ref, role) {
+  return ref.watch(getActiveUsersUseCaseProvider)(role: role);
 });
 
 // ── Notifier para operaciones de auth ─────────────────────────────────────────
@@ -107,6 +136,13 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
       () => _ref.read(logoutUseCaseProvider)(),
     );
   }
+
+  Future<void> resetPassword({required String email}) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(
+      () => _ref.read(resetPasswordUseCaseProvider)(email: email),
+    );
+  }
 }
 
 final authNotifierProvider =
@@ -133,6 +169,22 @@ class UserManagementNotifier extends StateNotifier<AsyncValue<void>> {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(
       () => _ref.read(rejectUserUseCaseProvider)(uid),
+    );
+  }
+
+  /// Promueve a referente barrial. [T-AUTH-04]
+  Future<void> promoteToReferent(String uid) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(
+      () => _ref.read(promoteToReferentUseCaseProvider)(uid),
+    );
+  }
+
+  /// Degrada a vecino informante. [T-AUTH-04]
+  Future<void> demoteToVecino(String uid) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(
+      () => _ref.read(demoteToVecinoUseCaseProvider)(uid),
     );
   }
 }

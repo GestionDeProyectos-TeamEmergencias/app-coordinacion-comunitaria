@@ -18,12 +18,30 @@ class IncidentsRepositoryImpl implements IncidentsRepository {
           );
 
   @override
+  Stream<List<IncidentEvent>> watchActiveIncidents() => watchIncidents().map(
+        (all) =>
+            all.where((i) => i.status != IncidentStatus.solucionado).toList(),
+      );
+
+  @override
   Future<IncidentEvent> getIncidentById(String eventId) async {
     final model = await _dataSource.getIncidentById(eventId);
     return model.toDomain();
   }
 
   @override
-  Future<void> updateStatus(String eventId, IncidentStatus status) =>
-      _dataSource.updateStatus(eventId, status.firestoreValue);
+  Stream<IncidentEvent> watchIncidentById(String eventId) =>
+      _dataSource.watchIncidentById(eventId).map((m) => m.toDomain());
+
+  @override
+  Future<void> updateStatus(
+    String eventId,
+    IncidentStatus status, {
+    String? changedBy,
+  }) =>
+      _dataSource.updateStatus(
+        eventId,
+        status.firestoreValue,
+        changedBy: changedBy,
+      );
 }

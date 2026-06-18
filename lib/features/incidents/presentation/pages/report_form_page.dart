@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -6,6 +7,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../app/router.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/extensions/context_extensions.dart';
 import '../../../../core/widgets/app_button.dart';
@@ -27,6 +29,7 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
   IncidentCategory? _category;
   File? _photo;
   bool _useVoice = false;
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
@@ -36,46 +39,105 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
 
   Future<void> _pickPhoto() async {
     final picker = ImagePicker();
-    final picked =
-        await picker.pickImage(source: ImageSource.camera, imageQuality: 70);
+    final picked = await picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 70,
+        maxWidth: 1024,
+        maxHeight: 1024);
     if (picked != null) setState(() => _photo = File(picked.path));
   }
 
+  Future<Position?> _getPosition() async {
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      if (mounted) {
+        context.showSnackBar(AppStrings.locationUnavailable, isError: true);
+      }
+      return null;
+    }
+
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      if (mounted) {
+        context.showSnackBar(AppStrings.locationUnavailable, isError: true);
+      }
+      return null;
+    }
+
+    try {
+      return await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 5),
+        ),
+      );
+    } on TimeoutException catch (_) {
+      if (mounted) {
+        context.showSnackBar(AppStrings.locationTimeout, isError: true);
+      }
+      return null;
+    } catch (_) {
+      if (mounted) {
+        context.showSnackBar(AppStrings.locationUnavailable, isError: true);
+      }
+      return null;
+    }
+  }
+
   Future<void> _submit() async {
+    if (_isSubmitting) return;
     if (!_formKey.currentState!.validate()) return;
     if (_category == null) {
-      context.showSnackBar('Seleccioná una categoría.', isError: true);
+      context.showSnackBar(AppStrings.selectCategoryError, isError: true);
       return;
     }
 
-    final position = await Geolocator.getCurrentPosition(
-      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+    setState(() => _isSubmitting = true);
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text(AppStrings.sendingReport),
+        duration: Duration(minutes: 1),
+      ),
     );
-    final user = ref.read(authStateProvider).valueOrNull;
-    if (user == null || !mounted) return;
+    try {
+      final position = await _getPosition();
+      if (position == null || !mounted) return;
 
-    await ref.read(reportNotifierProvider.notifier).submitForm(
-          userId: user.userId,
-          latitude: position.latitude,
-          longitude: position.longitude,
-          description: _descCtrl.text.trim(),
-          category: _category!,
-          photoFile: _photo,
-        );
+      final user = ref.read(authStateProvider).valueOrNull;
+      if (user == null || !mounted) return;
 
-    if (!mounted) return;
-    final error = ref.read(reportNotifierProvider).error;
-    if (error != null) {
-      context.showSnackBar(error.toString(), isError: true);
-    } else {
-      context.showSnackBar(AppStrings.reportSentSuccess);
-      context.go('/home');
+      await ref.read(reportNotifierProvider.notifier).submitForm(
+            userId: user.userId,
+            latitude: position.latitude,
+            longitude: position.longitude,
+            description: _descCtrl.text.trim(),
+            category: _category!,
+            photoFile: _photo,
+          );
+
+      if (!mounted) return;
+      final error = ref.read(reportNotifierProvider).error;
+      if (error != null) {
+        context.showSnackBar(error.toString(), isError: true);
+      } else {
+        context.showSnackBar(AppStrings.reportSentSuccess);
+        context.go(AppRoutes.home);
+      }
+    } finally {
+      messenger.hideCurrentSnackBar();
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isLoading = ref.watch(reportNotifierProvider).isLoading;
+    final notifierIsLoading = ref.watch(reportNotifierProvider).isLoading;
+    final isBusy = _isSubmitting || notifierIsLoading;
 
     return Scaffold(
       appBar: AppBar(title: const Text(AppStrings.formReport)),
@@ -91,10 +153,12 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
                 segments: const [
                   ButtonSegment(
                       value: false,
-                      label: Text('Texto'),
+                      label: Text(AppStrings.reportModeText),
                       icon: Icon(Icons.edit)),
                   ButtonSegment(
-                      value: true, label: Text('Voz'), icon: Icon(Icons.mic)),
+                      value: true,
+                      label: Text(AppStrings.reportModeVoice),
+                      icon: Icon(Icons.mic)),
                 ],
                 selected: {_useVoice},
                 onSelectionChanged: (s) => setState(() => _useVoice = s.first),
@@ -116,7 +180,7 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
                     border: OutlineInputBorder(),
                   ),
                   validator: (v) => (v == null || v.trim().isEmpty)
-                      ? 'Describí el incidente'
+                      ? AppStrings.descriptionError
                       : null,
                 ),
               const SizedBox(height: 16),
@@ -140,7 +204,7 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
                 icon: const Icon(Icons.camera_alt),
                 label: Text(_photo == null
                     ? AppStrings.addPhoto
-                    : 'Foto seleccionada ✓'),
+                    : AppStrings.photoSelected),
                 onPressed: _pickPhoto,
               ),
               if (_photo != null) ...[
@@ -152,9 +216,10 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
               ],
               const SizedBox(height: 24),
               AppButton(
-                label: AppStrings.sendReport,
-                onPressed: _submit,
-                isLoading: isLoading,
+                label:
+                    isBusy ? AppStrings.sendingReport : AppStrings.sendReport,
+                onPressed: isBusy ? null : _submit,
+                isLoading: isBusy,
                 icon: Icons.send,
               ),
             ],

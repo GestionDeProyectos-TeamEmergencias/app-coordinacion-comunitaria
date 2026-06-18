@@ -31,11 +31,19 @@ class IncidentsRemoteDataSource {
   }
 
   /// Envía el evento como documento a Firestore y retorna el eventId.
+  /// Inicializa `statusHistory` con la primera entrada (estado inicial). [T-REP-06]
   Future<String> submitIncident(IncidentEvent event) async {
     try {
       final model = IncidentEventModel.fromDomain(event);
       final doc = await _incidents.add({
         ...model.toFirestore(),
+        'statusHistory': [
+          {
+            'status': model.status,
+            'timestamp': Timestamp.fromDate(event.timestamp),
+            'changedBy': model.userId,
+          }
+        ],
         'createdAt': FieldValue.serverTimestamp(),
       });
       return doc.id;
@@ -58,7 +66,29 @@ class IncidentsRemoteDataSource {
     return IncidentEventModel.fromFirestore(doc);
   }
 
-  Future<void> updateStatus(String eventId, String status) async {
-    await _incidents.doc(eventId).update({'status': status});
+  Stream<IncidentEventModel> watchIncidentById(String eventId) {
+    return _incidents.doc(eventId).snapshots().map((doc) {
+      if (!doc.exists) {
+        throw FirestoreException('Incidente $eventId no encontrado.');
+      }
+      return IncidentEventModel.fromFirestore(doc);
+    });
+  }
+
+  Future<void> updateStatus(
+    String eventId,
+    String status, {
+    String? changedBy,
+  }) async {
+    await _incidents.doc(eventId).update({
+      'status': status,
+      'statusHistory': FieldValue.arrayUnion([
+        {
+          'status': status,
+          'timestamp': Timestamp.now(),
+          if (changedBy != null) 'changedBy': changedBy,
+        }
+      ]),
+    });
   }
 }
