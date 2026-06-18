@@ -53,7 +53,7 @@ void main() {
     });
 
     testWidgets(
-        'al tocar el botón de leyenda se muestra la hoja con las prioridades',
+        'al tocar el botón de leyenda se muestra la hoja con prioridades y categorías',
         (tester) async {
       await tester.pumpWidget(_wrap(_loadingOverride()));
       await tester.pump();
@@ -64,6 +64,18 @@ void main() {
 
       expect(find.text(AppStrings.mapLegendTitle), findsOneWidget);
       expect(find.text(AppStrings.priorityUrgent), findsOneWidget);
+      expect(find.text(AppStrings.mapCategoryFilters), findsOneWidget);
+    });
+
+    testWidgets('expone botón para recentrar el mapa en el área de cobertura',
+        (tester) async {
+      await tester.pumpWidget(_wrap(_loadingOverride()));
+      await tester.pump();
+
+      expect(
+        find.byTooltip(AppStrings.mapRecenter),
+        findsOneWidget,
+      );
     });
   });
 }
