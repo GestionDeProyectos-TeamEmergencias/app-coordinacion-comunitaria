@@ -1,5 +1,6 @@
 import { z } from "genkit";
 import { ai } from "./genkit";
+import { DEFAULT_ALGORITHM_CONFIG, AlgorithmConfig } from "./algorithmConfig";
 
 // ── Esquema de salida (T-NLP-05) ──────────────────────────────────────────────
 
@@ -18,40 +19,13 @@ export const VitalRiskSchema = z.object({
 
 export type VitalRiskResult = z.infer<typeof VitalRiskSchema>;
 
-// ── Diccionario de términos de alta criticidad ────────────────────────────────
-// Estructura preparada para ser migrada a Firestore en T-NLP-06
+// ── Diccionario por defecto (T-NLP-05) ───────────────────────────────────────
+// Se mantiene exportado para retrocompatibilidad con tests y como fallback
+// cuando Firestore no tiene el documento config/algorithm. La fuente de
+// verdad efectiva en runtime es AlgorithmConfig.vitalRiskTerms (T-NLP-06).
 
-export const VITAL_RISK_TERMS: Record<string, string[]> = {
-  // Salud / Emergencia médica → 107 (SAME)
-  medico: [
-    "infarto", "infartando", "convulsion", "convulsionando",
-    "inconsciente", "desmayado", "paro cardiaco", "no respira",
-    "hemorragia", "desangrando", "sobredosis", "ahogando",
-    "electrocutado", "electrocucion", "intoxicacion",
-  ],
-  // Violencia / Crimen → 911
-  seguridad: [
-    "tiroteo", "disparos", "disparo", "baleado",
-    "apunalado", "acuchillado", "navajazo",
-    "asalto armado", "secuestro", "rehen", "rehenes",
-    "amenaza de bomba", "explosion", "arma de fuego",
-    "robo a mano armada",
-  ],
-  // Incendio / Desastre → 911
-  desastre: [
-    "incendio", "se prende fuego", "prendio fuego",
-    "derrumbe", "colapso", "edificio colapsado",
-    "inundacion grave", "atrapado", "persona atrapada",
-    "personas atrapadas", "derrumbe de edificio",
-  ],
-};
-
-// Mapa de categoría de riesgo → números de emergencia
-const EMERGENCY_NUMBERS: Record<string, string[]> = {
-  medico: ["107", "911"],
-  seguridad: ["911"],
-  desastre: ["911", "100"],
-};
+export const VITAL_RISK_TERMS: Record<string, string[]> =
+  DEFAULT_ALGORITHM_CONFIG.vitalRiskTerms;
 
 // ── Utilidades de normalización de texto ──────────────────────────────────────
 
@@ -82,10 +56,15 @@ export const vitalRiskDetectionFlow = ai.defineFlow(
     name: "vitalRiskDetectionFlow",
     inputSchema: z.object({
       description: z.string().nullable(),
+      config: z.custom<AlgorithmConfig | undefined>().optional(),
     }),
     outputSchema: VitalRiskSchema,
   },
   async (input): Promise<VitalRiskResult> => {
+    const config = input.config ?? DEFAULT_ALGORITHM_CONFIG;
+    const terms = config.vitalRiskTerms;
+    const emergencyNumbers = config.emergencyNumbers;
+
     // Si no hay descripción, no hay riesgo que evaluar
     if (!input.description || input.description.trim().length === 0) {
       return {
@@ -101,13 +80,11 @@ export const vitalRiskDetectionFlow = ai.defineFlow(
     const matchedTerms: string[] = [];
     let detectedCategory: "medico" | "seguridad" | "desastre" | "none" = "none";
 
-    // Iterar sobre cada categoría de riesgo y buscar coincidencias
-    for (const [category, terms] of Object.entries(VITAL_RISK_TERMS)) {
-      for (const term of terms) {
+    for (const [category, categoryTerms] of Object.entries(terms)) {
+      for (const term of categoryTerms) {
         const normalizedTerm = normalizeText(term);
         if (normalizedDescription.includes(normalizedTerm)) {
           matchedTerms.push(term);
-          // Priorizar la primera categoría detectada (orden del diccionario)
           if (detectedCategory === "none") {
             detectedCategory = category as "medico" | "seguridad" | "desastre";
           }
@@ -115,12 +92,12 @@ export const vitalRiskDetectionFlow = ai.defineFlow(
       }
     }
 
-    if (matchedTerms.length > 0) {
+    if (matchedTerms.length > 0 && detectedCategory !== "none") {
       return {
         isVitalRisk: true,
         matchedTerms,
         riskCategory: detectedCategory,
-        emergencyNumbers: EMERGENCY_NUMBERS[detectedCategory] ?? ["911"],
+        emergencyNumbers: emergencyNumbers[detectedCategory] ?? ["911"],
         reason: `Riesgo vital detectado (${detectedCategory}). ` +
           `Términos coincidentes: [${matchedTerms.join(", ")}]. ` +
           `El incidente excede el alcance del sistema de coordinación comunitaria.`,
