@@ -118,16 +118,29 @@ describe("updateUserReputationLogic", () => {
     expect(store["users/user4"].data?.reputationScore).toBe(0);
   });
 
-  it("should not change reputation if status transition is not relevant", async () => {
+  it("should increment reputation if transitioning programado -> solucionado for the first time", async () => {
     const { firestore, store } = buildFakeFirestore({
       "users/user5": { data: { reputationScore: 50 } },
-      "incidents/incident5": { data: { status: "en_reparacion" } },
+      "incidents/incident5": { data: { status: "solucionado" } },
     });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await updateUserReputationLogic(firestore as any, "user5", { status: "programado" }, { status: "en_reparacion" }, "incident5");
+    await updateUserReputationLogic(firestore as any, "user5", { status: "programado" }, { status: "solucionado" }, "incident5");
 
-    expect(store["users/user5"].data?.reputationScore).toBe(50);
+    expect(store["users/user5"].data?.reputationScore).toBe(55);
+    expect(store["incidents/incident5"].data?.reputationApplied).toBe(true);
+  });
+
+  it("should early return if status and verifiedAsFalse did not change", async () => {
+    const { firestore, store } = buildFakeFirestore({
+      "users/user8": { data: { reputationScore: 50 } },
+      "incidents/incident8": { data: { status: "programado" } },
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await updateUserReputationLogic(firestore as any, "user8", { status: "programado" }, { status: "programado" }, "incident8");
+
+    expect(store["incidents/incident8"].data?.reputationApplied).toBeUndefined();
   });
 
   it("should not change reputation if reputationApplied is already true (idempotency)", async () => {

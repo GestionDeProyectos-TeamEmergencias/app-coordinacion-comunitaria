@@ -14,11 +14,16 @@ export async function updateUserReputationLogic(
   afterData: admin.firestore.DocumentData,
   incidentId: string
 ) {
+  if (beforeData.status === afterData.status && beforeData.verifiedAsFalse === afterData.verifiedAsFalse) {
+    return; // Optimización: no hay cambios que afecten la reputación
+  }
+
   let delta = 0;
 
-  // Positive validation: transiting from 'recibido' to a confirmed state
+  // Positive validation: transiting to a confirmed state
+  // La idempotencia (reputationApplied) garantiza que solo se premie una vez.
   if (
-    beforeData.status === "recibido" &&
+    beforeData.status !== afterData.status &&
     ["programado", "en_reparacion", "solucionado"].includes(afterData.status)
   ) {
     delta = REPUTATION_INCREMENT;
