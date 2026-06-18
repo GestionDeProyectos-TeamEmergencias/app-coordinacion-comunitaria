@@ -39,6 +39,12 @@ class AdminDashboardPage extends ConsumerWidget {
             onTap: () => context.go(AppRoutes.adminIncidents),
           ),
           _DashboardCard(
+            icon: Icons.map,
+            title: AppStrings.coverageConfig,
+            subtitle: AppStrings.coverageConfigSubtitle,
+            onTap: () => context.go('${AppRoutes.admin}/coverage'),
+          ),
+          _DashboardCard(
             icon: Icons.notifications_active,
             title: 'Notificaciones masivas',
             subtitle: 'Enviar alertas a todos los vecinos (T-NLP-09)',

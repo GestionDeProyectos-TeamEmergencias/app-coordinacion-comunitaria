@@ -4,6 +4,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/errors/app_exception.dart';
+import '../../../admin/presentation/providers/coverage_config_provider.dart';
+
 import '../../data/datasources/incidents_remote_datasource.dart';
 import '../../data/repositories/incidents_repository_impl.dart';
 import '../../domain/entities/incident_event.dart';
@@ -68,13 +71,17 @@ class ReportNotifier extends StateNotifier<AsyncValue<String?>> {
     required double longitude,
   }) async {
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(
-      () => _ref.read(submitQuickReportProvider)(
+    state = await AsyncValue.guard(() async {
+      final config = await _ref.read(coverageConfigProvider.future);
+      if (!config.isWithinCoverage(latitude, longitude)) {
+        throw const OutOfCoverageException();
+      }
+      return _ref.read(submitQuickReportProvider)(
         userId: userId,
         latitude: latitude,
         longitude: longitude,
-      ),
-    );
+      );
+    });
   }
 
   Future<void> submitForm({
@@ -87,6 +94,10 @@ class ReportNotifier extends StateNotifier<AsyncValue<String?>> {
   }) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
+      final config = await _ref.read(coverageConfigProvider.future);
+      if (!config.isWithinCoverage(latitude, longitude)) {
+        throw const OutOfCoverageException();
+      }
       String? photoUrl;
       if (photoFile != null) {
         photoUrl = await _ref
@@ -111,14 +122,18 @@ class ReportNotifier extends StateNotifier<AsyncValue<String?>> {
     required String transcribedText,
   }) async {
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(
-      () => _ref.read(submitVoiceReportProvider)(
+    state = await AsyncValue.guard(() async {
+      final config = await _ref.read(coverageConfigProvider.future);
+      if (!config.isWithinCoverage(latitude, longitude)) {
+        throw const OutOfCoverageException();
+      }
+      return _ref.read(submitVoiceReportProvider)(
         userId: userId,
         latitude: latitude,
         longitude: longitude,
         transcribedText: transcribedText,
-      ),
-    );
+      );
+    });
   }
 }
 

@@ -92,9 +92,11 @@ abstract final class AppStrings {
   static const navProfile = 'Perfil';
 
   // Admin
-  static const adminDashboard = 'Panel de administración';
+  static const adminDashboard = 'Panel de Administración';
   static const usersManagement = 'Gestión de usuarios';
   static const incidentModeration = 'Moderación de incidentes';
+  static const coverageConfig = 'Área de cobertura';
+  static const coverageConfigSubtitle = 'Configurar radio y centro (T-AUTH-06)';
 
   // Registro pendiente / rechazado [T-AUTH-01]
   static const rejectedTitle = 'Solicitud rechazada';
