@@ -52,7 +52,8 @@ GoRouter _setupRouter(AsyncValue<AppUser?> authState) {
 
       // Rutas de moderación (Referente Barrial o Administrador)
       if (loc.startsWith(AppRoutes.incidentDetail.split(':')[0]) ||
-          loc == AppRoutes.adminIncidents) {
+          loc == AppRoutes.adminIncidents ||
+          loc == AppRoutes.alerts) {
         if (!user.role.canVerify) {
           return AppRoutes.unauthorized;
         }
@@ -75,6 +76,7 @@ GoRouter _setupRouter(AsyncValue<AppUser?> authState) {
       GoRoute(path: AppRoutes.adminUsers, builder: (_, __) => const SizedBox()),
       GoRoute(
           path: AppRoutes.adminIncidents, builder: (_, __) => const SizedBox()),
+      GoRoute(path: AppRoutes.alerts, builder: (_, __) => const SizedBox()),
       GoRoute(
           path: AppRoutes.unauthorized, builder: (_, __) => const SizedBox()),
     ],
@@ -173,6 +175,12 @@ void main() {
       await tester.pumpAndSettle();
       expect(router.routerDelegate.currentConfiguration.uri.toString(),
           AppRoutes.unauthorized);
+
+      // [T-AUTH-04] /alerts requiere canVerify
+      router.go(AppRoutes.alerts);
+      await tester.pumpAndSettle();
+      expect(router.routerDelegate.currentConfiguration.uri.toString(),
+          AppRoutes.unauthorized);
     });
 
     testWidgets(
@@ -225,6 +233,12 @@ void main() {
       await tester.pumpAndSettle();
       expect(router.routerDelegate.currentConfiguration.uri.toString(),
           AppRoutes.unauthorized);
+
+      // [T-AUTH-04] referente puede ingresar a /alerts
+      router.go(AppRoutes.alerts);
+      await tester.pumpAndSettle();
+      expect(router.routerDelegate.currentConfiguration.uri.toString(),
+          AppRoutes.alerts);
     });
 
     testWidgets('administrador can access all routes', (tester) async {
@@ -274,6 +288,12 @@ void main() {
       await tester.pumpAndSettle();
       expect(router.routerDelegate.currentConfiguration.uri.toString(),
           AppRoutes.adminIncidents);
+
+      // [T-AUTH-04] administrador también puede ingresar a /alerts
+      router.go(AppRoutes.alerts);
+      await tester.pumpAndSettle();
+      expect(router.routerDelegate.currentConfiguration.uri.toString(),
+          AppRoutes.alerts);
     });
   });
 }

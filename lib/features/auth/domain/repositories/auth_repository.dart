@@ -21,4 +21,15 @@ abstract interface class AuthRepository {
 
   /// Rechaza una cuenta: status → "rejected".
   Future<void> rejectUser(String uid);
+
+  // ── Gestión de roles (T-AUTH-04) ──────────────────────────────────────────
+
+  /// Stream en tiempo real de usuarios activos, opcionalmente filtrado por rol.
+  Stream<List<AppUser>> activeUsersStream({UserRole? role});
+
+  /// Promueve un vecino informante a referente barrial.
+  Future<void> promoteToReferent(String uid);
+
+  /// Degrada un referente barrial a vecino informante.
+  Future<void> demoteToVecino(String uid);
 }

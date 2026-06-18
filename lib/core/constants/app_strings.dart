@@ -116,6 +116,32 @@ abstract final class AppStrings {
   static const userApproved = 'Cuenta aprobada correctamente.';
   static const userRejected = 'Cuenta rechazada.';
 
+  // Gestión de roles [T-AUTH-04]
+  static const tabPending = 'Pendientes';
+  static const tabActive = 'Activos';
+  static const filterByRole = 'Filtrar por rol';
+  static const roleVecino = 'Vecino informante';
+  static const roleReferente = 'Referente barrial';
+  static const roleAdmin = 'Administrador';
+  static const promoteToReferent = 'Promover a referente';
+  static const demoteToVecino = 'Degradar a vecino';
+  static const promoteConfirmTitle = '¿Promover a referente barrial?';
+  static const promoteConfirmBody =
+      'El usuario podrá recibir alertas geolocalizadas y verificar incidentes en su zona.';
+  static const demoteConfirmTitle = '¿Degradar a vecino informante?';
+  static const demoteConfirmBody =
+      'El usuario perderá el acceso a las alertas y a la verificación de incidentes.';
+  static const userPromoted = 'Usuario promovido a referente barrial.';
+  static const userDemoted = 'Usuario degradado a vecino informante.';
+  static const noActiveUsers = 'No hay usuarios activos en este filtro.';
+
+  // Pantalla de gestión de alertas [T-AUTH-04 / RF-ROL-02]
+  static const referentAlertsTitle = 'Alertas geolocalizadas';
+  static const referentAlertsSubtitle =
+      'Incidentes urgentes y de alta prioridad cerca de tu zona';
+  static const noActiveAlerts = 'No hay alertas activas por ahora.';
+  static const cancel = 'Cancelar';
+
   // Errores genéricos
   static const errorUnknown = 'Ocurrió un error inesperado. Intentá de nuevo.';
   static const errorNoInternet = 'Sin conexión a internet.';
