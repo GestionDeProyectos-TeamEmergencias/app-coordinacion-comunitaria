@@ -1,0 +1,864 @@
+﻿diff --git a/functions/src/adminGuard.test.ts b/functions/src/adminGuard.test.ts
+new file mode 100644
+index 0000000..c9035e4
+--- /dev/null
++++ b/functions/src/adminGuard.test.ts
+@@ -0,0 +1,74 @@
++import { assertCallerIsAdmin } from "./index";
++
++interface UserDoc {
++  role?: string;
++  status?: string;
++}
++
++function buildFakeFirestore(users: Record<string, UserDoc>) {
++  return {
++    collection(name: string) {
++      return {
++        doc(uid: string) {
++          return {
++            async get() {
++              const entry = name === "users" ? users[uid] : undefined;
++              return {
++                exists: !!entry,
++                data: () => entry,
++              };
++            },
++          };
++        },
++      };
++    },
++  };
++}
++
++describe("assertCallerIsAdmin (T-NLP-06 guard)", () => {
++  it("lanza unauthenticated cuando no hay uid", async () => {
++    const firestore = buildFakeFirestore({});
++    await expect(
++      // eslint-disable-next-line @typescript-eslint/no-explicit-any
++      assertCallerIsAdmin(firestore as any, undefined)
++    ).rejects.toMatchObject({ code: "unauthenticated" });
++  });
++
++  it("lanza permission-denied cuando el usuario no existe", async () => {
++    const firestore = buildFakeFirestore({});
++    await expect(
++      // eslint-disable-next-line @typescript-eslint/no-explicit-any
++      assertCallerIsAdmin(firestore as any, "ghost-uid")
++    ).rejects.toMatchObject({ code: "permission-denied" });
++  });
++
++  it("lanza permission-denied cuando el rol no es administrador", async () => {
++    const firestore = buildFakeFirestore({
++      "uid-1": { role: "vecino_informante", status: "active" },
++    });
++    await expect(
++      // eslint-disable-next-line @typescript-eslint/no-explicit-any
++      assertCallerIsAdmin(firestore as any, "uid-1")
++    ).rejects.toMatchObject({ code: "permission-denied" });
++  });
++
++  it("lanza permission-denied cuando el admin no está activo", async () => {
++    const firestore = buildFakeFirestore({
++      "uid-1": { role: "administrador", status: "blocked" },
++    });
++    await expect(
++      // eslint-disable-next-line @typescript-eslint/no-explicit-any
++      assertCallerIsAdmin(firestore as any, "uid-1")
++    ).rejects.toMatchObject({ code: "permission-denied" });
++  });
++
++  it("acepta a un administrador activo", async () => {
++    const firestore = buildFakeFirestore({
++      "uid-admin": { role: "administrador", status: "active" },
++    });
++    await expect(
++      // eslint-disable-next-line @typescript-eslint/no-explicit-any
++      assertCallerIsAdmin(firestore as any, "uid-admin")
++    ).resolves.toBeUndefined();
++  });
++});
+diff --git a/functions/src/algorithmConfig.test.ts b/functions/src/algorithmConfig.test.ts
+new file mode 100644
+index 0000000..bfc5fea
+--- /dev/null
++++ b/functions/src/algorithmConfig.test.ts
+@@ -0,0 +1,222 @@
++import {
++  AlgorithmConfig,
++  AlgorithmConfigPatchSchema,
++  AlgorithmConfigSchema,
++  CONFIG_DOC_PATH,
++  DEFAULT_ALGORITHM_CONFIG,
++  getAlgorithmConfig,
++  invalidateAlgorithmConfigCache,
++  loadAlgorithmConfig,
++  saveAlgorithmConfig,
++} from "./algorithmConfig";
++
++// ── Fake Firestore mínimo para tests deterministas ──────────────────────────
++
++interface FakeDoc {
++  data?: Record<string, unknown>;
++}
++
++function buildFakeFirestore(initialDocs: Record<string, FakeDoc> = {}) {
++  const store: Record<string, FakeDoc> = { ...initialDocs };
++  let getCallCount = 0;
++
++  function buildDocRef(path: string) {
++    return {
++      async get() {
++        getCallCount++;
++        const entry = store[path];
++        return {
++          exists: !!entry,
++          data: () => entry?.data,
++        };
++      },
++      async set(data: Record<string, unknown>, options?: { merge?: boolean }) {
++        if (options?.merge && store[path]?.data) {
++          store[path] = { data: { ...store[path].data, ...data } };
++        } else {
++          store[path] = { data };
++        }
++      },
++    };
++  }
++
++  const firestore = {
++    doc(path: string) {
++      return buildDocRef(path);
++    },
++    async runTransaction<T>(
++      // eslint-disable-next-line @typescript-eslint/no-explicit-any
++      handler: (tx: any) => Promise<T>
++    ): Promise<T> {
++      const tx = {
++        get: (ref: ReturnType<typeof buildDocRef>) => ref.get(),
++        set: (
++          ref: ReturnType<typeof buildDocRef>,
++          data: Record<string, unknown>,
++          options?: { merge?: boolean }
++        ) => {
++          // eslint-disable-next-line @typescript-eslint/no-floating-promises
++          ref.set(data, options);
++        },
++      };
++      return handler(tx);
++    },
++  };
++
++  return { firestore, store, getCallCount: () => getCallCount };
++}
++
++describe("AlgorithmConfig (T-NLP-06)", () => {
++  beforeEach(() => {
++    invalidateAlgorithmConfigCache();
++  });
++
++  describe("DEFAULT_ALGORITHM_CONFIG", () => {
++    it("respeta el schema estricto", () => {
++      expect(() => AlgorithmConfigSchema.parse(DEFAULT_ALGORITHM_CONFIG))
++        .not.toThrow();
++    });
++
++    it("incluye las tres categorías de riesgo vital esperadas", () => {
++      expect(Object.keys(DEFAULT_ALGORITHM_CONFIG.vitalRiskTerms))
++        .toEqual(expect.arrayContaining(["medico", "seguridad", "desastre"]));
++    });
++  });
++
++  describe("getAlgorithmConfig (fresh read)", () => {
++    it("retorna los defaults cuando el documento no existe", async () => {
++      const { firestore } = buildFakeFirestore({});
++      // eslint-disable-next-line @typescript-eslint/no-explicit-any
++      const config = await getAlgorithmConfig(firestore as any);
++      expect(config).toEqual(DEFAULT_ALGORITHM_CONFIG);
++    });
++
++    it("mergea valores de Firestore por encima de defaults", async () => {
++      const { firestore } = buildFakeFirestore({
++        [CONFIG_DOC_PATH]: {
++          data: {
++            priorityThresholds: { urgente: 90, alta: 70, media: 40 },
++          },
++        },
++      });
++      // eslint-disable-next-line @typescript-eslint/no-explicit-any
++      const config = await getAlgorithmConfig(firestore as any);
++      expect(config.priorityThresholds).toEqual({ urgente: 90, alta: 70, media: 40 });
++      // El resto sigue viniendo de los defaults.
++      expect(config.categoryBaseScores).toEqual(DEFAULT_ALGORITHM_CONFIG.categoryBaseScores);
++    });
++
++    it("cae a defaults si Firestore tiene datos inválidos", async () => {
++      const { firestore } = buildFakeFirestore({
++        [CONFIG_DOC_PATH]: {
++          data: {
++            priorityThresholds: { urgente: "no-numero" },
++          },
++        },
++      });
++      // eslint-disable-next-line @typescript-eslint/no-explicit-any
++      const config = await getAlgorithmConfig(firestore as any);
++      expect(config).toEqual(DEFAULT_ALGORITHM_CONFIG);
++    });
++  });
++
++  describe("loadAlgorithmConfig (cache)", () => {
++    it("usa caché para evitar leer Firestore en cada llamada", async () => {
++      const { firestore, getCallCount } = buildFakeFirestore({
++        [CONFIG_DOC_PATH]: { data: {} },
++      });
++      // eslint-disable-next-line @typescript-eslint/no-explicit-any
++      await loadAlgorithmConfig(firestore as any);
++      // eslint-disable-next-line @typescript-eslint/no-explicit-any
++      await loadAlgorithmConfig(firestore as any);
++      // eslint-disable-next-line @typescript-eslint/no-explicit-any
++      await loadAlgorithmConfig(firestore as any);
++      expect(getCallCount()).toBe(1);
++    });
++
++    it("invalidateAlgorithmConfigCache fuerza una nueva lectura", async () => {
++      const { firestore, getCallCount } = buildFakeFirestore({
++        [CONFIG_DOC_PATH]: { data: {} },
++      });
++      // eslint-disable-next-line @typescript-eslint/no-explicit-any
++      await loadAlgorithmConfig(firestore as any);
++      invalidateAlgorithmConfigCache();
++      // eslint-disable-next-line @typescript-eslint/no-explicit-any
++      await loadAlgorithmConfig(firestore as any);
++      expect(getCallCount()).toBe(2);
++    });
++  });
++
++  describe("saveAlgorithmConfig", () => {
++    it("persiste el patch, retorna config mergeada y registra updatedBy", async () => {
++      const { firestore, store } = buildFakeFirestore({});
++      const updated = await saveAlgorithmConfig(
++        // eslint-disable-next-line @typescript-eslint/no-explicit-any
++        firestore as any,
++        {
++          priorityThresholds: { urgente: 95 },
++        },
++        "admin-uid-1"
++      );
++
++      expect(updated.priorityThresholds.urgente).toBe(95);
++      // Los campos no tocados quedan con defaults.
++      expect(updated.priorityThresholds.alta).toBe(
++        DEFAULT_ALGORITHM_CONFIG.priorityThresholds.alta
++      );
++      const persisted = store[CONFIG_DOC_PATH].data as Record<string, unknown> & {
++        updatedBy: string;
++      };
++      expect(persisted.updatedBy).toBe("admin-uid-1");
++    });
++
++    it("rechaza patches con tipos inválidos", async () => {
++      const { firestore } = buildFakeFirestore({});
++      await expect(
++        saveAlgorithmConfig(
++          // eslint-disable-next-line @typescript-eslint/no-explicit-any
++          firestore as any,
++          { priorityThresholds: { urgente: 150 } as never },
++          "admin-uid-1"
++        )
++      ).rejects.toThrow();
++    });
++
++    it("invalida el caché tras escribir para que el siguiente load lea fresco", async () => {
++      const { firestore, getCallCount } = buildFakeFirestore({
++        [CONFIG_DOC_PATH]: { data: {} },
++      });
++      // eslint-disable-next-line @typescript-eslint/no-explicit-any
++      await loadAlgorithmConfig(firestore as any);
++      const before = getCallCount();
++      await saveAlgorithmConfig(
++        // eslint-disable-next-line @typescript-eslint/no-explicit-any
++        firestore as any,
++        { priorityThresholds: { media: 25 } },
++        "admin"
++      );
++      // eslint-disable-next-line @typescript-eslint/no-explicit-any
++      const reloaded = await loadAlgorithmConfig(firestore as any);
++      expect(getCallCount()).toBeGreaterThan(before);
++      expect(reloaded.priorityThresholds.media).toBe(25);
++    });
++  });
++
++  describe("AlgorithmConfigPatchSchema", () => {
++    it("acepta un patch parcial vacío", () => {
++      expect(() => AlgorithmConfigPatchSchema.parse({})).not.toThrow();
++    });
++
++    it("rechaza un threshold fuera de rango", () => {
++      const invalid = { priorityThresholds: { urgente: 200 } };
++      expect(() => AlgorithmConfigPatchSchema.parse(invalid)).toThrow();
++    });
++
++    it("acepta sólo un subset de pesos", () => {
++      const partial: { priorityWeights: Partial<AlgorithmConfig["priorityWeights"]> } = {
++        priorityWeights: { duplicateNearbyPoints: 7 },
++      };
++      expect(() => AlgorithmConfigPatchSchema.parse(partial)).not.toThrow();
++    });
++  });
++});
+diff --git a/functions/src/algorithmConfig.ts b/functions/src/algorithmConfig.ts
+new file mode 100644
+index 0000000..0d5716e
+--- /dev/null
++++ b/functions/src/algorithmConfig.ts
+@@ -0,0 +1,232 @@
++import { z } from "genkit";
++import * as logger from "firebase-functions/logger";
++import type { firestore as FirestoreAdmin } from "firebase-admin";
++import { FieldValue } from "firebase-admin/firestore";
++
++// ── Schema (T-NLP-06) ────────────────────────────────────────────────────────
++// Configuración persistida en Firestore (config/algorithm). Cualquier campo
++// ausente se completa con DEFAULT_ALGORITHM_CONFIG. Los Cloud Functions
++// no necesitan redeploy cuando el administrador actualiza estos valores.
++
++const RiskCategoryShape = {
++  medico: z.array(z.string().min(1)),
++  seguridad: z.array(z.string().min(1)),
++  desastre: z.array(z.string().min(1)),
++};
++
++export const AlgorithmConfigSchema = z.object({
++  vitalRiskTerms: z.object(RiskCategoryShape),
++  emergencyNumbers: z.object(RiskCategoryShape),
++  categoryBaseScores: z.object({
++    alumbrado_electrico: z.number().min(0).max(100),
++    infraestructura_vial: z.number().min(0).max(100),
++    pavimentacion: z.number().min(0).max(100),
++    saneamiento: z.number().min(0).max(100),
++    espacios_verdes: z.number().min(0).max(100),
++    otro: z.number().min(0).max(100),
++  }),
++  priorityWeights: z.object({
++    semanticTermsLimit: z.number().int().min(0).max(10),
++    semanticTermPointsMultiplier: z.number().min(0).max(50),
++    duplicateNearbyPoints: z.number().min(0).max(50),
++    duplicateMaxPoints: z.number().min(0).max(50),
++    reputationLowThreshold: z.number().min(0).max(100),
++    reputationHighThreshold: z.number().min(0).max(100),
++    reputationAdjustment: z.number().min(0).max(50),
++  }),
++  priorityThresholds: z.object({
++    urgente: z.number().int().min(0).max(100),
++    alta: z.number().int().min(0).max(100),
++    media: z.number().int().min(0).max(100),
++  }),
++});
++
++export type AlgorithmConfig = z.infer<typeof AlgorithmConfigSchema>;
++
++// Versión parcial usada por updateAlgorithmConfig — todos los campos opcionales,
++// pero los presentes deben respetar el schema.
++export const AlgorithmConfigPatchSchema = AlgorithmConfigSchema.deepPartial();
++export type AlgorithmConfigPatch = z.infer<typeof AlgorithmConfigPatchSchema>;
++
++// ── Defaults ─────────────────────────────────────────────────────────────────
++
++export const DEFAULT_ALGORITHM_CONFIG: AlgorithmConfig = {
++  vitalRiskTerms: {
++    medico: [
++      "infarto", "infartando", "convulsion", "convulsionando",
++      "inconsciente", "desmayado", "paro cardiaco", "no respira",
++      "hemorragia", "desangrando", "sobredosis", "ahogando",
++      "electrocutado", "electrocucion", "intoxicacion",
++    ],
++    seguridad: [
++      "tiroteo", "disparos", "disparo", "baleado",
++      "apunalado", "acuchillado", "navajazo",
++      "asalto armado", "secuestro", "rehen", "rehenes",
++      "amenaza de bomba", "explosion", "arma de fuego",
++      "robo a mano armada",
++    ],
++    desastre: [
++      "incendio", "se prende fuego", "prendio fuego",
++      "derrumbe", "colapso", "edificio colapsado",
++      "inundacion grave", "atrapado", "persona atrapada",
++      "personas atrapadas", "derrumbe de edificio",
++    ],
++  },
++  emergencyNumbers: {
++    medico: ["107", "911"],
++    seguridad: ["911"],
++    desastre: ["911", "100"],
++  },
++  categoryBaseScores: {
++    alumbrado_electrico: 40,
++    infraestructura_vial: 40,
++    pavimentacion: 30,
++    saneamiento: 30,
++    espacios_verdes: 20,
++    otro: 10,
++  },
++  priorityWeights: {
++    semanticTermsLimit: 3,
++    semanticTermPointsMultiplier: 10,
++    duplicateNearbyPoints: 5,
++    duplicateMaxPoints: 20,
++    reputationLowThreshold: 30,
++    reputationHighThreshold: 80,
++    reputationAdjustment: 10,
++  },
++  priorityThresholds: {
++    urgente: 80,
++    alta: 60,
++    media: 30,
++  },
++};
++
++// ── Caché in-memory ──────────────────────────────────────────────────────────
++
++export const CONFIG_DOC_PATH = "config/algorithm";
++const CACHE_TTL_MS = 60_000;
++
++interface CacheEntry {
++  config: AlgorithmConfig;
++  expiresAt: number;
++}
++
++let cache: CacheEntry | null = null;
++
++export function invalidateAlgorithmConfigCache(): void {
++  cache = null;
++}
++
++// ── Funciones de carga / lectura / persistencia ──────────────────────────────
++
++/**
++ * Carga la config aplicando caché de 60s. Pensada para uso en el pipeline de
++ * normalización donde se invoca por cada incidente: la latencia adicional debe
++ * ser despreciable y la frescura de 1 minuto es suficiente.
++ */
++export async function loadAlgorithmConfig(
++  firestore: FirestoreAdmin.Firestore
++): Promise<AlgorithmConfig> {
++  const now = Date.now();
++  if (cache && cache.expiresAt > now) {
++    return cache.config;
++  }
++  const fresh = await getAlgorithmConfig(firestore);
++  cache = { config: fresh, expiresAt: now + CACHE_TTL_MS };
++  return fresh;
++}
++
++/**
++ * Lee la config directo de Firestore sin caché. Usada por el endpoint GET
++ * del panel del administrador para que siempre obtenga el último valor.
++ */
++export async function getAlgorithmConfig(
++  firestore: FirestoreAdmin.Firestore
++): Promise<AlgorithmConfig> {
++  const snap = await firestore.doc(CONFIG_DOC_PATH).get();
++  if (!snap.exists) {
++    return DEFAULT_ALGORITHM_CONFIG;
++  }
++  return mergeWithDefaults(snap.data() ?? {});
++}
++
++/**
++ * Persiste un patch parcial mergeado con la config actual. Usa una transacción
++ * para evitar race conditions cuando varios admins editan simultáneamente.
++ * Valida el resultado contra el schema completo antes de escribir e invalida
++ * el caché para que el próximo `loadAlgorithmConfig` lea el valor nuevo.
++ */
++export async function saveAlgorithmConfig(
++  firestore: FirestoreAdmin.Firestore,
++  patch: AlgorithmConfigPatch,
++  updatedBy: string
++): Promise<AlgorithmConfig> {
++  // Validar el patch antes de tocar Firestore.
++  AlgorithmConfigPatchSchema.parse(patch);
++
++  const docRef = firestore.doc(CONFIG_DOC_PATH);
++  const validated = await firestore.runTransaction(async (tx) => {
++    const snap = await tx.get(docRef);
++    const current = snap.exists
++      ? mergeWithDefaults(snap.data() ?? {})
++      : DEFAULT_ALGORITHM_CONFIG;
++    const merged = mergeConfig(current, patch);
++    const result = AlgorithmConfigSchema.parse(merged);
++    tx.set(
++      docRef,
++      {
++        ...result,
++        updatedAt: FieldValue.serverTimestamp(),
++        updatedBy,
++      },
++      { merge: true }
++    );
++    return result;
++  });
++
++  invalidateAlgorithmConfigCache();
++  return validated;
++}
++
++// ── Merge helpers ────────────────────────────────────────────────────────────
++
++function mergeWithDefaults(raw: Record<string, unknown>): AlgorithmConfig {
++  const merged = mergeConfig(DEFAULT_ALGORITHM_CONFIG, raw as AlgorithmConfigPatch);
++  const parsed = AlgorithmConfigSchema.safeParse(merged);
++  if (!parsed.success) {
++    // Si Firestore tiene datos inválidos, caemos a defaults sin romper el pipeline.
++    logger.warn("Algorithm config in Firestore is invalid, falling back to defaults", {
++      issues: parsed.error.flatten(),
++    });
++    return DEFAULT_ALGORITHM_CONFIG;
++  }
++  return parsed.data;
++}
++
++function mergeConfig(
++  base: AlgorithmConfig,
++  patch: AlgorithmConfigPatch
++): AlgorithmConfig {
++  return {
++    vitalRiskTerms: {
++      ...base.vitalRiskTerms,
++      ...(patch.vitalRiskTerms ?? {}),
++    } as AlgorithmConfig["vitalRiskTerms"],
++    emergencyNumbers: {
++      ...base.emergencyNumbers,
++      ...(patch.emergencyNumbers ?? {}),
++    } as AlgorithmConfig["emergencyNumbers"],
++    categoryBaseScores: {
++      ...base.categoryBaseScores,
++      ...(patch.categoryBaseScores ?? {}),
++    },
++    priorityWeights: {
++      ...base.priorityWeights,
++      ...(patch.priorityWeights ?? {}),
++    },
++    priorityThresholds: {
++      ...base.priorityThresholds,
++      ...(patch.priorityThresholds ?? {}),
++    },
++  };
++}
+diff --git a/functions/src/index.ts b/functions/src/index.ts
+index ead76e7..fcae9cf 100644
+--- a/functions/src/index.ts
++++ b/functions/src/index.ts
+@@ -1,4 +1,5 @@
+ import { onDocumentCreated } from "firebase-functions/v2/firestore";
++import { onCall, HttpsError } from "firebase-functions/v2/https";
+ import * as logger from "firebase-functions/logger";
+ import * as admin from "firebase-admin";
+ import { FieldValue } from "firebase-admin/firestore";
+@@ -9,6 +10,12 @@ import { detectDuplicateIncidents } from "./incidentDuplicates";
+ import { vitalRiskDetectionFlow } from "./vitalRiskDetection";
+ import { semanticExtractionFlow, mapSemanticCategoryToNormalized, SemanticExtractionResult } from "./semanticExtraction";
+ import { priorityCalculationFlow, PriorityResult } from "./priorityCalculation";
++import {
++  AlgorithmConfigPatchSchema,
++  getAlgorithmConfig,
++  loadAlgorithmConfig,
++  saveAlgorithmConfig,
++} from "./algorithmConfig";
+ 
+ admin.initializeApp();
+ 
+@@ -53,9 +60,13 @@ export const normalizeIncident = onDocumentCreated(
+         windowHours: getDuplicateWindowHours(),
+       });
+ 
++      // Carga la config calibrable desde Firestore (cacheada 60s). [T-NLP-06]
++      const algorithmConfig = await loadAlgorithmConfig(firestore);
++
+       // Detección de riesgo vital (T-NLP-05) — Cortocircuito temprano del pipeline
+       const vitalRisk = await vitalRiskDetectionFlow({
+         description: normalizedEvent.description,
++        config: algorithmConfig,
+       });
+ 
+       if (vitalRisk.isVitalRisk) {
+@@ -114,6 +125,7 @@ export const normalizeIncident = onDocumentCreated(
+           category: normalizedEvent.category,
+           enrichment,
+           duplicateCheck,
++          config: algorithmConfig,
+         });
+ 
+         priorityCalculation = {
+@@ -157,3 +169,53 @@ function getDuplicateWindowHours(): number {
+   const value = Number(process.env.DUPLICATE_WINDOW_HOURS ?? "24");
+   return Number.isFinite(value) && value > 0 ? value : 24;
+ }
++
++// ── Calibración del algoritmo (T-NLP-06) ────────────────────────────────────
++// Endpoints callables que permiten al administrador leer y actualizar el
++// diccionario de palabras clave y los pesos del motor de priorización sin
++// redeploy de Cloud Functions. La config persiste en Firestore (config/algorithm)
++// y los flows la consultan con caché de 60s.
++
++export async function assertCallerIsAdmin(
++  firestore: admin.firestore.Firestore,
++  uid: string | undefined
++): Promise<void> {
++  if (!uid) {
++    throw new HttpsError("unauthenticated", "Autenticación requerida.");
++  }
++  const userDoc = await firestore.collection("users").doc(uid).get();
++  const data = userDoc.data();
++  if (!userDoc.exists || data?.role !== "administrador" || data?.status !== "active") {
++    throw new HttpsError(
++      "permission-denied",
++      "Solo el administrador activo puede modificar la calibración del algoritmo."
++    );
++  }
++}
++
++export const getAlgorithmConfigCallable = onCall(async (request) => {
++  const firestore = admin.firestore();
++  await assertCallerIsAdmin(firestore, request.auth?.uid);
++  const config = await getAlgorithmConfig(firestore);
++  return { config };
++});
++
++export const updateAlgorithmConfigCallable = onCall(async (request) => {
++  const firestore = admin.firestore();
++  await assertCallerIsAdmin(firestore, request.auth?.uid);
++  const parsed = AlgorithmConfigPatchSchema.safeParse(request.data?.patch);
++  if (!parsed.success) {
++    throw new HttpsError(
++      "invalid-argument",
++      "Patch inválido para la calibración del algoritmo.",
++      parsed.error.flatten()
++    );
++  }
++  const updated = await saveAlgorithmConfig(
++    firestore,
++    parsed.data,
++    request.auth!.uid
++  );
++  logger.info("Algorithm config updated", { updatedBy: request.auth!.uid });
++  return { config: updated };
++});
+diff --git a/functions/src/priorityCalculation.ts b/functions/src/priorityCalculation.ts
+index 7dbeac2..60b0035 100644
+--- a/functions/src/priorityCalculation.ts
++++ b/functions/src/priorityCalculation.ts
+@@ -4,6 +4,7 @@ import { SemanticExtractionResult } from "./semanticExtraction";
+ import { EnrichmentResult } from "./incidentEnrichment";
+ import { DuplicateCheckResult } from "./incidentDuplicates";
+ import { CategoryNormalized } from "./incidentNormalization";
++import { DEFAULT_ALGORITHM_CONFIG, AlgorithmConfig } from "./algorithmConfig";
+ 
+ export const PrioritySchema = z.object({
+   priority: z.enum(["urgente", "alta", "media", "baja"]).describe("Nivel de prioridad operativa"),
+@@ -21,75 +22,71 @@ export const priorityCalculationFlow = ai.defineFlow(
+       category: z.custom<CategoryNormalized>(),
+       enrichment: z.custom<EnrichmentResult>(),
+       duplicateCheck: z.custom<DuplicateCheckResult>(),
++      config: z.custom<AlgorithmConfig | undefined>().optional(),
+     }),
+     outputSchema: PrioritySchema,
+   },
+   async (input): Promise<PriorityResult> => {
++    const config = input.config ?? DEFAULT_ALGORITHM_CONFIG;
++    const { categoryBaseScores, priorityWeights, priorityThresholds } = config;
++
+     let score = 0;
+     const reasons: string[] = [];
+ 
+-    // 1. Base score by normalized category (0-50 pts)
+-    const categoryBaseScores: Record<Exclude<CategoryNormalized, null>, number> = {
+-      "alumbrado_electrico": 40,
+-      "infraestructura_vial": 40,
+-      "pavimentacion": 30,
+-      "saneamiento": 30,
+-      "espacios_verdes": 20,
+-      "otro": 10,
+-    };
+-
++    // 1. Base score by normalized category
+     if (input.category && input.category in categoryBaseScores) {
+       const baseScore = categoryBaseScores[input.category];
+       score += baseScore;
+       reasons.push(`Categoría '${input.category}' (+${baseScore})`);
+     } else {
+-      score += 10;
+-      reasons.push(`Categoría no definida o 'otro' (+10)`);
++      score += categoryBaseScores.otro;
++      reasons.push(`Categoría no definida o 'otro' (+${categoryBaseScores.otro})`);
+     }
+ 
+-    // 2. Semantic Weight adjusting (0-30 pts)
++    // 2. Semantic Weight adjusting
+     if (input.semanticExtraction && input.semanticExtraction.detectedTerms.length > 0) {
+       const terms = input.semanticExtraction.detectedTerms;
+       const sortedTerms = [...terms].sort((a, b) => b.weight - a.weight);
+-      // Top 3 terms contribute
++      const limit = Math.min(priorityWeights.semanticTermsLimit, sortedTerms.length);
+       let termsScore = 0;
+-      for (let i = 0; i < Math.min(3, sortedTerms.length); i++) {
+-        termsScore += sortedTerms[i].weight * 10; // each weight [0-1] grants up to 10 points
++      for (let i = 0; i < limit; i++) {
++        termsScore += sortedTerms[i].weight * priorityWeights.semanticTermPointsMultiplier;
+       }
+       const roundedTermsScore = Math.round(termsScore);
+       score += roundedTermsScore;
+       reasons.push(`Términos clave detectados (+${roundedTermsScore})`);
+     }
+ 
+-    // 3. Duplicates clustering (0-20 pts)
++    // 3. Duplicates clustering
+     if (input.duplicateCheck.nearbyCount > 0) {
+-      const dupScore = Math.min(20, input.duplicateCheck.nearbyCount * 5); // 5 points per nearby, max 20
++      const dupScore = Math.min(
++        priorityWeights.duplicateMaxPoints,
++        input.duplicateCheck.nearbyCount * priorityWeights.duplicateNearbyPoints
++      );
+       score += dupScore;
+       reasons.push(`Incidentes cercanos: ${input.duplicateCheck.nearbyCount} (+${dupScore})`);
+     }
+ 
+-    // 4. User Reputation adjustment (-10 to +10 pts)
++    // 4. User Reputation adjustment
+     if (input.enrichment.user.reputationScore !== null) {
+       const rep = input.enrichment.user.reputationScore;
+-      if (rep < 30) {
+-        score -= 10;
+-        reasons.push(`Reputación baja del usuario (${rep}) (-10)`);
+-      } else if (rep > 80) {
+-        score += 10;
+-        reasons.push(`Reputación alta del usuario (${rep}) (+10)`);
++      if (rep < priorityWeights.reputationLowThreshold) {
++        score -= priorityWeights.reputationAdjustment;
++        reasons.push(`Reputación baja del usuario (${rep}) (-${priorityWeights.reputationAdjustment})`);
++      } else if (rep > priorityWeights.reputationHighThreshold) {
++        score += priorityWeights.reputationAdjustment;
++        reasons.push(`Reputación alta del usuario (${rep}) (+${priorityWeights.reputationAdjustment})`);
+       }
+     }
+ 
+-    // Bound the score between 0 and 100
+     score = Math.max(0, Math.min(100, Math.round(score)));
+ 
+-    // Categorize
+     let priority: PriorityResult["priority"] = "baja";
+-    if (score >= 80) {
++    if (score >= priorityThresholds.urgente) {
+       priority = "urgente";
+-    } else if (score >= 60) {
++    } else if (score >= priorityThresholds.alta) {
+       priority = "alta";
+-    } else if (score >= 30) {
++    } else if (score >= priorityThresholds.media) {
+       priority = "media";
+     }
+ 
+diff --git a/functions/src/vitalRiskDetection.ts b/functions/src/vitalRiskDetection.ts
+index 60f4877..bbf1088 100644
+--- a/functions/src/vitalRiskDetection.ts
++++ b/functions/src/vitalRiskDetection.ts
+@@ -1,5 +1,6 @@
+ import { z } from "genkit";
+ import { ai } from "./genkit";
++import { DEFAULT_ALGORITHM_CONFIG, AlgorithmConfig } from "./algorithmConfig";
+ 
+ // ── Esquema de salida (T-NLP-05) ──────────────────────────────────────────────
+ 
+@@ -18,40 +19,13 @@ export const VitalRiskSchema = z.object({
+ 
+ export type VitalRiskResult = z.infer<typeof VitalRiskSchema>;
+ 
+-// ── Diccionario de términos de alta criticidad ────────────────────────────────
+-// Estructura preparada para ser migrada a Firestore en T-NLP-06
++// ── Diccionario por defecto (T-NLP-05) ───────────────────────────────────────
++// Se mantiene exportado para retrocompatibilidad con tests y como fallback
++// cuando Firestore no tiene el documento config/algorithm. La fuente de
++// verdad efectiva en runtime es AlgorithmConfig.vitalRiskTerms (T-NLP-06).
+ 
+-export const VITAL_RISK_TERMS: Record<string, string[]> = {
+-  // Salud / Emergencia médica → 107 (SAME)
+-  medico: [
+-    "infarto", "infartando", "convulsion", "convulsionando",
+-    "inconsciente", "desmayado", "paro cardiaco", "no respira",
+-    "hemorragia", "desangrando", "sobredosis", "ahogando",
+-    "electrocutado", "electrocucion", "intoxicacion",
+-  ],
+-  // Violencia / Crimen → 911
+-  seguridad: [
+-    "tiroteo", "disparos", "disparo", "baleado",
+-    "apunalado", "acuchillado", "navajazo",
+-    "asalto armado", "secuestro", "rehen", "rehenes",
+-    "amenaza de bomba", "explosion", "arma de fuego",
+-    "robo a mano armada",
+-  ],
+-  // Incendio / Desastre → 911
+-  desastre: [
+-    "incendio", "se prende fuego", "prendio fuego",
+-    "derrumbe", "colapso", "edificio colapsado",
+-    "inundacion grave", "atrapado", "persona atrapada",
+-    "personas atrapadas", "derrumbe de edificio",
+-  ],
+-};
+-
+-// Mapa de categoría de riesgo → números de emergencia
+-const EMERGENCY_NUMBERS: Record<string, string[]> = {
+-  medico: ["107", "911"],
+-  seguridad: ["911"],
+-  desastre: ["911", "100"],
+-};
++export const VITAL_RISK_TERMS: Record<string, string[]> =
++  DEFAULT_ALGORITHM_CONFIG.vitalRiskTerms;
+ 
+ // ── Utilidades de normalización de texto ──────────────────────────────────────
+ 
+@@ -82,10 +56,15 @@ export const vitalRiskDetectionFlow = ai.defineFlow(
+     name: "vitalRiskDetectionFlow",
+     inputSchema: z.object({
+       description: z.string().nullable(),
++      config: z.custom<AlgorithmConfig | undefined>().optional(),
+     }),
+     outputSchema: VitalRiskSchema,
+   },
+   async (input): Promise<VitalRiskResult> => {
++    const config = input.config ?? DEFAULT_ALGORITHM_CONFIG;
++    const terms = config.vitalRiskTerms;
++    const emergencyNumbers = config.emergencyNumbers;
++
+     // Si no hay descripción, no hay riesgo que evaluar
+     if (!input.description || input.description.trim().length === 0) {
+       return {
+@@ -101,13 +80,11 @@ export const vitalRiskDetectionFlow = ai.defineFlow(
+     const matchedTerms: string[] = [];
+     let detectedCategory: "medico" | "seguridad" | "desastre" | "none" = "none";
+ 
+-    // Iterar sobre cada categoría de riesgo y buscar coincidencias
+-    for (const [category, terms] of Object.entries(VITAL_RISK_TERMS)) {
+-      for (const term of terms) {
++    for (const [category, categoryTerms] of Object.entries(terms)) {
++      for (const term of categoryTerms) {
+         const normalizedTerm = normalizeText(term);
+         if (normalizedDescription.includes(normalizedTerm)) {
+           matchedTerms.push(term);
+-          // Priorizar la primera categoría detectada (orden del diccionario)
+           if (detectedCategory === "none") {
+             detectedCategory = category as "medico" | "seguridad" | "desastre";
+           }
+@@ -115,12 +92,12 @@ export const vitalRiskDetectionFlow = ai.defineFlow(
+       }
+     }
+ 
+-    if (matchedTerms.length > 0) {
++    if (matchedTerms.length > 0 && detectedCategory !== "none") {
+       return {
+         isVitalRisk: true,
+         matchedTerms,
+         riskCategory: detectedCategory,
+-        emergencyNumbers: EMERGENCY_NUMBERS[detectedCategory] ?? ["911"],
++        emergencyNumbers: emergencyNumbers[detectedCategory] ?? ["911"],
+         reason: `Riesgo vital detectado (${detectedCategory}). ` +
+           `Términos coincidentes: [${matchedTerms.join(", ")}]. ` +
+           `El incidente excede el alcance del sistema de coordinación comunitaria.`,

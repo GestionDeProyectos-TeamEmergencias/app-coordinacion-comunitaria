@@ -71,32 +71,37 @@ describe("updateUserReputationLogic", () => {
   it("should increment reputation when incident is verified", async () => {
     const { firestore, store } = buildFakeFirestore({
       "users/user1": { data: { reputationScore: 50 } },
+      "incidents/incident1": { data: { status: "programado" } },
     });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await updateUserReputationLogic(firestore as any, "user1", "recibido", "programado", "incident1");
+    await updateUserReputationLogic(firestore as any, "user1", { status: "recibido" }, { status: "programado" }, "incident1");
 
     expect(store["users/user1"].data?.reputationScore).toBe(55);
+    expect(store["incidents/incident1"].data?.reputationApplied).toBe(true);
   });
 
-  it("should decrement reputation when incident is rejected", async () => {
+  it("should decrement reputation when incident is verifiedAsFalse", async () => {
     const { firestore, store } = buildFakeFirestore({
       "users/user2": { data: { reputationScore: 50 } },
+      "incidents/incident2": { data: { verifiedAsFalse: true } },
     });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await updateUserReputationLogic(firestore as any, "user2", "recibido", "falso", "incident2");
+    await updateUserReputationLogic(firestore as any, "user2", { verifiedAsFalse: false }, { verifiedAsFalse: true }, "incident2");
 
     expect(store["users/user2"].data?.reputationScore).toBe(35);
+    expect(store["incidents/incident2"].data?.reputationApplied).toBe(true);
   });
 
   it("should not exceed max reputation limit", async () => {
     const { firestore, store } = buildFakeFirestore({
       "users/user3": { data: { reputationScore: 98 } },
+      "incidents/incident3": { data: { status: "solucionado" } },
     });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await updateUserReputationLogic(firestore as any, "user3", "recibido", "solucionado", "incident3");
+    await updateUserReputationLogic(firestore as any, "user3", { status: "recibido" }, { status: "solucionado" }, "incident3");
 
     expect(store["users/user3"].data?.reputationScore).toBe(100);
   });
@@ -104,10 +109,11 @@ describe("updateUserReputationLogic", () => {
   it("should not go below min reputation limit", async () => {
     const { firestore, store } = buildFakeFirestore({
       "users/user4": { data: { reputationScore: 10 } },
+      "incidents/incident4": { data: { verifiedAsFalse: true } },
     });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await updateUserReputationLogic(firestore as any, "user4", "recibido", "rechazado", "incident4");
+    await updateUserReputationLogic(firestore as any, "user4", { verifiedAsFalse: false }, { verifiedAsFalse: true }, "incident4");
 
     expect(store["users/user4"].data?.reputationScore).toBe(0);
   });
@@ -115,21 +121,46 @@ describe("updateUserReputationLogic", () => {
   it("should not change reputation if status transition is not relevant", async () => {
     const { firestore, store } = buildFakeFirestore({
       "users/user5": { data: { reputationScore: 50 } },
+      "incidents/incident5": { data: { status: "en_reparacion" } },
     });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await updateUserReputationLogic(firestore as any, "user5", "programado", "en_reparacion", "incident5");
+    await updateUserReputationLogic(firestore as any, "user5", { status: "programado" }, { status: "en_reparacion" }, "incident5");
 
     expect(store["users/user5"].data?.reputationScore).toBe(50);
+  });
+
+  it("should not change reputation if reputationApplied is already true (idempotency)", async () => {
+    const { firestore, store } = buildFakeFirestore({
+      "users/user7": { data: { reputationScore: 50 } },
+      "incidents/incident7": { data: { status: "programado", reputationApplied: true } },
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await updateUserReputationLogic(firestore as any, "user7", { status: "recibido" }, { status: "programado" }, "incident7");
+
+    expect(store["users/user7"].data?.reputationScore).toBe(50); // Untouched
+  });
+
+  it("should not crash if user document is missing", async () => {
+    const { firestore, store } = buildFakeFirestore({
+      "incidents/incident8": { data: { status: "programado" } },
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await updateUserReputationLogic(firestore as any, "user_missing", { status: "recibido" }, { status: "programado" }, "incident8");
+
+    expect(store["users/user_missing"]).toBeUndefined();
   });
 
   it("should default to 100 if user has no reputationScore", async () => {
     const { firestore, store } = buildFakeFirestore({
       "users/user6": { data: { } },
+      "incidents/incident6": { data: { verifiedAsFalse: true } },
     });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await updateUserReputationLogic(firestore as any, "user6", "recibido", "rechazado", "incident6");
+    await updateUserReputationLogic(firestore as any, "user6", { verifiedAsFalse: false }, { verifiedAsFalse: true }, "incident6");
 
     expect(store["users/user6"].data?.reputationScore).toBe(85);
   });

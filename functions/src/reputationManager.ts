@@ -10,28 +10,21 @@ export const MIN_REPUTATION = 0;
 export async function updateUserReputationLogic(
   firestore: admin.firestore.Firestore,
   userId: string,
-  beforeStatus: string | undefined,
-  afterStatus: string | undefined,
+  beforeData: admin.firestore.DocumentData,
+  afterData: admin.firestore.DocumentData,
   incidentId: string
 ) {
-  if (!beforeStatus || !afterStatus || beforeStatus === afterStatus) {
-    return;
-  }
-
-  const userRef = firestore.collection("users").doc(userId);
-
-  // Identify if the status change is a validation or a rejection
   let delta = 0;
 
   // Positive validation: transiting from 'recibido' to a confirmed state
   if (
-    beforeStatus === "recibido" &&
-    ["programado", "en_reparacion", "solucionado"].includes(afterStatus)
+    beforeData.status === "recibido" &&
+    ["programado", "en_reparacion", "solucionado"].includes(afterData.status)
   ) {
     delta = REPUTATION_INCREMENT;
   }
-  // Negative validation (rejection/false): preparing for T-AUTH-07
-  else if (["rechazado", "falso"].includes(afterStatus)) {
+  // Negative validation: Using a separate flag verifiedAsFalse
+  else if (beforeData.verifiedAsFalse !== true && afterData.verifiedAsFalse === true) {
     delta = -REPUTATION_DECREMENT;
   }
 
@@ -41,6 +34,14 @@ export async function updateUserReputationLogic(
 
   try {
     await firestore.runTransaction(async (transaction) => {
+      const incidentRef = firestore.collection("incidents").doc(incidentId);
+      const incidentDoc = await transaction.get(incidentRef);
+
+      if (incidentDoc.data()?.reputationApplied === true) {
+        return; // Idempotency: ya se aplicó reputación por este incidente
+      }
+
+      const userRef = firestore.collection("users").doc(userId);
       const userDoc = await transaction.get(userRef);
       if (!userDoc.exists) {
         logger.warn("User document not found for reputation update", { userId });
@@ -65,6 +66,9 @@ export async function updateUserReputationLogic(
           delta,
         });
       }
+      
+      // Marcar como aplicado en el incidente para idempotencia
+      transaction.update(incidentRef, { reputationApplied: true });
     });
   } catch (error) {
     logger.error("Failed to update user reputation", {
@@ -95,8 +99,8 @@ export const updateUserReputationOnValidation = onDocumentUpdated(
     await updateUserReputationLogic(
       firestore,
       userId,
-      beforeData.status,
-      afterData.status,
+      beforeData,
+      afterData,
       event.params.incidentId
     );
   }
