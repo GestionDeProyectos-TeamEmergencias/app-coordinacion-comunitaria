@@ -71,15 +71,17 @@ export const broadcastNotification = onCall<BroadcastPayload>(async (request: Ca
       // Si hay filtro espacial, verificamos distancia
       if (area) {
         // Si el usuario no tiene ubicación, no le enviamos (por definición de aviso zonal)
-        if (!data.location || typeof data.location.latitude !== "number" || typeof data.location.longitude !== "number") {
+        const lat = typeof data.coverageLat === "number" ? data.coverageLat : undefined;
+        const lng = typeof data.coverageLng === "number" ? data.coverageLng : undefined;
+        if (lat === undefined || lng === undefined) {
           return;
         }
 
         const distance = calculateDistance(
           area.latitude,
           area.longitude,
-          data.location.latitude,
-          data.location.longitude
+          lat,
+          lng
         );
 
         if (distance > area.radiusMeters) {

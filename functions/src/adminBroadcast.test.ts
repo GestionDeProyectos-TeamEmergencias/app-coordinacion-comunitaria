@@ -57,7 +57,7 @@ describe("Admin Broadcast Notifications (T-NLP-09)", () => {
 
   it("sends global broadcast successfully (admin claim)", async () => {
     const mockUsers = [
-      { data: () => ({ fcmTokens: ["token1"], location: { latitude: 0, longitude: 0 } }) },
+      { data: () => ({ fcmTokens: ["token1"], coverageLat: 0, coverageLng: 0 }) },
       { data: () => ({ fcmTokens: ["token2"] }) }, // No location, still receives global
       { data: () => ({ fcmTokens: [] }) }, // No tokens
     ];
@@ -89,9 +89,9 @@ describe("Admin Broadcast Notifications (T-NLP-09)", () => {
   it("sends zonal broadcast successfully, filtering out of range users", async () => {
     const mockUsers = [
       // Close to Obelisco (~15m away)
-      { data: () => ({ fcmTokens: ["token_close"], location: { latitude: -34.6038, longitude: -58.3817 } }) },
+      { data: () => ({ fcmTokens: ["token_close"], coverageLat: -34.6038, coverageLng: -58.3817 }) },
       // Casa Rosada (~1140m away) - Out of 500m radius
-      { data: () => ({ fcmTokens: ["token_far"], location: { latitude: -34.6081, longitude: -58.3703 } }) },
+      { data: () => ({ fcmTokens: ["token_far"], coverageLat: -34.6081, coverageLng: -58.3703 }) },
       // No location - Should not receive zonal broadcast
       { data: () => ({ fcmTokens: ["token_no_loc"] }) },
     ];
