@@ -59,6 +59,13 @@ abstract final class AppStrings {
   static const statusInProgress = 'En reparación';
   static const statusSolved = 'Solucionado';
 
+  // Detalle de incidente [T-REP-06]
+  static const incidentDetailTitle = 'Detalle del incidente';
+  static const updateStatusTitle = 'Actualizar estado';
+  static const statusHistoryTitle = 'Histórico de cambios';
+  static const statusHistoryEmpty = 'Aún no hay cambios de estado registrados.';
+  static const statusUpdatedSuccess = 'Estado actualizado correctamente.';
+
   // Alerta riesgo vital (RF-PRI-05)
   static const vitalRiskTitle = '⚠️ Situación de riesgo vital detectada';
   static const vitalRiskBody =

@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/datasources/incidents_remote_datasource.dart';
 import '../../data/repositories/incidents_repository_impl.dart';
 import '../../domain/entities/incident_event.dart';
+import '../../domain/repositories/incidents_repository.dart';
 import '../../domain/usecases/submit_form_report_usecase.dart';
 import '../../domain/usecases/submit_quick_report_usecase.dart';
 import '../../domain/usecases/submit_voice_report_usecase.dart';
@@ -20,38 +21,38 @@ final _incidentsDataSourceProvider = Provider<IncidentsRemoteDataSource>((ref) {
   );
 });
 
-final _incidentsRepositoryProvider = Provider<IncidentsRepositoryImpl>((ref) {
+final incidentsRepositoryProvider = Provider<IncidentsRepository>((ref) {
   return IncidentsRepositoryImpl(ref.watch(_incidentsDataSourceProvider));
 });
 
 // ── Use cases ────────────────────────────────────────────────────────────────
 
 final submitQuickReportProvider = Provider<SubmitQuickReportUseCase>((ref) {
-  return SubmitQuickReportUseCase(ref.watch(_incidentsRepositoryProvider));
+  return SubmitQuickReportUseCase(ref.watch(incidentsRepositoryProvider));
 });
 
 final submitFormReportProvider = Provider<SubmitFormReportUseCase>((ref) {
-  return SubmitFormReportUseCase(ref.watch(_incidentsRepositoryProvider));
+  return SubmitFormReportUseCase(ref.watch(incidentsRepositoryProvider));
 });
 
 final submitVoiceReportProvider = Provider<SubmitVoiceReportUseCase>((ref) {
-  return SubmitVoiceReportUseCase(ref.watch(_incidentsRepositoryProvider));
+  return SubmitVoiceReportUseCase(ref.watch(incidentsRepositoryProvider));
 });
 
 // ── Stream de incidentes ─────────────────────────────────────────────────────
 
 final incidentsStreamProvider = StreamProvider<List<IncidentEvent>>((ref) {
-  return ref.watch(_incidentsRepositoryProvider).watchIncidents();
+  return ref.watch(incidentsRepositoryProvider).watchIncidents();
 });
 
 final activeIncidentsStreamProvider =
     StreamProvider<List<IncidentEvent>>((ref) {
-  return ref.watch(_incidentsRepositoryProvider).watchActiveIncidents();
+  return ref.watch(incidentsRepositoryProvider).watchActiveIncidents();
 });
 
 final incidentByIdProvider =
-    FutureProvider.family<IncidentEvent, String>((ref, id) {
-  return ref.watch(_incidentsRepositoryProvider).getIncidentById(id);
+    StreamProvider.family<IncidentEvent, String>((ref, id) {
+  return ref.watch(incidentsRepositoryProvider).watchIncidentById(id);
 });
 
 // ── Notifier para envío de reportes ─────────────────────────────────────────
@@ -124,4 +125,32 @@ class ReportNotifier extends StateNotifier<AsyncValue<String?>> {
 final reportNotifierProvider =
     StateNotifierProvider<ReportNotifier, AsyncValue<String?>>(
   (ref) => ReportNotifier(ref),
+);
+
+// ── Notifier para actualizar estado de incidente [T-REP-06] ────────────────
+
+class UpdateStatusNotifier extends StateNotifier<AsyncValue<void>> {
+  UpdateStatusNotifier(this._ref) : super(const AsyncValue.data(null));
+
+  final Ref _ref;
+
+  Future<void> update({
+    required String eventId,
+    required IncidentStatus status,
+    String? changedBy,
+  }) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(
+      () => _ref.read(incidentsRepositoryProvider).updateStatus(
+            eventId,
+            status,
+            changedBy: changedBy,
+          ),
+    );
+  }
+}
+
+final updateStatusNotifierProvider =
+    StateNotifierProvider<UpdateStatusNotifier, AsyncValue<void>>(
+  (ref) => UpdateStatusNotifier(ref),
 );

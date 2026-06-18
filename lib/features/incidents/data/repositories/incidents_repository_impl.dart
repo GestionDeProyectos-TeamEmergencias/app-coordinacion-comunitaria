@@ -30,6 +30,18 @@ class IncidentsRepositoryImpl implements IncidentsRepository {
   }
 
   @override
-  Future<void> updateStatus(String eventId, IncidentStatus status) =>
-      _dataSource.updateStatus(eventId, status.firestoreValue);
+  Stream<IncidentEvent> watchIncidentById(String eventId) =>
+      _dataSource.watchIncidentById(eventId).map((m) => m.toDomain());
+
+  @override
+  Future<void> updateStatus(
+    String eventId,
+    IncidentStatus status, {
+    String? changedBy,
+  }) =>
+      _dataSource.updateStatus(
+        eventId,
+        status.firestoreValue,
+        changedBy: changedBy,
+      );
 }

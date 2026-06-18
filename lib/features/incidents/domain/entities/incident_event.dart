@@ -111,6 +111,21 @@ enum IncidentPriority {
       };
 }
 
+class IncidentStatusChange extends Equatable {
+  const IncidentStatusChange({
+    required this.status,
+    required this.timestamp,
+    this.changedBy,
+  });
+
+  final IncidentStatus status;
+  final DateTime timestamp;
+  final String? changedBy;
+
+  @override
+  List<Object?> get props => [status, timestamp, changedBy];
+}
+
 class IncidentEvent extends Equatable {
   const IncidentEvent({
     this.eventId,
@@ -125,6 +140,7 @@ class IncidentEvent extends Equatable {
     this.status = IncidentStatus.recibido,
     this.priority,
     this.priorityScore,
+    this.statusHistory = const [],
   });
 
   final String? eventId;
@@ -139,6 +155,7 @@ class IncidentEvent extends Equatable {
   final IncidentStatus status;
   final IncidentPriority? priority;
   final double? priorityScore;
+  final List<IncidentStatusChange> statusHistory;
 
   IncidentEvent copyWith({
     String? eventId,
@@ -153,6 +170,7 @@ class IncidentEvent extends Equatable {
     IncidentStatus? status,
     IncidentPriority? priority,
     double? priorityScore,
+    List<IncidentStatusChange>? statusHistory,
   }) {
     return IncidentEvent(
       eventId: eventId ?? this.eventId,
@@ -167,6 +185,7 @@ class IncidentEvent extends Equatable {
       status: status ?? this.status,
       priority: priority ?? this.priority,
       priorityScore: priorityScore ?? this.priorityScore,
+      statusHistory: statusHistory ?? this.statusHistory,
     );
   }
 
@@ -184,5 +203,6 @@ class IncidentEvent extends Equatable {
         status,
         priority,
         priorityScore,
+        statusHistory,
       ];
 }
