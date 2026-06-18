@@ -19,9 +19,9 @@
 
 | Estado | Cantidad |
 |---|---|
-| ✅ Finalizado | 13 |
+| ✅ Finalizado | 16 |
 | 🔄 En curso | 3 |
-| ⬜ Por hacer | 40 |
+| ⬜ Por hacer | 37 |
 | **Total** | **56** |
 
 ---
@@ -45,7 +45,7 @@
 | Clave | Tarea | Estado | Responsable | Prioridad |
 |---|---|---|---|---|
 | KAN-42 | [T-AUTH-01] Registro de vecinos informantes | ⬜ Por hacer | tmiquelez | Medium |
-| KAN-43 | [T-AUTH-02] Login y autenticación Firebase Auth | ⬜ Por hacer | Jeremías Aguirres | Medium |
+| KAN-43 | [T-AUTH-02] Login y autenticación Firebase Auth | ✅ Finalizado | Jeremías Aguirres | Medium |
 | KAN-44 | [T-AUTH-03] Control de acceso por roles | ⬜ Por hacer | tmiquelez | Medium |
 | KAN-45 | [T-AUTH-04] Promoción de referente barrial | ⬜ Por hacer | Jeremías Aguirres | Medium |
 | KAN-46 | [T-AUTH-05] Sistema de reputación por usuario | ⬜ Por hacer | tmiquelez | Medium |
@@ -61,8 +61,8 @@
 | Clave | Tarea | Estado | Responsable | Prioridad |
 |---|---|---|---|---|
 | KAN-68 | [T-REP-01] UI principal y navegación | ⬜ Por hacer | Elias Uribe | Medium |
-| KAN-41 | [T-REP-02] Botón de reporte rápido con captura GPS | ⬜ Por hacer | Joaquín Hubner | Medium |
-| KAN-47 | [T-REP-03] Formulario de reporte detallado con foto | ⬜ Por hacer | Elias Uribe | Medium |
+| KAN-41 | [T-REP-02] Botón de reporte rápido con captura GPS | ✅ Finalizado | Joaquín Hubner | Medium |
+| KAN-47 | [T-REP-03] Formulario de reporte detallado con foto | ✅ Finalizado | Elias Uribe | Medium |
 | KAN-52 | [T-REP-04] Reporte por voz con Speech-to-Text on-device | ⬜ Por hacer | Joaquín Hubner | Medium |
 | KAN-57 | [T-REP-05] Mapa de incidencias geolocalizado | ⬜ Por hacer | Elias Uribe | Medium |
 | KAN-60 | [T-REP-06] Visualización del estado de resolución | ⬜ Por hacer | Joaquín Hubner | Medium |

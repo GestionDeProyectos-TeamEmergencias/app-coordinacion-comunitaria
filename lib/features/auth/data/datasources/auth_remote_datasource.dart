@@ -103,7 +103,40 @@ class AuthRemoteDataSource {
       final doc = await _users.doc(credential.user!.uid).get();
       return UserModel.fromFirestore(doc);
     } on FirebaseAuthException catch (e) {
-      throw AuthException(e.message ?? 'Error al iniciar sesión.');
+      String errorMessage;
+
+      // Intercept the Firebase error code and swap it for a friendly message
+      switch (e.code) {
+        case 'invalid-credential':
+          errorMessage =
+              'El correo o la contraseña son incorrectos. Por favor, verifica tus datos e intenta de nuevo.';
+          break;
+        case 'invalid-email':
+          errorMessage = 'El formato del correo electrónico no es válido.';
+          break;
+        case 'user-disabled':
+          errorMessage =
+              'Esta cuenta ha sido deshabilitada por la administración vecinal.';
+          break;
+        case 'too-many-requests':
+          errorMessage =
+              'Demasiados intentos fallidos. Por favor, esperá unos minutos e intenta de nuevo.';
+          break;
+        case 'network-request-failed':
+          errorMessage =
+              'Error de conexión. Revisa tu internet e intenta de nuevo.';
+          break;
+        default:
+          errorMessage =
+              'Ocurrió un error inesperado al iniciar sesión. (Código: ${e.code})';
+      }
+
+      // Throw the new translated string instead of e.message
+      throw AuthException(errorMessage);
+    } catch (e) {
+      // A good fallback just in case something fails outside of Firebase Auth
+      throw const AuthException(
+          'Ocurrió un error inesperado. Por favor, intentá de nuevo.');
     }
   }
 
@@ -135,6 +168,42 @@ class AuthRemoteDataSource {
     }
   }
 
+  /// Stream en tiempo real de usuarios activos, opcionalmente filtrados por rol. [T-AUTH-04]
+  ///
+  /// Se aplica `limit` para evitar materializar colecciones grandes en el cliente.
+  /// La seguridad RBAC se complementa con las reglas de Firestore: el campo
+  /// `role` solo es editable por usuarios con `role == 'administrador'`.
+  Stream<List<UserModel>> activeUsersStream({String? role, int limit = 200}) {
+    Query<Map<String, dynamic>> query =
+        _users.where('status', isEqualTo: 'active');
+    if (role != null) {
+      query = query.where('role', isEqualTo: role);
+    }
+    return query.limit(limit).snapshots().map(
+          (snapshot) => snapshot.docs.map(UserModel.fromFirestore).toList(),
+        );
+  }
+
+  /// Promueve un vecino informante al rol de referente barrial. [T-AUTH-04]
+  /// RF-ROL-02: actualiza role en Firestore — los privilegios (alertas push,
+  /// verificación in situ) se habilitan a partir del rol persistido.
+  Future<void> promoteToReferent(String uid) async {
+    try {
+      await _users.doc(uid).update({'role': 'referente_barrial'});
+    } on FirebaseException catch (e) {
+      throw FirestoreException(e.message ?? 'Error al promover usuario.');
+    }
+  }
+
+  /// Degrada un referente barrial a vecino informante. [T-AUTH-04]
+  Future<void> demoteToVecino(String uid) async {
+    try {
+      await _users.doc(uid).update({'role': 'vecino_informante'});
+    } on FirebaseException catch (e) {
+      throw FirestoreException(e.message ?? 'Error al degradar usuario.');
+    }
+  }
+
   Future<void> logout() => _auth.signOut();
 
   Future<UserModel?> getCurrentUser() async {
@@ -143,5 +212,38 @@ class AuthRemoteDataSource {
     final doc = await _users.doc(firebaseUser.uid).get();
     if (!doc.exists) return null;
     return UserModel.fromFirestore(doc);
+  }
+
+  Future<void> resetPassword({required String email}) async {
+    if (email.trim().isEmpty) {
+      throw const AuthException('Por favor, ingresá un correo electrónico.');
+    }
+
+    try {
+      // Firebase handles sending the email automatically
+      await _auth.sendPasswordResetEmail(email: email.trim());
+    } on FirebaseAuthException catch (e) {
+      String errorMessage;
+
+      switch (e.code) {
+        case 'invalid-email':
+          errorMessage = 'El formato del correo electrónico no es válido.';
+          break;
+        // Note: Depending on your Firebase email enumeration protection settings,
+        // 'auth/user-not-found' might not be thrown anymore. It's good to catch it just in case.
+        case 'user-not-found':
+          errorMessage =
+              'No encontramos ninguna cuenta vinculada a este correo.';
+          break;
+        default:
+          errorMessage =
+              'Ocurrió un error al enviar el enlace. (Código: ${e.code})';
+      }
+
+      throw AuthException(errorMessage);
+    } catch (e) {
+      throw const AuthException(
+          'Ocurrió un error inesperado. Por favor, intentá de nuevo.');
+    }
   }
 }
