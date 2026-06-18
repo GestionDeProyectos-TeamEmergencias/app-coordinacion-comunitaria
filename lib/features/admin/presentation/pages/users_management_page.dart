@@ -428,7 +428,7 @@ class _UserHeader extends StatelessWidget {
                         size: 14, color: Theme.of(context).colorScheme.error),
                     const SizedBox(width: 4),
                     Text(
-                      'Reputación baja: ${user.reputationScore.toInt()} pts',
+                      '${AppStrings.lowReputationWarning} ${user.reputationScore.toInt()} pts',
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.error,
                         fontSize: 12,
