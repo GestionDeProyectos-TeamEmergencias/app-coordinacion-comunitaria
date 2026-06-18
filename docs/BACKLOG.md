@@ -95,7 +95,7 @@
 | KAN-61 | [T-TEST-02] Ejecución de pruebas — Módulo Auth y Roles | ⬜ Por hacer | Jeremías Aguirres | Medium |
 | KAN-62 | [T-TEST-03] Ejecución de pruebas — Módulo Reporte e Interfaz | ⬜ Por hacer | Joaquín Hubner | Medium |
 | KAN-34 | [T-TEST-04] Ejecución de pruebas — Motor NLP y Notificaciones | ⬜ Por hacer | Eric Doyle | Medium |
-| KAN-71 | [T-TEST-05] Ejecución de pruebas de RNF | ⬜ Por hacer | Elias Uribe | Medium |
+| KAN-71 | [T-TEST-05] Ejecución de pruebas de RNF | ⬜ Por hacer | JOAQUIN SEBASTIAN HUBNER | Medium |
 | KAN-72 | [T-TEST-06] Ejecución final de la suite completa — registro OK | ⬜ Por hacer | Eric Doyle | Medium |
 
 ---
