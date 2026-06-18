@@ -424,7 +424,8 @@ class _UserHeader extends StatelessWidget {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Icon(Icons.warning_amber_rounded, size: 14, color: Colors.orange),
+                    const Icon(Icons.warning_amber_rounded,
+                        size: 14, color: Colors.orange),
                     const SizedBox(width: 4),
                     Text(
                       'Reputación baja: ${user.reputationScore.toInt()} pts',
