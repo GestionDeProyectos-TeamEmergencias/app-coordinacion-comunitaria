@@ -23,6 +23,12 @@ class HomePage extends ConsumerWidget {
       appBar: AppBar(
         title: const Text(AppStrings.appName),
         actions: [
+          if (user?.role.canVerify == true)
+            IconButton(
+              icon: const Icon(Icons.notifications_active),
+              tooltip: AppStrings.referentAlertsTitle,
+              onPressed: () => context.go(AppRoutes.alerts),
+            ),
           if (user?.role == UserRole.administrador)
             IconButton(
               icon: const Icon(Icons.admin_panel_settings),

@@ -168,6 +168,42 @@ class AuthRemoteDataSource {
     }
   }
 
+  /// Stream en tiempo real de usuarios activos, opcionalmente filtrados por rol. [T-AUTH-04]
+  ///
+  /// Se aplica `limit` para evitar materializar colecciones grandes en el cliente.
+  /// La seguridad RBAC se complementa con las reglas de Firestore: el campo
+  /// `role` solo es editable por usuarios con `role == 'administrador'`.
+  Stream<List<UserModel>> activeUsersStream({String? role, int limit = 200}) {
+    Query<Map<String, dynamic>> query =
+        _users.where('status', isEqualTo: 'active');
+    if (role != null) {
+      query = query.where('role', isEqualTo: role);
+    }
+    return query.limit(limit).snapshots().map(
+          (snapshot) => snapshot.docs.map(UserModel.fromFirestore).toList(),
+        );
+  }
+
+  /// Promueve un vecino informante al rol de referente barrial. [T-AUTH-04]
+  /// RF-ROL-02: actualiza role en Firestore — los privilegios (alertas push,
+  /// verificación in situ) se habilitan a partir del rol persistido.
+  Future<void> promoteToReferent(String uid) async {
+    try {
+      await _users.doc(uid).update({'role': 'referente_barrial'});
+    } on FirebaseException catch (e) {
+      throw FirestoreException(e.message ?? 'Error al promover usuario.');
+    }
+  }
+
+  /// Degrada un referente barrial a vecino informante. [T-AUTH-04]
+  Future<void> demoteToVecino(String uid) async {
+    try {
+      await _users.doc(uid).update({'role': 'vecino_informante'});
+    } on FirebaseException catch (e) {
+      throw FirestoreException(e.message ?? 'Error al degradar usuario.');
+    }
+  }
+
   Future<void> logout() => _auth.signOut();
 
   Future<UserModel?> getCurrentUser() async {
