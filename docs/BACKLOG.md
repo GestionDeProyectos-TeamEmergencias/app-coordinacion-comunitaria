@@ -20,11 +20,11 @@
 
 | Estado | Cantidad |
 |---|---|
-| ✅ Finalizado | 21 |
+| ✅ Finalizado | 23 |
 | 🔄 En curso | 4 |
-| 🔍 En revisión | 3 |
-| ⬜ Por hacer | 12 |
-| **Total** | **40** |
+| 🔍 En revisión | 4 |
+| ⬜ Por hacer | 10 |
+| **Total** | **41** |
 
 ---
 
@@ -65,8 +65,8 @@
 | KAN-68 | [T-REP-01] UI principal y navegación | ✅ Finalizado | Elias Uribe | Medium |
 | KAN-41 | [T-REP-02] Botón de reporte rápido con captura GPS | ✅ Finalizado | Joaquín Hubner | Medium |
 | KAN-47 | [T-REP-03] Formulario de reporte detallado con foto | ✅ Finalizado | Elias Uribe | Medium |
-| KAN-52 | [T-REP-04] Reporte por voz con Speech-to-Text on-device | ⬜ Por hacer | Joaquín Hubner | Medium |
-| KAN-57 | [T-REP-05] Mapa de incidencias geolocalizado | ⬜ Por hacer | Elias Uribe | Medium |
+| KAN-52 | [T-REP-04] Reporte por voz con Speech-to-Text on-device | ✅ Finalizado | Joaquín Hubner | Medium |
+| KAN-57 | [T-REP-05] Mapa de incidencias geolocalizado | ✅ Finalizado | Elias Uribe | Medium |
 | KAN-60 | [T-REP-06] Visualización del estado de resolución | ✅ Finalizado | Joaquín Hubner | Medium |
 
 ---
