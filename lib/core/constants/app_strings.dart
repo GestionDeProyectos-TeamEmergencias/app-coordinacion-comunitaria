@@ -23,6 +23,7 @@ abstract final class AppStrings {
   static const addPhoto = 'Agregar foto';
   static const sendReport = 'Enviar reporte';
   static const reportSentSuccess = 'Reporte enviado correctamente.';
+  static const sendingReport = 'Enviando reporte...';
   static const locationPermissionRequired =
       'Permiso de ubicación requerido para reportar.';
   static const locationPermissionPermanentlyDenied =
@@ -68,6 +69,14 @@ abstract final class AppStrings {
 
   // Mapa
   static const mapTitle = 'Mapa de incidencias';
+  static const loadingMap = 'Cargando mapa...';
+  static const mapLegend = 'Leyenda';
+  static const mapLegendTitle = 'Colores por prioridad';
+  static const mapNoPriority = 'Sin clasificar';
+  static const mapDefaultCategory = 'Incidente';
+  static const mapCategoryFilters = 'Filtrar por categoría';
+  static const mapCoverageArea = 'Área de cobertura';
+  static const mapRecenter = 'Centrar en cobertura';
 
   // Navegación principal
   static const navHome = 'Inicio';

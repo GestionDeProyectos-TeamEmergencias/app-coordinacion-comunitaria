@@ -50,6 +50,14 @@ enum IncidentCategory {
         IncidentCategory.espaciosVerdes => 'Espacios verdes',
         IncidentCategory.seguridad => 'Seguridad',
       };
+
+  String get emoji => switch (this) {
+        IncidentCategory.electrico => '⚡',
+        IncidentCategory.vial => '🚧',
+        IncidentCategory.sanitario => '🚰',
+        IncidentCategory.espaciosVerdes => '🌳',
+        IncidentCategory.seguridad => '🚨',
+      };
 }
 
 enum IncidentStatus {

@@ -18,6 +18,12 @@ class IncidentsRepositoryImpl implements IncidentsRepository {
           );
 
   @override
+  Stream<List<IncidentEvent>> watchActiveIncidents() => watchIncidents().map(
+        (all) =>
+            all.where((i) => i.status != IncidentStatus.solucionado).toList(),
+      );
+
+  @override
   Future<IncidentEvent> getIncidentById(String eventId) async {
     final model = await _dataSource.getIncidentById(eventId);
     return model.toDomain();
