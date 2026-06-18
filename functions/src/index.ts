@@ -219,3 +219,5 @@ export const updateAlgorithmConfigCallable = onCall(async (request) => {
   logger.info("Algorithm config updated", { updatedBy: request.auth!.uid });
   return { config: updated };
 });
+
+export { updateUserReputationOnValidation } from "./reputationManager";

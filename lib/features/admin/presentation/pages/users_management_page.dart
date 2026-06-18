@@ -420,6 +420,23 @@ class _UserHeader extends StatelessWidget {
                 style: Theme.of(context).textTheme.bodySmall,
                 overflow: TextOverflow.ellipsis,
               ),
+              if (user.reputationScore < 40.0) ...[
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(Icons.warning_amber_rounded, size: 14, color: Colors.orange),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Reputación baja: ${user.reputationScore.toInt()} pts',
+                      style: const TextStyle(
+                        color: Colors.orange,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),
