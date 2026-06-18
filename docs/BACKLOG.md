@@ -11,6 +11,7 @@
 |---|---|
 | ✅ | Finalizado |
 | 🔄 | En curso |
+| 🔍 | En revisión |
 | ⬜ | Por hacer |
 
 ---
@@ -19,10 +20,11 @@
 
 | Estado | Cantidad |
 |---|---|
-| ✅ Finalizado | 16 |
-| 🔄 En curso | 3 |
-| ⬜ Por hacer | 37 |
-| **Total** | **56** |
+| ✅ Finalizado | 21 |
+| 🔄 En curso | 4 |
+| 🔍 En revisión | 3 |
+| ⬜ Por hacer | 12 |
+| **Total** | **40** |
 
 ---
 
@@ -33,8 +35,8 @@
 | KAN-33 | [T-INF-01] Configuración del repositorio Git | ✅ Finalizado | Eric Doyle | Highest |
 | KAN-35 | [T-INF-02] Configuración del proyecto Firebase | ✅ Finalizado | Elias Uribe | Highest |
 | KAN-36 | [T-INF-03] Setup del entorno de desarrollo Flutter | ✅ Finalizado | Elias Uribe | High |
-| KAN-37 | [T-INF-04] Definición del contrato de interfaz "Evento de Incidente" | 🔄 En curso | Elias Uribe | Medium |
-| KAN-40 | [T-RNF-01] Configuración de reglas de seguridad Firestore | 🔄 En curso | Eric Doyle | Medium |
+| KAN-37 | [T-INF-04] Definición del contrato de interfaz "Evento de Incidente" | ✅ Finalizado | Elias Uribe | Medium |
+| KAN-40 | [T-RNF-01] Configuración de reglas de seguridad Firestore | ✅ Finalizado | Eric Doyle | Medium |
 | KAN-39 | [T-INF-06] Actualización de documentación técnica | 🔄 En curso | Eric Doyle | Low |
 | KAN-38 | [T-INF-05] Integración final y smoke test end-to-end | ⬜ Por hacer | Eric Doyle | Medium |
 
@@ -44,13 +46,13 @@
 
 | Clave | Tarea | Estado | Responsable | Prioridad |
 |---|---|---|---|---|
-| KAN-42 | [T-AUTH-01] Registro de vecinos informantes | ⬜ Por hacer | tmiquelez | Medium |
+| KAN-42 | [T-AUTH-01] Registro de vecinos informantes | ✅ Finalizado | tmiquelez | Medium |
 | KAN-43 | [T-AUTH-02] Login y autenticación Firebase Auth | ✅ Finalizado | Jeremías Aguirres | Medium |
-| KAN-44 | [T-AUTH-03] Control de acceso por roles | ⬜ Por hacer | tmiquelez | Medium |
-| KAN-45 | [T-AUTH-04] Promoción de referente barrial | ⬜ Por hacer | Jeremías Aguirres | Medium |
-| KAN-46 | [T-AUTH-05] Sistema de reputación por usuario | ⬜ Por hacer | tmiquelez | Medium |
-| KAN-48 | [T-AUTH-06] Validación geográfica de reportes | ⬜ Por hacer | Jeremías Aguirres | Medium |
-| KAN-49 | [T-AUTH-07] Gestión de reportes falsos y bloqueos | ⬜ Por hacer | tmiquelez | Medium |
+| KAN-44 | [T-AUTH-03] Control de acceso por roles | ✅ Finalizado | tmiquelez | Medium |
+| KAN-45 | [T-AUTH-04] Promoción de referente barrial | ✅ Finalizado | Jeremías Aguirres | Medium |
+| KAN-46 | [T-AUTH-05] Sistema de reputación por usuario | 🔍 En revisión | tmiquelez | Medium |
+| KAN-48 | [T-AUTH-06] Validación geográfica de reportes | 🔄 En curso | Jeremías Aguirres | Medium |
+| KAN-49 | [T-AUTH-07] Gestión de reportes falsos y bloqueos | 🔍 En revisión | tmiquelez | Medium |
 | KAN-50 | [T-AUTH-08] Panel de administración — gestión de usuarios | ⬜ Por hacer | Jeremías Aguirres | Medium |
 | KAN-51 | [T-AUTH-09] Verificación de identidad del vecino (configurable) | ⬜ Por hacer | tmiquelez | Medium |
 
@@ -60,12 +62,12 @@
 
 | Clave | Tarea | Estado | Responsable | Prioridad |
 |---|---|---|---|---|
-| KAN-68 | [T-REP-01] UI principal y navegación | ⬜ Por hacer | Elias Uribe | Medium |
+| KAN-68 | [T-REP-01] UI principal y navegación | ✅ Finalizado | Elias Uribe | Medium |
 | KAN-41 | [T-REP-02] Botón de reporte rápido con captura GPS | ✅ Finalizado | Joaquín Hubner | Medium |
 | KAN-47 | [T-REP-03] Formulario de reporte detallado con foto | ✅ Finalizado | Elias Uribe | Medium |
 | KAN-52 | [T-REP-04] Reporte por voz con Speech-to-Text on-device | ⬜ Por hacer | Joaquín Hubner | Medium |
 | KAN-57 | [T-REP-05] Mapa de incidencias geolocalizado | ⬜ Por hacer | Elias Uribe | Medium |
-| KAN-60 | [T-REP-06] Visualización del estado de resolución | ⬜ Por hacer | Joaquín Hubner | Medium |
+| KAN-60 | [T-REP-06] Visualización del estado de resolución | ✅ Finalizado | Joaquín Hubner | Medium |
 
 ---
 
@@ -89,7 +91,7 @@
 
 | Clave | Tarea | Estado | Responsable | Prioridad |
 |---|---|---|---|---|
-| KAN-69 | [T-TEST-01] Setup de la planilla de suite de pruebas | ⬜ Por hacer | Elias Uribe | Medium |
+| KAN-69 | [T-TEST-01] Setup de la planilla de suite de pruebas | ✅ Finalizado | Elias Uribe | Medium |
 | KAN-61 | [T-TEST-02] Ejecución de pruebas — Módulo Auth y Roles | ⬜ Por hacer | Jeremías Aguirres | Medium |
 | KAN-62 | [T-TEST-03] Ejecución de pruebas — Módulo Reporte e Interfaz | ⬜ Por hacer | Joaquín Hubner | Medium |
 | KAN-34 | [T-TEST-04] Ejecución de pruebas — Motor NLP y Notificaciones | ⬜ Por hacer | Eric Doyle | Medium |
