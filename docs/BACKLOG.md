@@ -1,7 +1,7 @@
 # Backlog — App de Coordinación Comunitaria
 
 **Proyecto Jira:** [KAN — comunidad-team-nb4pgq0v.atlassian.net](https://comunidad-team-nb4pgq0v.atlassian.net)
-**Última sincronización:** 2026-05-17
+**Última sincronización:** 2026-06-18
 
 ---
 
