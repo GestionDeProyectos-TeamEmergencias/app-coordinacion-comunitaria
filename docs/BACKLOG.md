@@ -73,15 +73,15 @@
 
 | Clave | Tarea | Estado | Responsable | Prioridad |
 |---|---|---|---|---|
-| KAN-54 | [T-NLP-01] Configuración de Firebase Genkit y Gemini | 🔍 En revisión | Eric Doyle | Medium |
-| KAN-55 | [T-NLP-02] Cloud Function: normalización y enriquecimiento del evento | ⬜ Por hacer | Lucas Lovizzio | Medium |
-| KAN-56 | [T-NLP-03] Genkit Flow: extracción semántica de categoría e intención | ⬜ Por hacer | Eric Doyle | Medium |
-| KAN-58 | [T-NLP-04] Genkit Flow: clasificación de prioridad y score | ⬜ Por hacer | Lucas Lovizzio | Medium |
-| KAN-59 | [T-NLP-05] Cloud Function: detección de riesgo vital | ⬜ Por hacer | Eric Doyle | Medium |
-| KAN-64 | [T-NLP-06] Cloud Function: calibración del algoritmo | ⬜ Por hacer | Lucas Lovizzio | Medium |
-| KAN-65 | [T-NLP-07] Sistema de alertas push FCM/APNs | ⬜ Por hacer | Eric Doyle | Medium |
+| KAN-54 | [T-NLP-01] Configuración de Firebase Genkit y Gemini | ✅ Finalizado | Eric Doyle | Medium |
+| KAN-55 | [T-NLP-02] Cloud Function: normalización y enriquecimiento del evento | ✅ Finalizado | Lucas Lovizzio | Medium |
+| KAN-56 | [T-NLP-03] Genkit Flow: extracción semántica de categoría e intención | ✅ Finalizado | Eric Doyle | Medium |
+| KAN-58 | [T-NLP-04] Genkit Flow: clasificación de prioridad y score | ✅ Finalizado | Lucas Lovizzio | Medium |
+| KAN-59 | [T-NLP-05] Cloud Function: detección de riesgo vital | ✅ Finalizado | Eric Doyle | Medium |
+| KAN-64 | [T-NLP-06] Cloud Function: calibración del algoritmo | ✅ Finalizado | Lucas Lovizzio | Medium |
+| KAN-65 | [T-NLP-07] Sistema de alertas push FCM/APNs | 🔍 En revisión | Eric Doyle | Medium |
 | KAN-66 | [T-NLP-08] Persistencia y auditoría en Firestore | ⬜ Por hacer | Lucas Lovizzio | Medium |
-| KAN-67 | [T-NLP-09] Notificaciones masivas del administrador | ⬜ Por hacer | Eric Doyle | Medium |
+| KAN-67 | [T-NLP-09] Notificaciones masivas del administrador | 🔄 En curso | Eric Doyle | Medium |
 
 ---
 
