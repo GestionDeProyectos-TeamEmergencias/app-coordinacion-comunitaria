@@ -172,6 +172,35 @@ abstract final class AppStrings {
   static const blockedAccountTitle = 'Cuenta bloqueada';
   static const blockedAccountBody =
       'Tu cuenta fue bloqueada por superar el umbral de reportes falsos. Contactá al administrador para más información.';
+
+  // Verificación de identidad [T-AUTH-09]
+  static const identityVerification = 'Verificación de identidad';
+  static const identityVerificationSubtitle =
+      'Configurar la modalidad de verificación de domicilio (T-AUTH-09)';
+  static const identityModeManualLabel = 'Aprobación manual';
+  static const identityModeManualDescription =
+      'El administrador aprueba la cuenta sin documentación adicional.';
+  static const identityModeProofLabel = 'Comprobante de servicio';
+  static const identityModeProofDescription =
+      'El vecino debe adjuntar una foto de un comprobante de servicio antes de poder ser aprobado.';
+  static const identityConfigUpdated =
+      'Modalidad de verificación actualizada correctamente.';
+  static const identityProofRequiredTitle = 'Verificá tu domicilio';
+  static const identityProofRequiredBody =
+      'Para que tu cuenta sea aprobada, adjuntá una foto clara de un comprobante de servicio (luz, gas, agua) a tu nombre.';
+  static const identityProofUploadButton = 'Adjuntar comprobante';
+  static const identityProofUploaded =
+      'Comprobante enviado. El administrador lo revisará.';
+  static const identityProofPendingReview =
+      'Tu comprobante está siendo revisado.';
+  static const identityProofViewLabel = 'Comprobante adjuntado';
+  static const identityProofMissingLabel =
+      'Sin comprobante (modalidad activa: requerido)';
+  static const identityProofUploadError =
+      'No se pudo subir el comprobante. Reintentá.';
+  static const identityProofReupload = 'Subir otro comprobante';
+  static const identityProofSourceCamera = 'Tomar foto con la cámara';
+  static const identityProofSourceGallery = 'Elegir de la galería';
   static const lowReputationWarning = 'Reputación baja:';
 
   // Pantalla de gestión de alertas [T-AUTH-04 / RF-ROL-02]
