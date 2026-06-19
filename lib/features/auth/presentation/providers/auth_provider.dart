@@ -7,6 +7,7 @@ import '../../data/datasources/auth_remote_datasource.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/entities/app_user.dart';
 import '../../domain/usecases/approve_user_usecase.dart';
+import '../../domain/usecases/block_user_usecase.dart';
 import '../../domain/usecases/demote_to_vecino_usecase.dart';
 import '../../domain/usecases/get_active_users_usecase.dart';
 import '../../domain/usecases/get_pending_users_usecase.dart';
@@ -82,6 +83,10 @@ final demoteToVecinoUseCaseProvider = Provider<DemoteToVecinoUseCase>((ref) {
 
 final getActiveUsersUseCaseProvider = Provider<GetActiveUsersUseCase>((ref) {
   return GetActiveUsersUseCase(ref.watch(_authRepositoryProvider));
+});
+
+final blockUserUseCaseProvider = Provider<BlockUserUseCase>((ref) {
+  return BlockUserUseCase(ref.watch(_authRepositoryProvider));
 });
 
 // ── Estado de autenticación (stream) ──────────────────────────────────────────
@@ -190,6 +195,14 @@ class UserManagementNotifier extends StateNotifier<AsyncValue<void>> {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(
       () => _ref.read(demoteToVecinoUseCaseProvider)(uid),
+    );
+  }
+
+  /// Bloquea a un usuario. [T-AUTH-08]
+  Future<void> blockUser(String uid) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(
+      () => _ref.read(blockUserUseCaseProvider)(uid),
     );
   }
 }

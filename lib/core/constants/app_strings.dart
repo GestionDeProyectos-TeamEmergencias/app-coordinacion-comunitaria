@@ -158,6 +158,11 @@ abstract final class AppStrings {
   static const userAutoBlocked =
       'El usuario quedó bloqueado por superar el umbral de reportes falsos.';
   static const tabBlocked = 'Bloqueados';
+  static const blockUser = 'Bloquear';
+  static const blockConfirmTitle = '¿Bloquear esta cuenta?';
+  static const blockConfirmBody =
+      'El usuario no podrá iniciar sesión ni reportar incidentes hasta que sea desbloqueado.';
+  static const userBlocked = 'Usuario bloqueado correctamente.';
   static const unblockUser = 'Desbloquear';
   static const unblockConfirmTitle = '¿Desbloquear esta cuenta?';
   static const unblockConfirmBody =

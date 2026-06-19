@@ -34,8 +34,8 @@ class UserModel {
     final data = doc.data()!;
     return UserModel(
       userId: doc.id,
-      email: data['email'] as String,
-      displayName: data['displayName'] as String,
+      email: data['email'] as String? ?? '',
+      displayName: data['displayName'] as String? ?? '',
       role: data['role'] as String? ?? 'vecino_informante',
       status: data['status'] as String? ?? 'pending',
       reputationScore: (data['reputationScore'] as num?)?.toDouble() ?? 100.0,
