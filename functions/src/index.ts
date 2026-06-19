@@ -11,6 +11,7 @@ import { vitalRiskDetectionFlow } from "./vitalRiskDetection";
 import { semanticExtractionFlow, mapSemanticCategoryToNormalized, SemanticExtractionResult } from "./semanticExtraction";
 import { priorityCalculationFlow, PriorityResult } from "./priorityCalculation";
 import { findNearbyReferentes, sendIncidentAlertToReferentes } from "./pushNotifications";
+import { loadCoverageConfig, isWithinCoverage } from "./coverageValidation";
 import {
   AlgorithmConfigPatchSchema,
   getAlgorithmConfig,
@@ -42,6 +43,36 @@ export const normalizeIncident = onDocumentCreated(
         incidentId,
         data
       );
+
+      // T-AUTH-06: Validacion geografica de cobertura
+      const coverageConfig = await loadCoverageConfig(firestore);
+      if (!isWithinCoverage(
+        normalizedEvent.location.latitude,
+        normalizedEvent.location.longitude,
+        coverageConfig
+      )) {
+        logger.warn("Incident outside coverage area", {
+          incidentId,
+          latitude: normalizedEvent.location.latitude,
+          longitude: normalizedEvent.location.longitude,
+        });
+
+        await firestore.collection("incidents").doc(incidentId).update({
+          normalizedEvent,
+          normalizationWarnings: warnings,
+          status: "rechazado_fuera_de_cobertura",
+          coverageRejection: {
+            reason: "Ubicacion fuera del area de cobertura configurada",
+            incidentLocation: normalizedEvent.location,
+            coverageCenter: { latitude: coverageConfig.centerLat, longitude: coverageConfig.centerLng },
+            coverageRadiusMeters: coverageConfig.radiusMeters,
+            rejectedAt: new Date().toISOString(),
+          },
+          processedAt: FieldValue.serverTimestamp(),
+        });
+
+        return; // Cortar pipeline
+      }
 
       const now = new Date();
       const enrichment = await buildEnrichment(

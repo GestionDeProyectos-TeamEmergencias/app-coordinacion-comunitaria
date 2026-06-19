@@ -92,9 +92,21 @@ abstract final class AppStrings {
   static const navProfile = 'Perfil';
 
   // Admin
-  static const adminDashboard = 'Panel de administración';
+  static const adminDashboard = 'Panel de Administración';
   static const usersManagement = 'Gestión de usuarios';
   static const incidentModeration = 'Moderación de incidentes';
+  static const coverageConfig = 'Área de cobertura';
+  static const coverageConfigSubtitle = 'Configurar radio y centro (T-AUTH-06)';
+  static const coverageConfigUpdated =
+      'Configuración de cobertura actualizada correctamente.';
+
+  // Validaciones genéricas de formularios [T-AUTH-06]
+  static const fieldRequired = 'Campo requerido.';
+  static const invalidNumber = 'Ingresá un número válido.';
+  static const latitudeOutOfRange = 'La latitud debe estar entre -90 y 90.';
+  static const longitudeOutOfRange = 'La longitud debe estar entre -180 y 180.';
+  static const radiusMustBePositive = 'El radio debe ser mayor a 0.';
+  static const radiusTooLarge = 'El radio no puede superar 1 000 000 m.';
 
   // Registro pendiente / rechazado [T-AUTH-01]
   static const rejectedTitle = 'Solicitud rechazada';

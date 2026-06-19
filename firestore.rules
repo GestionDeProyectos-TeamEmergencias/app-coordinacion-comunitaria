@@ -92,6 +92,16 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ── Colección: config ──────────────────────────────────────────────────────
+    // Configuraciones globales (cobertura geográfica, calibración de IA).
+    // Lectura: cualquier usuario activo (el cliente Flutter lo necesita para validación).
+    // Escritura: solo admins.
+
+    match /config/{document=**} {
+      allow read: if isActive();
+      allow write: if isAdmin();
+    }
+
     // ── Denegación por defecto ─────────────────────────────────────────────────
     // Cualquier colección no listada arriba queda bloqueada.
     match /{document=**} {

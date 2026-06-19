@@ -19,8 +19,11 @@ class IncidentsRepositoryImpl implements IncidentsRepository {
 
   @override
   Stream<List<IncidentEvent>> watchActiveIncidents() => watchIncidents().map(
-        (all) =>
-            all.where((i) => i.status != IncidentStatus.solucionado).toList(),
+        (all) => all
+            .where((i) =>
+                i.status != IncidentStatus.solucionado &&
+                i.status != IncidentStatus.rechazadoFueraDeCobertura)
+            .toList(),
       );
 
   @override
