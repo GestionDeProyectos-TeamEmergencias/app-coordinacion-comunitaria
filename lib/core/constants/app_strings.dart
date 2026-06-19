@@ -96,7 +96,7 @@ abstract final class AppStrings {
   static const usersManagement = 'Gestión de usuarios';
   static const incidentModeration = 'Moderación de incidentes';
   static const coverageConfig = 'Área de cobertura';
-  static const coverageConfigSubtitle = 'Configurar radio y centro (T-AUTH-06)';
+  static const coverageConfigSubtitle = 'Configurar radio y centro del área.';
 
   // Configuración del algoritmo NLP [T-NLP-06]
   static const algorithmConfig = 'Configuración del algoritmo NLP';
@@ -182,7 +182,7 @@ abstract final class AppStrings {
   // Verificación de identidad [T-AUTH-09]
   static const identityVerification = 'Verificación de identidad';
   static const identityVerificationSubtitle =
-      'Configurar la modalidad de verificación de domicilio (T-AUTH-09)';
+      'Configurar la modalidad de verificación de domicilio.';
   static const identityModeManualLabel = 'Aprobación manual';
   static const identityModeManualDescription =
       'El administrador aprueba la cuenta sin documentación adicional.';
