@@ -25,9 +25,8 @@ class _IdentityVerificationConfigPageState
   @override
   Widget build(BuildContext context) {
     final configAsync = ref.watch(identityVerificationConfigProvider);
-    final isSaving = ref
-        .watch(updateIdentityVerificationConfigNotifierProvider)
-        .isLoading;
+    final isSaving =
+        ref.watch(updateIdentityVerificationConfigNotifierProvider).isLoading;
 
     return Scaffold(
       appBar: AppBar(title: const Text(AppStrings.identityVerification)),
@@ -126,9 +125,8 @@ class _ModeRadioTile extends StatelessWidget {
                 isSelected
                     ? Icons.radio_button_checked
                     : Icons.radio_button_unchecked,
-                color: isSelected
-                    ? Theme.of(context).colorScheme.primary
-                    : null,
+                color:
+                    isSelected ? Theme.of(context).colorScheme.primary : null,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -136,8 +134,7 @@ class _ModeRadioTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(title,
-                        style:
-                            const TextStyle(fontWeight: FontWeight.w600)),
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
                     const SizedBox(height: 4),
                     Text(subtitle,
                         style: Theme.of(context).textTheme.bodySmall),

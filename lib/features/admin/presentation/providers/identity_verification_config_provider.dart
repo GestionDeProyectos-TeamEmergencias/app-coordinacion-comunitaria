@@ -20,9 +20,7 @@ final identityVerificationConfigRepositoryProvider =
 
 final identityVerificationConfigProvider =
     StreamProvider<IdentityVerificationConfig>((ref) {
-  return ref
-      .watch(identityVerificationConfigRepositoryProvider)
-      .watchConfig();
+  return ref.watch(identityVerificationConfigRepositoryProvider).watchConfig();
 });
 
 class UpdateIdentityVerificationConfigNotifier

@@ -26,7 +26,8 @@ enum IdentityVerificationMode {
       };
 
   String get displayName => switch (this) {
-        IdentityVerificationMode.manual => 'Aprobación manual sin documentación',
+        IdentityVerificationMode.manual =>
+          'Aprobación manual sin documentación',
         IdentityVerificationMode.proofUpload =>
           'Comprobante de servicio (foto)',
       };
