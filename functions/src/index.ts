@@ -25,6 +25,10 @@ import {
   loadAlgorithmConfig,
   saveAlgorithmConfig,
 } from "./algorithmConfig";
+import {
+  appendAuditEntry,
+  persistProcessedIncident,
+} from "./incidentPersistence";
 
 import { moderateFalseReport, unblockUser } from "./moderation";
 
@@ -50,10 +54,16 @@ export const normalizeIncident = onDocumentCreated(
     const firestore = admin.firestore();
 
     try {
+      // T-NLP-08: Auditoría — registra que el documento llegó al pipeline.
+      await appendAuditEntry(firestore, incidentId, "received");
+
       const { normalizedEvent, warnings } = normalizeIncidentEvent(
         incidentId,
         data,
       );
+      await appendAuditEntry(firestore, incidentId, "normalized", {
+        warnings,
+      });
 
       // T-AUTH-07: Rechazar reportes de usuarios bloqueados o inactivos.
       const authorSnap = await firestore
@@ -73,8 +83,15 @@ export const normalizeIncident = onDocumentCreated(
           status: "rechazado_autor_inactivo",
           processedAt: FieldValue.serverTimestamp(),
         });
+        await appendAuditEntry(
+          firestore,
+          incidentId,
+          "author_inactive_rejected",
+          { userId: normalizedEvent.userId, authorStatus },
+        );
         return;
       }
+      await appendAuditEntry(firestore, incidentId, "author_validated");
 
       // T-AUTH-06: Validacion geografica de cobertura
       const coverageConfig = await loadCoverageConfig(firestore);
@@ -111,8 +128,13 @@ export const normalizeIncident = onDocumentCreated(
             processedAt: FieldValue.serverTimestamp(),
           });
 
+        await appendAuditEntry(firestore, incidentId, "coverage_rejected", {
+          latitude: normalizedEvent.location.latitude,
+          longitude: normalizedEvent.location.longitude,
+        });
         return; // Cortar pipeline
       }
+      await appendAuditEntry(firestore, incidentId, "coverage_validated");
 
       const now = new Date();
       const enrichment = await buildEnrichment(
@@ -120,6 +142,7 @@ export const normalizeIncident = onDocumentCreated(
         normalizedEvent.userId,
         now,
       );
+      await appendAuditEntry(firestore, incidentId, "enrichment_built");
 
       const duplicateCheck = await detectDuplicateIncidents(firestore, {
         incidentId,
@@ -128,6 +151,9 @@ export const normalizeIncident = onDocumentCreated(
         timestamp: new Date(normalizedEvent.timestamp),
         radiusMeters: getDuplicateRadiusMeters(),
         windowHours: getDuplicateWindowHours(),
+      });
+      await appendAuditEntry(firestore, incidentId, "duplicate_check_done", {
+        nearbyCount: duplicateCheck.nearbyCount,
       });
 
       // Carga la config calibrable desde Firestore (cacheada 60s). [T-NLP-06]
@@ -161,9 +187,16 @@ export const normalizeIncident = onDocumentCreated(
             },
             processedAt: FieldValue.serverTimestamp(),
           });
+        await appendAuditEntry(
+          firestore,
+          incidentId,
+          "vital_risk_interrupted",
+          { riskCategory: vitalRisk.riskCategory },
+        );
 
         return; // ❌ Interrumpir flujo — No generar alerta comunitaria
       }
+      await appendAuditEntry(firestore, incidentId, "vital_risk_evaluated");
 
       // Ejecución del flujo de extracción semántica (T-NLP-03)
       let semanticExtraction:
@@ -187,11 +220,19 @@ export const normalizeIncident = onDocumentCreated(
           detectedTerms: semanticResult.detectedTerms,
           extractedAt: new Date().toISOString(),
         };
+        await appendAuditEntry(firestore, incidentId, "semantic_extracted", {
+          category: semanticResult.category,
+        });
       } catch (semanticError) {
         logger.warn("Semantic extraction failed, continuing without it", {
           incidentId,
           error: semanticError,
         });
+        await appendAuditEntry(
+          firestore,
+          incidentId,
+          "semantic_extraction_failed",
+        );
       }
 
       // Ejecución del cálculo de prioridad (T-NLP-04)
@@ -211,31 +252,44 @@ export const normalizeIncident = onDocumentCreated(
           ...priorityResult,
           calculatedAt: new Date().toISOString(),
         };
+        await appendAuditEntry(firestore, incidentId, "priority_calculated", {
+          priority: priorityResult.priority,
+          priorityScore: priorityResult.priorityScore,
+        });
       } catch (priorityError) {
         logger.warn("Priority calculation failed", {
           incidentId,
           error: priorityError,
         });
+        await appendAuditEntry(
+          firestore,
+          incidentId,
+          "priority_calculation_failed",
+        );
       }
 
-      await firestore
-        .collection("incidents")
-        .doc(incidentId)
-        .update({
-          normalizedEvent,
-          normalizationWarnings: warnings,
-          enrichment,
-          duplicateCheck,
-          ...(semanticExtraction ? { semanticExtraction } : {}),
-          ...(priorityCalculation
-            ? {
-                priority: priorityCalculation.priority,
-                priorityScore: priorityCalculation.priorityScore,
-                priorityCalculation,
-              }
-            : {}),
-          normalizedAt: FieldValue.serverTimestamp(),
+      // T-NLP-08: Persistencia centralizada (transacción atómica) que garantiza
+      // el schema completo y `status: "recibido"` en el flujo exitoso. Devuelve
+      // los issues validados in-memory sin hacer un GET adicional.
+      const persistResult = await persistProcessedIncident({
+        firestore,
+        incidentId,
+        normalizedEvent,
+        warnings,
+        enrichment,
+        duplicateCheck,
+        semanticExtraction,
+        priorityCalculation,
+      });
+      await appendAuditEntry(firestore, incidentId, "persisted", {
+        statusSet: persistResult.statusSet,
+      });
+      if (persistResult.issues.length > 0) {
+        logger.warn("Incident persisted with missing required fields", {
+          incidentId,
+          issues: persistResult.issues,
         });
+      }
 
       // T-NLP-07: Envío de alertas push a referentes cercanos si se calculó la prioridad
       if (priorityCalculation) {
@@ -260,6 +314,9 @@ export const normalizeIncident = onDocumentCreated(
             normalizedEvent.location.longitude,
             referentes,
           );
+          await appendAuditEntry(firestore, incidentId, "alerts_dispatched", {
+            referentes: referentes.length,
+          });
         }
       }
     } catch (error) {
@@ -273,6 +330,9 @@ export const normalizeIncident = onDocumentCreated(
             at: FieldValue.serverTimestamp(),
           },
         });
+      await appendAuditEntry(firestore, incidentId, "pipeline_failed", {
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
     }
   },
 );
