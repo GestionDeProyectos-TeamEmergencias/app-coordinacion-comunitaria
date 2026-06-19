@@ -399,7 +399,8 @@ class _ActiveUserCard extends ConsumerWidget {
                     label: const Text(AppStrings.blockUser),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Theme.of(context).colorScheme.error,
-                      side: BorderSide(color: Theme.of(context).colorScheme.error),
+                      side: BorderSide(
+                          color: Theme.of(context).colorScheme.error),
                     ),
                     onPressed: isLoading
                         ? null

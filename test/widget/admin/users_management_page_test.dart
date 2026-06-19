@@ -98,7 +98,8 @@ void main() {
       expect(find.text(AppStrings.promoteToReferent), findsNothing);
     });
 
-    testWidgets('muestra acción Bloquear en card de vecino y referente', (tester) async {
+    testWidgets('muestra acción Bloquear en card de vecino y referente',
+        (tester) async {
       await tester.pumpWidget(_wrap(active: [
         _user(id: 'v1', name: 'Vecino Uno', role: UserRole.vecinoInformante),
         _user(id: 'r1', name: 'Referente Uno', role: UserRole.referenteBarrial),
