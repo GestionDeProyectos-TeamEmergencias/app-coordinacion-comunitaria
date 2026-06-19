@@ -106,8 +106,8 @@ class _MapPageState extends ConsumerState<MapPage> {
             coverageAsync.valueOrNull!.centerLng,
           )
         : CoverageArea.center;
-    final radius = coverageAsync.valueOrNull?.radiusMeters ??
-        CoverageArea.radiusMeters;
+    final radius =
+        coverageAsync.valueOrNull?.radiusMeters ?? CoverageArea.radiusMeters;
 
     final initialPos = CameraPosition(
       target: center,

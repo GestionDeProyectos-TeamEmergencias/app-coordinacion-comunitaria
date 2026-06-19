@@ -6,12 +6,15 @@ import '../../data/repositories/coverage_config_repository_impl.dart';
 import '../../domain/entities/coverage_config.dart';
 import '../../domain/repositories/coverage_config_repository.dart';
 
-final _coverageConfigDataSourceProvider = Provider<CoverageConfigRemoteDataSource>((ref) {
+final _coverageConfigDataSourceProvider =
+    Provider<CoverageConfigRemoteDataSource>((ref) {
   return CoverageConfigRemoteDataSource(FirebaseFirestore.instance);
 });
 
-final coverageConfigRepositoryProvider = Provider<CoverageConfigRepository>((ref) {
-  return CoverageConfigRepositoryImpl(ref.watch(_coverageConfigDataSourceProvider));
+final coverageConfigRepositoryProvider =
+    Provider<CoverageConfigRepository>((ref) {
+  return CoverageConfigRepositoryImpl(
+      ref.watch(_coverageConfigDataSourceProvider));
 });
 
 final coverageConfigProvider = StreamProvider<CoverageConfig>((ref) {
@@ -26,7 +29,9 @@ class UpdateCoverageNotifier extends StateNotifier<AsyncValue<void>> {
   Future<void> updateConfig(CoverageConfig config) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(
-      () => _ref.read(coverageConfigRepositoryProvider).updateCoverageConfig(config),
+      () => _ref
+          .read(coverageConfigRepositoryProvider)
+          .updateCoverageConfig(config),
     );
   }
 }

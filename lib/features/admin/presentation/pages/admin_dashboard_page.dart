@@ -42,7 +42,7 @@ class AdminDashboardPage extends ConsumerWidget {
             icon: Icons.map,
             title: AppStrings.coverageConfig,
             subtitle: AppStrings.coverageConfigSubtitle,
-            onTap: () => context.go('${AppRoutes.admin}/coverage'),
+            onTap: () => context.go(AppRoutes.adminCoverage),
           ),
           _DashboardCard(
             icon: Icons.notifications_active,

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/extensions/context_extensions.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_loading.dart';
 import '../../../admin/domain/entities/coverage_config.dart';
@@ -50,7 +51,7 @@ class _CoverageConfigPageState extends ConsumerState<CoverageConfigPage> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     final lat = double.parse(_latCtrl.text);
     final lng = double.parse(_lngCtrl.text);
     final radius = double.parse(_radiusCtrl.text);
@@ -61,19 +62,43 @@ class _CoverageConfigPageState extends ConsumerState<CoverageConfigPage> {
       radiusMeters: radius,
     );
 
-    await ref.read(updateCoverageNotifierProvider.notifier).updateConfig(config);
-    
+    await ref
+        .read(updateCoverageNotifierProvider.notifier)
+        .updateConfig(config);
+
     if (!mounted) return;
     final error = ref.read(updateCoverageNotifierProvider).error;
     if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $error')),
-      );
+      // Usa el mensaje user-friendly de AppException si está disponible.
+      context.showSnackBar(error.toString(), isError: true);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Configuración actualizada exitosamente')),
-      );
+      context.showSnackBar(AppStrings.coverageConfigUpdated);
     }
+  }
+
+  String? _validateLat(String? v) {
+    if (v == null || v.trim().isEmpty) return AppStrings.fieldRequired;
+    final n = double.tryParse(v);
+    if (n == null) return AppStrings.invalidNumber;
+    if (n < -90 || n > 90) return AppStrings.latitudeOutOfRange;
+    return null;
+  }
+
+  String? _validateLng(String? v) {
+    if (v == null || v.trim().isEmpty) return AppStrings.fieldRequired;
+    final n = double.tryParse(v);
+    if (n == null) return AppStrings.invalidNumber;
+    if (n < -180 || n > 180) return AppStrings.longitudeOutOfRange;
+    return null;
+  }
+
+  String? _validateRadius(String? v) {
+    if (v == null || v.trim().isEmpty) return AppStrings.fieldRequired;
+    final n = double.tryParse(v);
+    if (n == null) return AppStrings.invalidNumber;
+    if (n <= 0) return AppStrings.radiusMustBePositive;
+    if (n > 1000000) return AppStrings.radiusTooLarge;
+    return null;
   }
 
   @override
@@ -113,20 +138,24 @@ class _CoverageConfigPageState extends ConsumerState<CoverageConfigPage> {
                       Expanded(
                         child: TextFormField(
                           controller: _latCtrl,
-                          decoration: const InputDecoration(labelText: 'Latitud'),
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                          decoration:
+                              const InputDecoration(labelText: 'Latitud'),
+                          keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true, signed: true),
                           onChanged: (_) => _updateMapFromFields(),
-                          validator: (v) => (v == null || double.tryParse(v) == null) ? 'Requerido' : null,
+                          validator: _validateLat,
                         ),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: TextFormField(
                           controller: _lngCtrl,
-                          decoration: const InputDecoration(labelText: 'Longitud'),
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                          decoration:
+                              const InputDecoration(labelText: 'Longitud'),
+                          keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true, signed: true),
                           onChanged: (_) => _updateMapFromFields(),
-                          validator: (v) => (v == null || double.tryParse(v) == null) ? 'Requerido' : null,
+                          validator: _validateLng,
                         ),
                       ),
                     ],
@@ -134,10 +163,12 @@ class _CoverageConfigPageState extends ConsumerState<CoverageConfigPage> {
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _radiusCtrl,
-                    decoration: const InputDecoration(labelText: 'Radio (metros)'),
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration:
+                        const InputDecoration(labelText: 'Radio (metros)'),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
                     onChanged: (_) => _updateMapFromFields(),
-                    validator: (v) => (v == null || double.tryParse(v) == null) ? 'Requerido' : null,
+                    validator: _validateRadius,
                   ),
                   const SizedBox(height: 16),
                   if (_currentCenter != null && _currentRadius != null)
@@ -156,8 +187,12 @@ class _CoverageConfigPageState extends ConsumerState<CoverageConfigPage> {
                               circleId: const CircleId('coverage'),
                               center: _currentCenter!,
                               radius: _currentRadius!,
-                              fillColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-                              strokeColor: Theme.of(context).colorScheme.primary,
+                              fillColor: Theme.of(context)
+                                  .colorScheme
+                                  .primary
+                                  .withValues(alpha: 0.1),
+                              strokeColor:
+                                  Theme.of(context).colorScheme.primary,
                               strokeWidth: 2,
                             ),
                           },
