@@ -11,13 +11,20 @@ import '../providers/incidents_provider.dart';
 
 // RF-REP-01: botón de reporte rápido. Captura GPS + usuario + timestamp.
 // Tiempo objetivo: ≤ 3 segundos (RNF-REN-01 / T-TEST-03).
-class QuickReportButton extends ConsumerWidget {
+class QuickReportButton extends ConsumerStatefulWidget {
   const QuickReportButton({super.key});
 
-  Future<Position?> _getLocation(BuildContext context) async {
+  @override
+  ConsumerState<QuickReportButton> createState() => _QuickReportButtonState();
+}
+
+class _QuickReportButtonState extends ConsumerState<QuickReportButton> {
+  bool _isSubmitting = false;
+
+  Future<Position?> _getLocation() async {
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      if (context.mounted) {
+      if (mounted) {
         context.showSnackBar(AppStrings.locationServiceDisabled, isError: true);
       }
       return null;
@@ -26,7 +33,7 @@ class QuickReportButton extends ConsumerWidget {
     var permission = await Geolocator.checkPermission();
 
     if (permission == LocationPermission.deniedForever) {
-      if (context.mounted) {
+      if (mounted) {
         context.showSnackBar(AppStrings.locationPermissionPermanentlyDenied,
             isError: true);
         await Geolocator.openAppSettings();
@@ -38,7 +45,7 @@ class QuickReportButton extends ConsumerWidget {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
-        if (context.mounted) {
+        if (mounted) {
           context.showSnackBar(AppStrings.locationPermissionRequired,
               isError: true);
         }
@@ -55,49 +62,65 @@ class QuickReportButton extends ConsumerWidget {
         ),
       );
     } on TimeoutException catch (_) {
-      if (context.mounted) {
+      if (mounted) {
         context.showSnackBar(AppStrings.errorLocationTimeout, isError: true);
       }
       return null;
     } catch (_) {
-      if (context.mounted) {
+      if (mounted) {
         context.showSnackBar(AppStrings.errorLocationUnknown, isError: true);
       }
       return null;
     }
   }
 
+  Future<void> _onPressed(String userId) async {
+    setState(() => _isSubmitting = true);
+    // Feedback inmediato persistente durante todo el flujo.
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text(AppStrings.sendingReport),
+        duration: Duration(minutes: 1),
+      ),
+    );
+    try {
+      final position = await _getLocation();
+      if (position == null || !mounted) return;
+
+      await ref.read(reportNotifierProvider.notifier).submitQuick(
+            userId: userId,
+            latitude: position.latitude,
+            longitude: position.longitude,
+          );
+
+      if (!mounted) return;
+      final error = ref.read(reportNotifierProvider).error;
+      if (error != null) {
+        context.showSnackBar(error.toString(), isError: true);
+      } else {
+        context.showSnackBar(AppStrings.reportSentSuccess);
+      }
+    } finally {
+      messenger.hideCurrentSnackBar();
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isLoading = ref.watch(reportNotifierProvider).isLoading;
+  Widget build(BuildContext context) {
+    final notifierIsLoading = ref.watch(reportNotifierProvider).isLoading;
     final user = ref.watch(authStateProvider).valueOrNull;
+    final isBusy = _isSubmitting || notifierIsLoading;
 
     return FilledButton.icon(
       style: FilledButton.styleFrom(
         backgroundColor: Theme.of(context).colorScheme.error,
         minimumSize: const Size.fromHeight(56),
       ),
-      onPressed: (isLoading || user == null)
-          ? null
-          : () async {
-              final position = await _getLocation(context);
-              if (position == null || !context.mounted) return;
-
-              await ref.read(reportNotifierProvider.notifier).submitQuick(
-                    userId: user.userId,
-                    latitude: position.latitude,
-                    longitude: position.longitude,
-                  );
-
-              if (!context.mounted) return;
-              final error = ref.read(reportNotifierProvider).error;
-              if (error != null) {
-                context.showSnackBar(error.toString(), isError: true);
-              } else {
-                context.showSnackBar(AppStrings.reportSentSuccess);
-              }
-            },
-      icon: isLoading
+      onPressed:
+          (isBusy || user == null) ? null : () => _onPressed(user.userId),
+      icon: isBusy
           ? const SizedBox.square(
               dimension: 20,
               child: CircularProgressIndicator(
@@ -106,9 +129,9 @@ class QuickReportButton extends ConsumerWidget {
               ),
             )
           : const Icon(Icons.warning_amber_rounded),
-      label: const Text(
-        AppStrings.quickReport,
-        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+      label: Text(
+        isBusy ? AppStrings.sendingReport : AppStrings.quickReport,
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
       ),
     );
   }

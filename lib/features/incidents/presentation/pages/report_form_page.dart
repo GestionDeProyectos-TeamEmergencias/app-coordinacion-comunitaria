@@ -29,6 +29,7 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
   IncidentCategory? _category;
   File? _photo;
   bool _useVoice = false;
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
@@ -88,40 +89,55 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
   }
 
   Future<void> _submit() async {
+    if (_isSubmitting) return;
     if (!_formKey.currentState!.validate()) return;
     if (_category == null) {
       context.showSnackBar(AppStrings.selectCategoryError, isError: true);
       return;
     }
 
-    final position = await _getPosition();
-    if (position == null || !mounted) return;
+    setState(() => _isSubmitting = true);
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text(AppStrings.sendingReport),
+        duration: Duration(minutes: 1),
+      ),
+    );
+    try {
+      final position = await _getPosition();
+      if (position == null || !mounted) return;
 
-    final user = ref.read(authStateProvider).valueOrNull;
-    if (user == null || !mounted) return;
+      final user = ref.read(authStateProvider).valueOrNull;
+      if (user == null || !mounted) return;
 
-    await ref.read(reportNotifierProvider.notifier).submitForm(
-          userId: user.userId,
-          latitude: position.latitude,
-          longitude: position.longitude,
-          description: _descCtrl.text.trim(),
-          category: _category!,
-          photoFile: _photo,
-        );
+      await ref.read(reportNotifierProvider.notifier).submitForm(
+            userId: user.userId,
+            latitude: position.latitude,
+            longitude: position.longitude,
+            description: _descCtrl.text.trim(),
+            category: _category!,
+            photoFile: _photo,
+          );
 
-    if (!mounted) return;
-    final error = ref.read(reportNotifierProvider).error;
-    if (error != null) {
-      context.showSnackBar(error.toString(), isError: true);
-    } else {
-      context.showSnackBar(AppStrings.reportSentSuccess);
-      context.go(AppRoutes.home);
+      if (!mounted) return;
+      final error = ref.read(reportNotifierProvider).error;
+      if (error != null) {
+        context.showSnackBar(error.toString(), isError: true);
+      } else {
+        context.showSnackBar(AppStrings.reportSentSuccess);
+        context.go(AppRoutes.home);
+      }
+    } finally {
+      messenger.hideCurrentSnackBar();
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isLoading = ref.watch(reportNotifierProvider).isLoading;
+    final notifierIsLoading = ref.watch(reportNotifierProvider).isLoading;
+    final isBusy = _isSubmitting || notifierIsLoading;
 
     return Scaffold(
       appBar: AppBar(title: const Text(AppStrings.formReport)),
@@ -200,9 +216,10 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
               ],
               const SizedBox(height: 24),
               AppButton(
-                label: AppStrings.sendReport,
-                onPressed: _submit,
-                isLoading: isLoading,
+                label:
+                    isBusy ? AppStrings.sendingReport : AppStrings.sendReport,
+                onPressed: isBusy ? null : _submit,
+                isLoading: isBusy,
                 icon: Icons.send,
               ),
             ],

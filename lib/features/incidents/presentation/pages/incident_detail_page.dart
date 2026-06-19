@@ -1,10 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/constants/app_strings.dart';
+import '../../../../core/extensions/context_extensions.dart';
 import '../../../../core/widgets/app_loading.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../domain/entities/incident_event.dart';
 import '../providers/incidents_provider.dart';
 import '../widgets/incident_status_badge.dart';
+
+String _formatDate(DateTime dt) {
+  final d = dt.day.toString().padLeft(2, '0');
+  final m = dt.month.toString().padLeft(2, '0');
+  final h = dt.hour.toString().padLeft(2, '0');
+  final min = dt.minute.toString().padLeft(2, '0');
+  return '$d/$m/${dt.year} $h:$min';
+}
 
 // RF-ADM-02: visualización del estado de resolución con histórico. [T-REP-06]
 class IncidentDetailPage extends ConsumerWidget {
@@ -18,7 +29,7 @@ class IncidentDetailPage extends ConsumerWidget {
     final user = ref.watch(authStateProvider).valueOrNull;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Detalle del incidente')),
+      appBar: AppBar(title: const Text(AppStrings.incidentDetailTitle)),
       body: incidentAsync.when(
         loading: () => const AppLoading(),
         error: (e, _) => Center(child: Text('Error: $e')),
@@ -62,32 +73,156 @@ class IncidentDetailPage extends ConsumerWidget {
                   _ => incident.sourceType.value,
                 },
               ),
-              _InfoRow(
-                label: 'Fecha',
-                value:
-                    '${incident.timestamp.day}/${incident.timestamp.month}/${incident.timestamp.year} '
-                    '${incident.timestamp.hour.toString().padLeft(2, '0')}:${incident.timestamp.minute.toString().padLeft(2, '0')}',
-              ),
+              _InfoRow(label: 'Fecha', value: _formatDate(incident.timestamp)),
               _InfoRow(
                 label: 'Ubicación',
                 value:
                     '${incident.latitude.toStringAsFixed(5)}, ${incident.longitude.toStringAsFixed(5)}',
               ),
-              // Selector de estado solo para referentes y admin [T-REP-06]
               if (user?.role.canVerify == true) ...[
                 const Divider(height: 32),
-                Text(
-                  'Actualizar estado',
-                  style: Theme.of(context).textTheme.titleMedium,
+                _StatusUpdater(
+                  incidentId: incidentId,
+                  currentStatus: incident.status,
+                  userId: user!.userId,
                 ),
-                const SizedBox(height: 8),
-                // TODO(T-REP-06): implementar selector de estado con historial
-                const Text('(Próximamente: selector de estados con historial)'),
               ],
+              const Divider(height: 32),
+              _StatusHistoryTimeline(history: incident.statusHistory),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+class _StatusUpdater extends ConsumerStatefulWidget {
+  const _StatusUpdater({
+    required this.incidentId,
+    required this.currentStatus,
+    required this.userId,
+  });
+
+  final String incidentId;
+  final IncidentStatus currentStatus;
+  final String userId;
+
+  @override
+  ConsumerState<_StatusUpdater> createState() => _StatusUpdaterState();
+}
+
+class _StatusUpdaterState extends ConsumerState<_StatusUpdater> {
+  // Marca si esta instancia del widget disparó una actualización pendiente
+  // de feedback. Evita mostrar SnackBars heredados de operaciones previas.
+  bool _awaitingFeedback = false;
+
+  void _onChanged(IncidentStatus? newStatus) {
+    if (newStatus == null || newStatus == widget.currentStatus) return;
+    setState(() => _awaitingFeedback = true);
+    ref.read(updateStatusNotifierProvider.notifier).update(
+          eventId: widget.incidentId,
+          status: newStatus,
+          changedBy: widget.userId,
+        );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final updateState = ref.watch(updateStatusNotifierProvider);
+    final isLoading = updateState.isLoading;
+
+    ref.listen(updateStatusNotifierProvider, (_, next) {
+      if (!_awaitingFeedback || next.isLoading) return;
+      if (next.hasError) {
+        context.showSnackBar(next.error.toString(), isError: true);
+      } else {
+        context.showSnackBar(AppStrings.statusUpdatedSuccess);
+      }
+      setState(() => _awaitingFeedback = false);
+    });
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          AppStrings.updateStatusTitle,
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        // Key fuerza recrear el dropdown cuando otro usuario cambia el estado
+        // remotamente, así la selección refleja el valor del stream.
+        DropdownButtonFormField<IncidentStatus>(
+          key: ValueKey(widget.currentStatus),
+          initialValue: widget.currentStatus,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            isDense: true,
+          ),
+          items: IncidentStatus.values
+              .map((s) => DropdownMenuItem(
+                    value: s,
+                    child: Text(s.displayName),
+                  ))
+              .toList(),
+          onChanged: isLoading ? null : _onChanged,
+        ),
+        if (isLoading) ...[
+          const SizedBox(height: 8),
+          const LinearProgressIndicator(),
+        ],
+      ],
+    );
+  }
+}
+
+class _StatusHistoryTimeline extends StatelessWidget {
+  const _StatusHistoryTimeline({required this.history});
+
+  final List<IncidentStatusChange> history;
+
+  @override
+  Widget build(BuildContext context) {
+    final sorted = [...history]
+      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          AppStrings.statusHistoryTitle,
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        if (sorted.isEmpty)
+          const Text(AppStrings.statusHistoryEmpty)
+        else
+          ...sorted.map(
+            (change) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.circle, size: 10, color: Colors.grey),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        IncidentStatusBadge(status: change.status),
+                        const SizedBox(height: 4),
+                        Text(
+                          _formatDate(change.timestamp),
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

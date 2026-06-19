@@ -2,8 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/admin/presentation/pages/admin_dashboard_page.dart';
+import '../features/admin/presentation/pages/coverage_config_page.dart';
 import '../features/admin/presentation/pages/incident_moderation_page.dart';
 import '../features/admin/presentation/pages/users_management_page.dart';
+import '../features/alerts/presentation/pages/referent_alerts_page.dart';
 import '../features/auth/domain/entities/app_user.dart';
 import '../features/auth/presentation/pages/login_page.dart';
 import '../features/auth/presentation/pages/pending_approval_page.dart';
@@ -33,6 +35,8 @@ abstract final class AppRoutes {
   static const admin = '/admin';
   static const adminUsers = '/admin/users';
   static const adminIncidents = '/admin/incidents';
+  static const adminCoverage = '/admin/coverage';
+  static const alerts = '/alerts';
   static const unauthorized = '/unauthorized';
 
   static String incidentDetailPath(String id) => '/incident/$id';
@@ -82,7 +86,8 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // Rutas de moderación (Referente Barrial o Administrador)
       if (loc.startsWith(AppRoutes.incidentDetail.split(':')[0]) ||
-          loc == AppRoutes.adminIncidents) {
+          loc == AppRoutes.adminIncidents ||
+          loc == AppRoutes.alerts) {
         if (!user.role.canVerify) {
           return AppRoutes.unauthorized;
         }
@@ -158,6 +163,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.adminIncidents,
         builder: (_, __) => const IncidentModerationPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.adminCoverage,
+        builder: (_, __) => const CoverageConfigPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.alerts,
+        builder: (_, __) => const ReferentAlertsPage(),
       ),
       GoRoute(
         path: AppRoutes.unauthorized,

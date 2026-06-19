@@ -50,19 +50,32 @@ enum IncidentCategory {
         IncidentCategory.espaciosVerdes => 'Espacios verdes',
         IncidentCategory.seguridad => 'Seguridad',
       };
+
+  String get emoji => switch (this) {
+        IncidentCategory.electrico => '⚡',
+        IncidentCategory.vial => '🚧',
+        IncidentCategory.sanitario => '🚰',
+        IncidentCategory.espaciosVerdes => '🌳',
+        IncidentCategory.seguridad => '🚨',
+      };
 }
 
 enum IncidentStatus {
   recibido,
   programado,
   enReparacion,
-  solucionado;
+  solucionado,
+  // Marcado por el backend cuando el GPS del reporte queda fuera del área de
+  // cobertura configurada. [T-AUTH-06]
+  rechazadoFueraDeCobertura;
 
   static IncidentStatus fromString(String value) => switch (value) {
         'recibido' => IncidentStatus.recibido,
         'programado' => IncidentStatus.programado,
         'en_reparacion' => IncidentStatus.enReparacion,
         'solucionado' => IncidentStatus.solucionado,
+        'rechazado_fuera_de_cobertura' =>
+          IncidentStatus.rechazadoFueraDeCobertura,
         _ => IncidentStatus.recibido,
       };
 
@@ -71,6 +84,8 @@ enum IncidentStatus {
         IncidentStatus.programado => 'programado',
         IncidentStatus.enReparacion => 'en_reparacion',
         IncidentStatus.solucionado => 'solucionado',
+        IncidentStatus.rechazadoFueraDeCobertura =>
+          'rechazado_fuera_de_cobertura',
       };
 
   String get displayName => switch (this) {
@@ -78,6 +93,7 @@ enum IncidentStatus {
         IncidentStatus.programado => 'Programado',
         IncidentStatus.enReparacion => 'En reparación',
         IncidentStatus.solucionado => 'Solucionado',
+        IncidentStatus.rechazadoFueraDeCobertura => 'Fuera de cobertura',
       };
 }
 
@@ -103,6 +119,21 @@ enum IncidentPriority {
       };
 }
 
+class IncidentStatusChange extends Equatable {
+  const IncidentStatusChange({
+    required this.status,
+    required this.timestamp,
+    this.changedBy,
+  });
+
+  final IncidentStatus status;
+  final DateTime timestamp;
+  final String? changedBy;
+
+  @override
+  List<Object?> get props => [status, timestamp, changedBy];
+}
+
 class IncidentEvent extends Equatable {
   const IncidentEvent({
     this.eventId,
@@ -117,6 +148,7 @@ class IncidentEvent extends Equatable {
     this.status = IncidentStatus.recibido,
     this.priority,
     this.priorityScore,
+    this.statusHistory = const [],
   });
 
   final String? eventId;
@@ -131,6 +163,7 @@ class IncidentEvent extends Equatable {
   final IncidentStatus status;
   final IncidentPriority? priority;
   final double? priorityScore;
+  final List<IncidentStatusChange> statusHistory;
 
   IncidentEvent copyWith({
     String? eventId,
@@ -145,6 +178,7 @@ class IncidentEvent extends Equatable {
     IncidentStatus? status,
     IncidentPriority? priority,
     double? priorityScore,
+    List<IncidentStatusChange>? statusHistory,
   }) {
     return IncidentEvent(
       eventId: eventId ?? this.eventId,
@@ -159,6 +193,7 @@ class IncidentEvent extends Equatable {
       status: status ?? this.status,
       priority: priority ?? this.priority,
       priorityScore: priorityScore ?? this.priorityScore,
+      statusHistory: statusHistory ?? this.statusHistory,
     );
   }
 
@@ -176,5 +211,6 @@ class IncidentEvent extends Equatable {
         status,
         priority,
         priorityScore,
+        statusHistory,
       ];
 }

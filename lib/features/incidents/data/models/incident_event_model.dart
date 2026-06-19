@@ -17,6 +17,7 @@ class IncidentEventModel {
     required this.status,
     this.priority,
     this.priorityScore,
+    this.statusHistory = const [],
   });
 
   final String eventId;
@@ -31,6 +32,7 @@ class IncidentEventModel {
   final String status;
   final String? priority;
   final double? priorityScore;
+  final List<Map<String, dynamic>> statusHistory;
 
   factory IncidentEventModel.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> doc,
@@ -38,6 +40,9 @@ class IncidentEventModel {
     final data = doc.data()!;
     final ts = data['timestamp'];
     final datetime = ts is Timestamp ? ts.toDate() : DateTime.now();
+    final history = (data['statusHistory'] as List<dynamic>? ?? [])
+        .whereType<Map<String, dynamic>>()
+        .toList();
     return IncidentEventModel(
       eventId: doc.id,
       userId: data['userId'] as String,
@@ -51,6 +56,7 @@ class IncidentEventModel {
       status: data['status'] as String? ?? 'recibido',
       priority: data['priority'] as String?,
       priorityScore: (data['priorityScore'] as num?)?.toDouble(),
+      statusHistory: history,
     );
   }
 
@@ -83,6 +89,7 @@ class IncidentEventModel {
         priority:
             priority != null ? IncidentPriority.fromString(priority!) : null,
         priorityScore: priorityScore,
+        statusHistory: statusHistory.map(_statusChangeFromMap).toList(),
       );
 
   factory IncidentEventModel.fromDomain(IncidentEvent event) =>
@@ -101,3 +108,18 @@ class IncidentEventModel {
         priorityScore: event.priorityScore,
       );
 }
+
+IncidentStatusChange _statusChangeFromMap(Map<String, dynamic> m) {
+  final ts = m['timestamp'];
+  return IncidentStatusChange(
+    status: IncidentStatus.fromString(m['status'] as String? ?? 'recibido'),
+    timestamp: ts is Timestamp ? ts.toDate() : DateTime.now(),
+    changedBy: m['changedBy'] as String?,
+  );
+}
+
+Map<String, dynamic> statusChangeToMap(IncidentStatusChange change) => {
+      'status': change.status.firestoreValue,
+      'timestamp': Timestamp.fromDate(change.timestamp),
+      if (change.changedBy != null) 'changedBy': change.changedBy,
+    };
