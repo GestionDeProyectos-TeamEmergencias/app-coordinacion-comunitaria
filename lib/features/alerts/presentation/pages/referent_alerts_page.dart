@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router.dart';
-import '../../../../core/config/coverage_area.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/widgets/app_loading.dart';
+import '../../../admin/presentation/providers/coverage_config_provider.dart';
 import '../../../incidents/domain/entities/incident_event.dart';
 import '../../../incidents/presentation/providers/incidents_provider.dart';
 import '../../../incidents/presentation/widgets/incident_status_badge.dart';
@@ -22,6 +21,7 @@ class ReferentAlertsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final incidentsAsync = ref.watch(activeIncidentsStreamProvider);
+    final coverageAsync = ref.watch(coverageConfigProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text(AppStrings.referentAlertsTitle)),
@@ -29,23 +29,17 @@ class ReferentAlertsPage extends ConsumerWidget {
         loading: () => const AppLoading(message: 'Cargando alertas...'),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (incidents) {
-          // Filtra incidentes urgentes/alta dentro del área de cobertura del
-          // referente. T-NLP-07 enviará el push con el mismo criterio.
-          bool isInCoverage(IncidentEvent i) {
-            final distance = Geolocator.distanceBetween(
-              CoverageArea.center.latitude,
-              CoverageArea.center.longitude,
-              i.latitude,
-              i.longitude,
-            );
-            return distance <= CoverageArea.radiusMeters;
-          }
+          // Usa la cobertura configurada por el admin (T-AUTH-06).
+          // Si todavía no se cargó, no filtra por zona — evita ocultar alertas
+          // mientras carga el stream de config.
+          final coverage = coverageAsync.valueOrNull;
 
           final alerts = incidents
               .where((i) =>
                   (i.priority == IncidentPriority.urgente ||
                       i.priority == IncidentPriority.alta) &&
-                  isInCoverage(i))
+                  (coverage == null ||
+                      coverage.isWithinCoverage(i.latitude, i.longitude)))
               .toList()
             ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
 

@@ -39,6 +39,18 @@ class AdminDashboardPage extends ConsumerWidget {
             onTap: () => context.go(AppRoutes.adminIncidents),
           ),
           _DashboardCard(
+            icon: Icons.map,
+            title: AppStrings.coverageConfig,
+            subtitle: AppStrings.coverageConfigSubtitle,
+            onTap: () => context.go(AppRoutes.adminCoverage),
+          ),
+          _DashboardCard(
+            icon: Icons.verified_user_outlined,
+            title: AppStrings.identityVerification,
+            subtitle: AppStrings.identityVerificationSubtitle,
+            onTap: () => context.go(AppRoutes.adminIdentityVerification),
+          ),
+          _DashboardCard(
             icon: Icons.notifications_active,
             title: 'Notificaciones masivas',
             subtitle: 'Enviar alertas a todos los vecinos (T-NLP-09)',
@@ -52,14 +64,9 @@ class AdminDashboardPage extends ConsumerWidget {
           ),
           _DashboardCard(
             icon: Icons.tune,
-            title: 'Configuración del algoritmo NLP',
-            subtitle: 'Calibrar pesos y palabras clave (T-NLP-06)',
-            onTap: () {
-              // TODO(T-NLP-06): implementar calibración del algoritmo
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Próximamente: calibración NLP')),
-              );
-            },
+            title: AppStrings.algorithmConfig,
+            subtitle: AppStrings.algorithmConfigSubtitle,
+            onTap: () => context.go(AppRoutes.adminAlgorithmConfig),
           ),
         ],
       ),

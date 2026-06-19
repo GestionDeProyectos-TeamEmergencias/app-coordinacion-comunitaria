@@ -5,6 +5,7 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../../core/extensions/context_extensions.dart';
 import '../../../../core/widgets/app_loading.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../auth/presentation/providers/moderation_provider.dart';
 import '../../domain/entities/incident_event.dart';
 import '../providers/incidents_provider.dart';
 import '../widgets/incident_status_badge.dart';
@@ -85,6 +86,12 @@ class IncidentDetailPage extends ConsumerWidget {
                   incidentId: incidentId,
                   currentStatus: incident.status,
                   userId: user!.userId,
+                ),
+                const SizedBox(height: 12),
+                _MarkAsFalseButton(
+                  incidentId: incidentId,
+                  reporterUserId: incident.userId,
+                  alreadyFalse: incident.status == IncidentStatus.falso,
                 ),
               ],
               const Divider(height: 32),
@@ -224,6 +231,84 @@ class _StatusHistoryTimeline extends StatelessWidget {
           ),
       ],
     );
+  }
+}
+
+class _MarkAsFalseButton extends ConsumerWidget {
+  const _MarkAsFalseButton({
+    required this.incidentId,
+    required this.reporterUserId,
+    required this.alreadyFalse,
+  });
+
+  final String incidentId;
+  final String reporterUserId;
+  final bool alreadyFalse;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(moderationNotifierProvider);
+    final isLoading = state.isLoading;
+
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        icon: const Icon(Icons.flag_outlined),
+        label: Text(alreadyFalse
+            ? AppStrings.reportAlreadyModerated
+            : AppStrings.markAsFalseReport),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Theme.of(context).colorScheme.error,
+          side: BorderSide(color: Theme.of(context).colorScheme.error),
+        ),
+        onPressed:
+            (isLoading || alreadyFalse) ? null : () => _confirm(context, ref),
+      ),
+    );
+  }
+
+  Future<void> _confirm(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text(AppStrings.markAsFalseConfirmTitle),
+        content: const Text(AppStrings.markAsFalseConfirmBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text(AppStrings.cancel),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(AppStrings.markAsFalseReport),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    await ref.read(moderationNotifierProvider.notifier).markAsFalse(
+          incidentId: incidentId,
+          userId: reporterUserId,
+        );
+
+    if (!context.mounted) return;
+    final state = ref.read(moderationNotifierProvider);
+    if (state.hasError) {
+      context.showSnackBar(state.error.toString(), isError: true);
+      return;
+    }
+    final result = ref.read(moderationNotifierProvider.notifier).lastResult;
+    if (result?.alreadyModerated == true) {
+      context.showSnackBar(AppStrings.reportAlreadyModerated);
+    } else if (result?.blocked == true) {
+      context.showSnackBar(AppStrings.userAutoBlocked);
+    } else {
+      context.showSnackBar(AppStrings.reportMarkedAsFalse);
+    }
   }
 }
 

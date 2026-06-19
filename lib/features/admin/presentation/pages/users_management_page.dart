@@ -6,6 +6,11 @@ import '../../../../core/extensions/context_extensions.dart';
 import '../../../../core/widgets/app_loading.dart';
 import '../../../auth/domain/entities/app_user.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../auth/presentation/providers/moderation_provider.dart';
+import '../../domain/entities/identity_verification_config.dart';
+import '../providers/identity_verification_config_provider.dart';
+
+enum ReputationFilter { all, low, good }
 
 /// Panel de gestión de usuarios pendientes y activos.
 /// [T-AUTH-01] aprobación de cuentas pendientes.
@@ -17,7 +22,7 @@ class UsersManagementPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: const Text(AppStrings.usersManagement),
@@ -25,6 +30,7 @@ class UsersManagementPage extends ConsumerWidget {
             tabs: [
               Tab(text: AppStrings.tabPending),
               Tab(text: AppStrings.tabActive),
+              Tab(text: AppStrings.tabBlocked),
             ],
           ),
         ),
@@ -32,6 +38,7 @@ class UsersManagementPage extends ConsumerWidget {
           children: [
             _PendingUsersTab(),
             _ActiveUsersTab(),
+            _BlockedUsersTab(),
           ],
         ),
       ),
@@ -82,15 +89,27 @@ class _ActiveUsersTab extends ConsumerStatefulWidget {
 
 class _ActiveUsersTabState extends ConsumerState<_ActiveUsersTab> {
   UserRole? _roleFilter;
+  ReputationFilter _reputationFilter = ReputationFilter.all;
 
   @override
   Widget build(BuildContext context) {
     final activeAsync = ref.watch(activeUsersProvider(_roleFilter));
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: Text(
+            'Filtrar por Rol:',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
@@ -114,10 +133,58 @@ class _ActiveUsersTabState extends ConsumerState<_ActiveUsersTab> {
                   onSelected: () =>
                       setState(() => _roleFilter = UserRole.referenteBarrial),
                 ),
+                const SizedBox(width: 8),
+                _RoleFilterChip(
+                  label: AppStrings.roleAdmin,
+                  selected: _roleFilter == UserRole.administrador,
+                  onSelected: () =>
+                      setState(() => _roleFilter = UserRole.administrador),
+                ),
               ],
             ),
           ),
         ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: Text(
+            'Filtrar por Reputación:',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                FilterChip(
+                  label: const Text('Cualquiera'),
+                  selected: _reputationFilter == ReputationFilter.all,
+                  onSelected: (_) =>
+                      setState(() => _reputationFilter = ReputationFilter.all),
+                ),
+                const SizedBox(width: 8),
+                FilterChip(
+                  label: const Text('Baja reputación (< 30)'),
+                  selected: _reputationFilter == ReputationFilter.low,
+                  onSelected: (_) =>
+                      setState(() => _reputationFilter = ReputationFilter.low),
+                ),
+                const SizedBox(width: 8),
+                FilterChip(
+                  label: const Text('Reputación Normal/Alta (≥ 30)'),
+                  selected: _reputationFilter == ReputationFilter.good,
+                  onSelected: (_) =>
+                      setState(() => _reputationFilter = ReputationFilter.good),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
         Expanded(
           child: activeAsync.when(
             loading: () => const AppLoading(message: 'Cargando usuarios…'),
@@ -127,17 +194,30 @@ class _ActiveUsersTabState extends ConsumerState<_ActiveUsersTab> {
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ),
-            data: (users) => users.isEmpty
-                ? const _EmptyState(
-                    icon: Icons.people_outline,
-                    message: AppStrings.noActiveUsers,
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: users.length,
-                    itemBuilder: (context, index) =>
-                        _ActiveUserCard(user: users[index]),
-                  ),
+            data: (users) {
+              final filteredUsers = users.where((user) {
+                switch (_reputationFilter) {
+                  case ReputationFilter.all:
+                    return true;
+                  case ReputationFilter.low:
+                    return user.reputationScore < 30.0;
+                  case ReputationFilter.good:
+                    return user.reputationScore >= 30.0;
+                }
+              }).toList();
+
+              return filteredUsers.isEmpty
+                  ? const _EmptyState(
+                      icon: Icons.people_outline,
+                      message: AppStrings.noActiveUsers,
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: filteredUsers.length,
+                      itemBuilder: (context, index) =>
+                          _ActiveUserCard(user: filteredUsers[index]),
+                    );
+            },
           ),
         ),
       ],
@@ -212,34 +292,65 @@ class _PendingUserCard extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _UserHeader(user: user, statusChip: _StatusChip.pending()),
+            if (user.identityProofUrl != null) ...[
+              const SizedBox(height: 12),
+              _IdentityProofPreview(url: user.identityProofUrl!),
+            ],
             const SizedBox(height: 12),
             const Divider(height: 1),
             const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                OutlinedButton.icon(
-                  icon: const Icon(Icons.close, size: 18),
-                  label: const Text(AppStrings.rejectUser),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Theme.of(context).colorScheme.error,
-                    side:
-                        BorderSide(color: Theme.of(context).colorScheme.error),
+            // [T-AUTH-09] Bloquea Aprobar si la modalidad exige comprobante y
+            // el usuario aún no lo adjuntó: garantiza que no haya aprobaciones
+            // por error sin haber verificado el domicilio.
+            Builder(builder: (context) {
+              final mode = ref
+                      .watch(identityVerificationConfigProvider)
+                      .valueOrNull
+                      ?.mode ??
+                  IdentityVerificationConfig.defaults.mode;
+              final requiresProof = mode.requiresProof;
+              final missingProof =
+                  requiresProof && user.identityProofUrl == null;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (missingProof) ...[
+                    Text(
+                      AppStrings.identityProofMissingLabel,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.close, size: 18),
+                        label: const Text(AppStrings.rejectUser),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Theme.of(context).colorScheme.error,
+                          side: BorderSide(
+                              color: Theme.of(context).colorScheme.error),
+                        ),
+                        onPressed: isLoading
+                            ? null
+                            : () => _confirmReject(context, ref, user.userId),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton.icon(
+                        icon: const Icon(Icons.check, size: 18),
+                        label: const Text(AppStrings.approveUser),
+                        onPressed: (isLoading || missingProof)
+                            ? null
+                            : () => _confirmApprove(context, ref, user.userId),
+                      ),
+                    ],
                   ),
-                  onPressed: isLoading
-                      ? null
-                      : () => _confirmReject(context, ref, user.userId),
-                ),
-                const SizedBox(width: 8),
-                FilledButton.icon(
-                  icon: const Icon(Icons.check, size: 18),
-                  label: const Text(AppStrings.approveUser),
-                  onPressed: isLoading
-                      ? null
-                      : () => _confirmApprove(context, ref, user.userId),
-                ),
-              ],
-            ),
+                ],
+              );
+            }),
           ],
         ),
       ),
@@ -316,6 +427,19 @@ class _ActiveUserCard extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.block, size: 18),
+                    label: const Text(AppStrings.blockUser),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.error,
+                      side: BorderSide(
+                          color: Theme.of(context).colorScheme.error),
+                    ),
+                    onPressed: isLoading
+                        ? null
+                        : () => _confirmBlock(context, ref, user.userId),
+                  ),
+                  const SizedBox(width: 8),
                   if (isReferent)
                     OutlinedButton.icon(
                       icon: const Icon(Icons.arrow_downward, size: 18),
@@ -380,6 +504,26 @@ class _ActiveUserCard extends ConsumerWidget {
       context.showSnackBar(error.toString(), isError: true);
     } else {
       context.showSnackBar(AppStrings.userDemoted);
+    }
+  }
+
+  Future<void> _confirmBlock(
+      BuildContext context, WidgetRef ref, String uid) async {
+    final confirmed = await _showConfirmDialog(
+      context: context,
+      title: AppStrings.blockConfirmTitle,
+      body: AppStrings.blockConfirmBody,
+      confirmLabel: AppStrings.blockUser,
+      confirmColor: Theme.of(context).colorScheme.error,
+    );
+    if (confirmed != true || !context.mounted) return;
+    await ref.read(userManagementNotifierProvider.notifier).blockUser(uid);
+    if (!context.mounted) return;
+    final error = ref.read(userManagementNotifierProvider).error;
+    if (error != null) {
+      context.showSnackBar(error.toString(), isError: true);
+    } else {
+      context.showSnackBar(AppStrings.userBlocked);
     }
   }
 }
@@ -496,6 +640,146 @@ class _StatusChip extends StatelessWidget {
       labelStyle: TextStyle(color: fg, fontSize: 11),
       padding: EdgeInsets.zero,
       visualDensity: VisualDensity.compact,
+    );
+  }
+}
+
+// ── Tab: Bloqueados (T-AUTH-07) ──────────────────────────────────────────────
+
+class _BlockedUsersTab extends ConsumerWidget {
+  const _BlockedUsersTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final blockedAsync = ref.watch(blockedUsersProvider);
+
+    return blockedAsync.when(
+      loading: () => const AppLoading(message: 'Cargando bloqueados…'),
+      error: (e, _) => Center(
+        child: Text(
+          e.toString(),
+          style: TextStyle(color: Theme.of(context).colorScheme.error),
+        ),
+      ),
+      data: (users) => users.isEmpty
+          ? const _EmptyState(
+              icon: Icons.lock_open_outlined,
+              message: AppStrings.noBlockedUsers,
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: users.length,
+              itemBuilder: (context, index) =>
+                  _BlockedUserCard(user: users[index]),
+            ),
+    );
+  }
+}
+
+class _BlockedUserCard extends ConsumerWidget {
+  const _BlockedUserCard({required this.user});
+
+  final AppUser user;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isLoading = ref.watch(moderationNotifierProvider).isLoading;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _UserHeader(
+              user: user,
+              statusChip: _StatusChip.role(user.role),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Reportes falsos: ${user.falseReportsCount}',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+            ),
+            const SizedBox(height: 12),
+            const Divider(height: 1),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                FilledButton.icon(
+                  icon: const Icon(Icons.lock_open, size: 18),
+                  label: const Text(AppStrings.unblockUser),
+                  onPressed: isLoading
+                      ? null
+                      : () => _confirmUnblock(context, ref, user.userId),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmUnblock(
+      BuildContext context, WidgetRef ref, String uid) async {
+    final confirmed = await _showConfirmDialog(
+      context: context,
+      title: AppStrings.unblockConfirmTitle,
+      body: AppStrings.unblockConfirmBody,
+      confirmLabel: AppStrings.unblockUser,
+      confirmColor: Theme.of(context).colorScheme.primary,
+    );
+    if (confirmed != true || !context.mounted) return;
+    await ref.read(moderationNotifierProvider.notifier).unblock(userId: uid);
+    if (!context.mounted) return;
+    final state = ref.read(moderationNotifierProvider);
+    if (state.hasError) {
+      context.showSnackBar(state.error.toString(), isError: true);
+    } else {
+      context.showSnackBar(AppStrings.userUnblocked);
+    }
+  }
+}
+
+// ── Vista previa del comprobante de identidad [T-AUTH-09] ────────────────────
+
+class _IdentityProofPreview extends StatelessWidget {
+  const _IdentityProofPreview({required this.url});
+
+  final String url;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          AppStrings.identityProofViewLabel,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.network(
+            url,
+            height: 160,
+            width: double.infinity,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => Container(
+              height: 160,
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              alignment: Alignment.center,
+              child: const Icon(Icons.broken_image_outlined),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

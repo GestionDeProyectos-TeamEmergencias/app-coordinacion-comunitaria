@@ -32,4 +32,12 @@ abstract interface class AuthRepository {
 
   /// Degrada un referente barrial a vecino informante.
   Future<void> demoteToVecino(String uid);
+
+  // ── Gestión de bloqueos (T-AUTH-07) ───────────────────────────────────────
+
+  /// Stream en tiempo real de usuarios bloqueados.
+  Stream<List<AppUser>> get blockedUsersStream;
+
+  /// Bloquea manualmente a un usuario: status → "blocked".
+  Future<void> blockUser(String uid);
 }

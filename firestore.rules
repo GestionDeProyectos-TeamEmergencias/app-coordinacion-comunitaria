@@ -8,20 +8,32 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Verifica que exista el documento del caller antes de hacer get(): evita
+    // que las reglas tiren "permission-denied" cuando el doc todavía no se
+    // creó (típico durante el primer flow de registro o si hay corrupción).
+    function callerDocExists() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
     function callerData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
     function isActive() {
-      return isAuthenticated() && callerData().status == 'active';
+      return callerDocExists() && callerData().status == 'active';
     }
 
     function isAdmin() {
-      return isActive() && callerData().role == 'administrador';
+      return callerDocExists() &&
+        callerData().status == 'active' &&
+        callerData().role == 'administrador';
     }
 
     function isReferente() {
-      return isActive() && callerData().role == 'referente_barrial';
+      return callerDocExists() &&
+        callerData().status == 'active' &&
+        callerData().role == 'referente_barrial';
     }
 
     function isAdminOrReferente() {
@@ -38,20 +50,19 @@ service cloud.firestore {
         (request.auth.uid == userId || isAdmin());
 
       // Creación: el usuario se crea a sí mismo durante el registro. [T-AUTH-01]
-      // Se fuerza role=vecino_informante, status=pending y reputationScore=100
-      // para impedir que un cliente malicioso se auto-asigne privilegios.
       allow create: if isAuthenticated() &&
         request.auth.uid == userId &&
         request.resource.data.role == 'vecino_informante' &&
         request.resource.data.status == 'pending' &&
-        request.resource.data.reputationScore == 100.0;
+        request.resource.data.reputationScore == 100.0 &&
+        request.resource.data.falseReportsCount == 0; // Guardamos que empiece en 0
 
       // Actualización: el usuario puede editar su propio perfil
-      // pero NO puede cambiar su rol ni su estado (eso solo lo hace el admin).
+      // pero NO puede cambiar su rol, estado, reputación ni contador de falsos.
       allow update: if isAuthenticated() && (
         (request.auth.uid == userId &&
           !request.resource.data.diff(resource.data)
-            .affectedKeys().hasAny(['role', 'status', 'reputationScore'])) ||
+            .affectedKeys().hasAny(['role', 'status', 'reputationScore', 'falseReportsCount'])) ||
         isAdmin()
       );
 
@@ -90,6 +101,16 @@ service cloud.firestore {
 
       // Eliminación: solo admins.
       allow delete: if isAdmin();
+    }
+
+    // ── Colección: config ──────────────────────────────────────────────────────
+    // Configuraciones globales (cobertura geográfica, calibración de IA).
+    // Lectura: cualquier usuario activo (el cliente Flutter lo necesita para validación).
+    // Escritura: solo admins.
+
+    match /config/{document=**} {
+      allow read: if isActive();
+      allow write: if isAdmin();
     }
 
     // ── Denegación por defecto ─────────────────────────────────────────────────

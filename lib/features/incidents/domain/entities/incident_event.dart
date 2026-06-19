@@ -64,13 +64,21 @@ enum IncidentStatus {
   recibido,
   programado,
   enReparacion,
-  solucionado;
+  solucionado,
+  // Marcado por el backend cuando el GPS del reporte queda fuera del área de
+  // cobertura configurada. [T-AUTH-06]
+  rechazadoFueraDeCobertura,
+  // Marcado por un admin/referente como reporte falso o malintencionado. [T-AUTH-07]
+  falso;
 
   static IncidentStatus fromString(String value) => switch (value) {
         'recibido' => IncidentStatus.recibido,
         'programado' => IncidentStatus.programado,
         'en_reparacion' => IncidentStatus.enReparacion,
         'solucionado' => IncidentStatus.solucionado,
+        'rechazado_fuera_de_cobertura' =>
+          IncidentStatus.rechazadoFueraDeCobertura,
+        'falso' => IncidentStatus.falso,
         _ => IncidentStatus.recibido,
       };
 
@@ -79,6 +87,9 @@ enum IncidentStatus {
         IncidentStatus.programado => 'programado',
         IncidentStatus.enReparacion => 'en_reparacion',
         IncidentStatus.solucionado => 'solucionado',
+        IncidentStatus.rechazadoFueraDeCobertura =>
+          'rechazado_fuera_de_cobertura',
+        IncidentStatus.falso => 'falso',
       };
 
   String get displayName => switch (this) {
@@ -86,6 +97,8 @@ enum IncidentStatus {
         IncidentStatus.programado => 'Programado',
         IncidentStatus.enReparacion => 'En reparación',
         IncidentStatus.solucionado => 'Solucionado',
+        IncidentStatus.rechazadoFueraDeCobertura => 'Fuera de cobertura',
+        IncidentStatus.falso => 'Falso',
       };
 }
 

@@ -80,6 +80,7 @@ class AuthRemoteDataSource {
         role: 'vecino_informante',
         status: 'pending',
         reputationScore: 100.0,
+        falseReportsCount: 0,
       );
       await _users.doc(uid).set({
         ...model.toFirestore(),
@@ -184,6 +185,17 @@ class AuthRemoteDataSource {
         );
   }
 
+  /// Stream en tiempo real de usuarios bloqueados (status == "blocked"). [T-AUTH-07]
+  Stream<List<UserModel>> blockedUsersStream({int limit = 200}) {
+    return _users
+        .where('status', isEqualTo: 'blocked')
+        .limit(limit)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs.map(UserModel.fromFirestore).toList(),
+        );
+  }
+
   /// Promueve un vecino informante al rol de referente barrial. [T-AUTH-04]
   /// RF-ROL-02: actualiza role en Firestore — los privilegios (alertas push,
   /// verificación in situ) se habilitan a partir del rol persistido.
@@ -201,6 +213,15 @@ class AuthRemoteDataSource {
       await _users.doc(uid).update({'role': 'vecino_informante'});
     } on FirebaseException catch (e) {
       throw FirestoreException(e.message ?? 'Error al degradar usuario.');
+    }
+  }
+
+  /// Bloquea a un usuario: status → "blocked". [T-AUTH-08]
+  Future<void> blockUser(String uid) async {
+    try {
+      await _users.doc(uid).update({'status': 'blocked'});
+    } on FirebaseException catch (e) {
+      throw FirestoreException(e.message ?? 'Error al bloquear usuario.');
     }
   }
 

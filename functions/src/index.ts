@@ -8,18 +8,33 @@ import { normalizeIncidentEvent } from "./incidentNormalization";
 import { buildEnrichment } from "./incidentEnrichment";
 import { detectDuplicateIncidents } from "./incidentDuplicates";
 import { vitalRiskDetectionFlow } from "./vitalRiskDetection";
-import { semanticExtractionFlow, mapSemanticCategoryToNormalized, SemanticExtractionResult } from "./semanticExtraction";
+import {
+  semanticExtractionFlow,
+  mapSemanticCategoryToNormalized,
+  SemanticExtractionResult,
+} from "./semanticExtraction";
 import { priorityCalculationFlow, PriorityResult } from "./priorityCalculation";
-import { findNearbyReferentes, sendIncidentAlertToReferentes } from "./pushNotifications";
-export { broadcastNotification } from "./adminBroadcast";
+import {
+  findNearbyReferentes,
+  sendIncidentAlertToReferentes,
+} from "./pushNotifications";
+import { loadCoverageConfig, isWithinCoverage } from "./coverageValidation";
 import {
   AlgorithmConfigPatchSchema,
   getAlgorithmConfig,
   loadAlgorithmConfig,
   saveAlgorithmConfig,
 } from "./algorithmConfig";
+import {
+  appendAuditEntry,
+  persistProcessedIncident,
+} from "./incidentPersistence";
+
+import { moderateFalseReport, unblockUser } from "./moderation";
 
 admin.initializeApp();
+
+export { moderateFalseReport, unblockUser };
 
 export const normalizeIncident = onDocumentCreated(
   "incidents/{incidentId}",
@@ -39,17 +54,95 @@ export const normalizeIncident = onDocumentCreated(
     const firestore = admin.firestore();
 
     try {
+      // T-NLP-08: Auditoría — registra que el documento llegó al pipeline.
+      await appendAuditEntry(firestore, incidentId, "received");
+
       const { normalizedEvent, warnings } = normalizeIncidentEvent(
         incidentId,
-        data
+        data,
       );
+      await appendAuditEntry(firestore, incidentId, "normalized", {
+        warnings,
+      });
+
+      // T-AUTH-07: Rechazar reportes de usuarios bloqueados o inactivos.
+      const authorSnap = await firestore
+        .collection("users")
+        .doc(normalizedEvent.userId)
+        .get();
+      const authorStatus = authorSnap.data()?.status;
+      if (authorStatus !== "active") {
+        logger.warn("Incident rejected: author not active", {
+          incidentId,
+          userId: normalizedEvent.userId,
+          authorStatus,
+        });
+        await firestore.collection("incidents").doc(incidentId).update({
+          normalizedEvent,
+          normalizationWarnings: warnings,
+          status: "rechazado_autor_inactivo",
+          processedAt: FieldValue.serverTimestamp(),
+        });
+        await appendAuditEntry(
+          firestore,
+          incidentId,
+          "author_inactive_rejected",
+          { userId: normalizedEvent.userId, authorStatus },
+        );
+        return;
+      }
+      await appendAuditEntry(firestore, incidentId, "author_validated");
+
+      // T-AUTH-06: Validacion geografica de cobertura
+      const coverageConfig = await loadCoverageConfig(firestore);
+      if (
+        !isWithinCoverage(
+          normalizedEvent.location.latitude,
+          normalizedEvent.location.longitude,
+          coverageConfig,
+        )
+      ) {
+        logger.warn("Incident outside coverage area", {
+          incidentId,
+          latitude: normalizedEvent.location.latitude,
+          longitude: normalizedEvent.location.longitude,
+        });
+
+        await firestore
+          .collection("incidents")
+          .doc(incidentId)
+          .update({
+            normalizedEvent,
+            normalizationWarnings: warnings,
+            status: "rechazado_fuera_de_cobertura",
+            coverageRejection: {
+              reason: "Ubicacion fuera del area de cobertura configurada",
+              incidentLocation: normalizedEvent.location,
+              coverageCenter: {
+                latitude: coverageConfig.centerLat,
+                longitude: coverageConfig.centerLng,
+              },
+              coverageRadiusMeters: coverageConfig.radiusMeters,
+              rejectedAt: new Date().toISOString(),
+            },
+            processedAt: FieldValue.serverTimestamp(),
+          });
+
+        await appendAuditEntry(firestore, incidentId, "coverage_rejected", {
+          latitude: normalizedEvent.location.latitude,
+          longitude: normalizedEvent.location.longitude,
+        });
+        return; // Cortar pipeline
+      }
+      await appendAuditEntry(firestore, incidentId, "coverage_validated");
 
       const now = new Date();
       const enrichment = await buildEnrichment(
         firestore,
         normalizedEvent.userId,
-        now
+        now,
       );
+      await appendAuditEntry(firestore, incidentId, "enrichment_built");
 
       const duplicateCheck = await detectDuplicateIncidents(firestore, {
         incidentId,
@@ -58,6 +151,9 @@ export const normalizeIncident = onDocumentCreated(
         timestamp: new Date(normalizedEvent.timestamp),
         radiusMeters: getDuplicateRadiusMeters(),
         windowHours: getDuplicateWindowHours(),
+      });
+      await appendAuditEntry(firestore, incidentId, "duplicate_check_done", {
+        nearbyCount: duplicateCheck.nearbyCount,
       });
 
       // Carga la config calibrable desde Firestore (cacheada 60s). [T-NLP-06]
@@ -76,24 +172,36 @@ export const normalizeIncident = onDocumentCreated(
           matchedTerms: vitalRisk.matchedTerms,
         });
 
-        await firestore.collection("incidents").doc(incidentId).update({
-          normalizedEvent,
-          normalizationWarnings: warnings,
-          enrichment,
-          duplicateCheck,
-          status: "vital_risk_detected",
-          vitalRisk: {
-            ...vitalRisk,
-            detectedAt: new Date().toISOString(),
-          },
-          processedAt: FieldValue.serverTimestamp(),
-        });
+        await firestore
+          .collection("incidents")
+          .doc(incidentId)
+          .update({
+            normalizedEvent,
+            normalizationWarnings: warnings,
+            enrichment,
+            duplicateCheck,
+            status: "vital_risk_detected",
+            vitalRisk: {
+              ...vitalRisk,
+              detectedAt: new Date().toISOString(),
+            },
+            processedAt: FieldValue.serverTimestamp(),
+          });
+        await appendAuditEntry(
+          firestore,
+          incidentId,
+          "vital_risk_interrupted",
+          { riskCategory: vitalRisk.riskCategory },
+        );
 
         return; // ❌ Interrumpir flujo — No generar alerta comunitaria
       }
+      await appendAuditEntry(firestore, incidentId, "vital_risk_evaluated");
 
       // Ejecución del flujo de extracción semántica (T-NLP-03)
-      let semanticExtraction: (SemanticExtractionResult & { extractedAt: string }) | null = null;
+      let semanticExtraction:
+        | (SemanticExtractionResult & { extractedAt: string })
+        | null = null;
       try {
         const semanticResult = await semanticExtractionFlow({
           description: normalizedEvent.description,
@@ -101,7 +209,9 @@ export const normalizeIncident = onDocumentCreated(
 
         // Si la categoría normalizada original es nula, la enriquecemos con la extraída por el LLM
         if (!normalizedEvent.category && semanticResult.category) {
-          normalizedEvent.category = mapSemanticCategoryToNormalized(semanticResult.category);
+          normalizedEvent.category = mapSemanticCategoryToNormalized(
+            semanticResult.category,
+          );
         }
 
         semanticExtraction = {
@@ -110,15 +220,25 @@ export const normalizeIncident = onDocumentCreated(
           detectedTerms: semanticResult.detectedTerms,
           extractedAt: new Date().toISOString(),
         };
+        await appendAuditEntry(firestore, incidentId, "semantic_extracted", {
+          category: semanticResult.category,
+        });
       } catch (semanticError) {
         logger.warn("Semantic extraction failed, continuing without it", {
           incidentId,
           error: semanticError,
         });
+        await appendAuditEntry(
+          firestore,
+          incidentId,
+          "semantic_extraction_failed",
+        );
       }
 
       // Ejecución del cálculo de prioridad (T-NLP-04)
-      let priorityCalculation: (PriorityResult & { calculatedAt: string }) | null = null;
+      let priorityCalculation:
+        | (PriorityResult & { calculatedAt: string })
+        | null = null;
       try {
         const priorityResult = await priorityCalculationFlow({
           semanticExtraction,
@@ -132,34 +252,56 @@ export const normalizeIncident = onDocumentCreated(
           ...priorityResult,
           calculatedAt: new Date().toISOString(),
         };
+        await appendAuditEntry(firestore, incidentId, "priority_calculated", {
+          priority: priorityResult.priority,
+          priorityScore: priorityResult.priorityScore,
+        });
       } catch (priorityError) {
         logger.warn("Priority calculation failed", {
           incidentId,
           error: priorityError,
         });
+        await appendAuditEntry(
+          firestore,
+          incidentId,
+          "priority_calculation_failed",
+        );
       }
 
-      await firestore.collection("incidents").doc(incidentId).update({
+      // T-NLP-08: Persistencia centralizada (transacción atómica) que garantiza
+      // el schema completo y `status: "recibido"` en el flujo exitoso. Devuelve
+      // los issues validados in-memory sin hacer un GET adicional.
+      const persistResult = await persistProcessedIncident({
+        firestore,
+        incidentId,
         normalizedEvent,
-        normalizationWarnings: warnings,
+        warnings,
         enrichment,
         duplicateCheck,
-        ...(semanticExtraction ? { semanticExtraction } : {}),
-        ...(priorityCalculation ? { priority: priorityCalculation.priority, priorityScore: priorityCalculation.priorityScore, priorityCalculation } : {}),
-        normalizedAt: FieldValue.serverTimestamp(),
+        semanticExtraction,
+        priorityCalculation,
       });
+      await appendAuditEntry(firestore, incidentId, "persisted", {
+        statusSet: persistResult.statusSet,
+      });
+      if (persistResult.issues.length > 0) {
+        logger.warn("Incident persisted with missing required fields", {
+          incidentId,
+          issues: persistResult.issues,
+        });
+      }
 
       // T-NLP-07: Envío de alertas push a referentes cercanos si se calculó la prioridad
       if (priorityCalculation) {
         // Obtenemos el radio desde las variables de entorno (por defecto 2000 metros)
         const radiusMeters = Number(process.env.ALERT_RADIUS_METERS ?? "2000");
-        
+
         // Buscamos referentes en el área
         const referentes = await findNearbyReferentes(
           firestore,
           normalizedEvent.location.latitude,
           normalizedEvent.location.longitude,
-          radiusMeters
+          radiusMeters,
         );
 
         // Si hay referentes, enviamos las notificaciones
@@ -170,20 +312,29 @@ export const normalizeIncident = onDocumentCreated(
             priorityCalculation.priority,
             normalizedEvent.location.latitude,
             normalizedEvent.location.longitude,
-            referentes
+            referentes,
           );
+          await appendAuditEntry(firestore, incidentId, "alerts_dispatched", {
+            referentes: referentes.length,
+          });
         }
       }
     } catch (error) {
       logger.error("Normalization failed", { incidentId, error });
-      await firestore.collection("incidents").doc(incidentId).update({
-        normalizationError: {
-          message: error instanceof Error ? error.message : "Unknown error",
-          at: FieldValue.serverTimestamp(),
-        },
+      await firestore
+        .collection("incidents")
+        .doc(incidentId)
+        .update({
+          normalizationError: {
+            message: error instanceof Error ? error.message : "Unknown error",
+            at: FieldValue.serverTimestamp(),
+          },
+        });
+      await appendAuditEntry(firestore, incidentId, "pipeline_failed", {
+        message: error instanceof Error ? error.message : "Unknown error",
       });
     }
-  }
+  },
 );
 
 function getDuplicateRadiusMeters(): number {
@@ -204,17 +355,21 @@ function getDuplicateWindowHours(): number {
 
 export async function assertCallerIsAdmin(
   firestore: admin.firestore.Firestore,
-  uid: string | undefined
+  uid: string | undefined,
 ): Promise<void> {
   if (!uid) {
     throw new HttpsError("unauthenticated", "Autenticación requerida.");
   }
   const userDoc = await firestore.collection("users").doc(uid).get();
   const data = userDoc.data();
-  if (!userDoc.exists || data?.role !== "administrador" || data?.status !== "active") {
+  if (
+    !userDoc.exists ||
+    data?.role !== "administrador" ||
+    data?.status !== "active"
+  ) {
     throw new HttpsError(
       "permission-denied",
-      "Solo el administrador activo puede modificar la calibración del algoritmo."
+      "Solo el administrador activo puede modificar la calibración del algoritmo.",
     );
   }
 }
@@ -234,13 +389,13 @@ export const updateAlgorithmConfigCallable = onCall(async (request) => {
     throw new HttpsError(
       "invalid-argument",
       "Patch inválido para la calibración del algoritmo.",
-      parsed.error.flatten()
+      parsed.error.flatten(),
     );
   }
   const updated = await saveAlgorithmConfig(
     firestore,
     parsed.data,
-    request.auth!.uid
+    request.auth!.uid,
   );
   logger.info("Algorithm config updated", { updatedBy: request.auth!.uid });
   return { config: updated };

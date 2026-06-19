@@ -8,6 +8,7 @@ import '../../../../core/config/coverage_area.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/widgets/app_loading.dart';
+import '../../../admin/presentation/providers/coverage_config_provider.dart';
 import '../../../incidents/domain/entities/incident_event.dart';
 import '../../../incidents/presentation/providers/incidents_provider.dart';
 
@@ -20,11 +21,6 @@ class MapPage extends ConsumerStatefulWidget {
 }
 
 class _MapPageState extends ConsumerState<MapPage> {
-  static const _initialPosition = CameraPosition(
-    target: CoverageArea.center,
-    zoom: CoverageArea.initialZoom,
-  );
-
   GoogleMapController? _controller;
   final Set<IncidentCategory> _activeCategories =
       IncidentCategory.values.toSet();
@@ -70,20 +66,22 @@ class _MapPageState extends ConsumerState<MapPage> {
     }).toSet();
   }
 
-  Set<Circle> _buildCoverageCircle() => {
+  Set<Circle> _buildCoverageCircle(LatLng center, double radius) => {
         Circle(
           circleId: const CircleId('coverage'),
-          center: CoverageArea.center,
-          radius: CoverageArea.radiusMeters,
+          center: center,
+          radius: radius,
           strokeColor: AppColors.primary,
           strokeWidth: 2,
           fillColor: AppColors.primary.withValues(alpha: 0.08),
         ),
       };
 
-  Future<void> _recenter() async {
+  Future<void> _recenter(LatLng center) async {
     await _controller?.animateCamera(
-      CameraUpdate.newCameraPosition(_initialPosition),
+      CameraUpdate.newCameraPosition(
+        CameraPosition(target: center, zoom: CoverageArea.initialZoom),
+      ),
     );
   }
 
@@ -100,6 +98,21 @@ class _MapPageState extends ConsumerState<MapPage> {
   @override
   Widget build(BuildContext context) {
     final incidentsAsync = ref.watch(activeIncidentsStreamProvider);
+    final coverageAsync = ref.watch(coverageConfigProvider);
+
+    final center = coverageAsync.valueOrNull != null
+        ? LatLng(
+            coverageAsync.valueOrNull!.centerLat,
+            coverageAsync.valueOrNull!.centerLng,
+          )
+        : CoverageArea.center;
+    final radius =
+        coverageAsync.valueOrNull?.radiusMeters ?? CoverageArea.radiusMeters;
+
+    final initialPos = CameraPosition(
+      target: center,
+      zoom: CoverageArea.initialZoom,
+    );
 
     return Scaffold(
       appBar: AppBar(title: const Text(AppStrings.mapTitle)),
@@ -109,9 +122,9 @@ class _MapPageState extends ConsumerState<MapPage> {
         data: (incidents) => Stack(
           children: [
             GoogleMap(
-              initialCameraPosition: _initialPosition,
+              initialCameraPosition: initialPos,
               markers: _buildMarkers(incidents),
-              circles: _buildCoverageCircle(),
+              circles: _buildCoverageCircle(center, radius),
               myLocationEnabled: true,
               myLocationButtonEnabled: true,
               onMapCreated: (c) => _controller = c,
@@ -136,7 +149,7 @@ class _MapPageState extends ConsumerState<MapPage> {
           FloatingActionButton.small(
             heroTag: 'recenter',
             tooltip: AppStrings.mapRecenter,
-            onPressed: _recenter,
+            onPressed: () => _recenter(center),
             child: const Icon(Icons.center_focus_strong),
           ),
           const SizedBox(height: 8),

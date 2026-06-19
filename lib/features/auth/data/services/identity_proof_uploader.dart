@@ -1,0 +1,39 @@
+import 'dart:io';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+
+import '../../../../core/errors/app_exception.dart';
+
+/// Sube el comprobante de servicio a Firebase Storage y registra la URL en el
+/// documento del usuario. Path en Storage: `identity_proofs/{uid}.{ext}`. [T-AUTH-09]
+class IdentityProofUploader {
+  IdentityProofUploader({
+    FirebaseStorage? storage,
+    FirebaseFirestore? firestore,
+  })  : _storage = storage ?? FirebaseStorage.instance,
+        _firestore = firestore ?? FirebaseFirestore.instance;
+
+  final FirebaseStorage _storage;
+  final FirebaseFirestore _firestore;
+
+  Future<String> uploadProof({
+    required String userId,
+    required File photo,
+  }) async {
+    try {
+      final ext = photo.path.split('.').last;
+      final path = 'identity_proofs/$userId.$ext';
+      final ref = _storage.ref(path);
+      await ref.putFile(photo);
+      final url = await ref.getDownloadURL();
+      await _firestore.collection('users').doc(userId).update({
+        'identityProofUrl': url,
+        'identityProofUploadedAt': FieldValue.serverTimestamp(),
+      });
+      return url;
+    } on FirebaseException catch (e) {
+      throw StorageException(e.message ?? 'Error al subir el comprobante.');
+    }
+  }
+}
