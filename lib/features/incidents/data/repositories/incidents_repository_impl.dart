@@ -22,7 +22,8 @@ class IncidentsRepositoryImpl implements IncidentsRepository {
         (all) => all
             .where((i) =>
                 i.status != IncidentStatus.solucionado &&
-                i.status != IncidentStatus.rechazadoFueraDeCobertura)
+                i.status != IncidentStatus.rechazadoFueraDeCobertura &&
+                i.status != IncidentStatus.falso)
             .toList(),
       );
 

@@ -16,6 +16,7 @@ class IncidentStatusBadge extends StatelessWidget {
       IncidentStatus.enReparacion => AppColors.statusInProgress,
       IncidentStatus.solucionado => AppColors.statusSolved,
       IncidentStatus.rechazadoFueraDeCobertura => AppColors.priorityUrgent,
+      IncidentStatus.falso => AppColors.priorityUrgent,
     };
 
     return Chip(

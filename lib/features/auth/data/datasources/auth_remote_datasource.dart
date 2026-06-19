@@ -80,6 +80,7 @@ class AuthRemoteDataSource {
         role: 'vecino_informante',
         status: 'pending',
         reputationScore: 100.0,
+        falseReportsCount: 0,
       );
       await _users.doc(uid).set({
         ...model.toFirestore(),
@@ -180,6 +181,17 @@ class AuthRemoteDataSource {
       query = query.where('role', isEqualTo: role);
     }
     return query.limit(limit).snapshots().map(
+          (snapshot) => snapshot.docs.map(UserModel.fromFirestore).toList(),
+        );
+  }
+
+  /// Stream en tiempo real de usuarios bloqueados (status == "blocked"). [T-AUTH-07]
+  Stream<List<UserModel>> blockedUsersStream({int limit = 200}) {
+    return _users
+        .where('status', isEqualTo: 'blocked')
+        .limit(limit)
+        .snapshots()
+        .map(
           (snapshot) => snapshot.docs.map(UserModel.fromFirestore).toList(),
         );
   }
