@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../features/admin/presentation/pages/admin_dashboard_page.dart';
 import '../features/admin/presentation/pages/coverage_config_page.dart';
+import '../features/admin/presentation/pages/identity_verification_config_page.dart';
 import '../features/admin/presentation/pages/incident_moderation_page.dart';
 import '../features/admin/presentation/pages/users_management_page.dart';
 import '../features/alerts/presentation/pages/referent_alerts_page.dart';
@@ -38,6 +39,7 @@ abstract final class AppRoutes {
   static const adminUsers = '/admin/users';
   static const adminIncidents = '/admin/incidents';
   static const adminCoverage = '/admin/coverage';
+  static const adminIdentityVerification = '/admin/identity-verification';
   static const alerts = '/alerts';
   static const unauthorized = '/unauthorized';
 
@@ -179,6 +181,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.adminCoverage,
         builder: (_, __) => const CoverageConfigPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.adminIdentityVerification,
+        builder: (_, __) => const IdentityVerificationConfigPage(),
       ),
       GoRoute(
         path: AppRoutes.alerts,

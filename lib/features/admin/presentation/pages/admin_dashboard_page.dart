@@ -45,6 +45,12 @@ class AdminDashboardPage extends ConsumerWidget {
             onTap: () => context.go(AppRoutes.adminCoverage),
           ),
           _DashboardCard(
+            icon: Icons.verified_user_outlined,
+            title: AppStrings.identityVerification,
+            subtitle: AppStrings.identityVerificationSubtitle,
+            onTap: () => context.go(AppRoutes.adminIdentityVerification),
+          ),
+          _DashboardCard(
             icon: Icons.notifications_active,
             title: 'Notificaciones masivas',
             subtitle: 'Enviar alertas a todos los vecinos (T-NLP-09)',

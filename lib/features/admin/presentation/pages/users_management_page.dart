@@ -7,6 +7,8 @@ import '../../../../core/widgets/app_loading.dart';
 import '../../../auth/domain/entities/app_user.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../auth/presentation/providers/moderation_provider.dart';
+import '../../domain/entities/identity_verification_config.dart';
+import '../providers/identity_verification_config_provider.dart';
 
 enum ReputationFilter { all, low, good }
 
@@ -290,34 +292,65 @@ class _PendingUserCard extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _UserHeader(user: user, statusChip: _StatusChip.pending()),
+            if (user.identityProofUrl != null) ...[
+              const SizedBox(height: 12),
+              _IdentityProofPreview(url: user.identityProofUrl!),
+            ],
             const SizedBox(height: 12),
             const Divider(height: 1),
             const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                OutlinedButton.icon(
-                  icon: const Icon(Icons.close, size: 18),
-                  label: const Text(AppStrings.rejectUser),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Theme.of(context).colorScheme.error,
-                    side:
-                        BorderSide(color: Theme.of(context).colorScheme.error),
+            // [T-AUTH-09] Bloquea Aprobar si la modalidad exige comprobante y
+            // el usuario aún no lo adjuntó: garantiza que no haya aprobaciones
+            // por error sin haber verificado el domicilio.
+            Builder(builder: (context) {
+              final mode = ref
+                      .watch(identityVerificationConfigProvider)
+                      .valueOrNull
+                      ?.mode ??
+                  IdentityVerificationConfig.defaults.mode;
+              final requiresProof = mode.requiresProof;
+              final missingProof =
+                  requiresProof && user.identityProofUrl == null;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (missingProof) ...[
+                    Text(
+                      AppStrings.identityProofMissingLabel,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.close, size: 18),
+                        label: const Text(AppStrings.rejectUser),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Theme.of(context).colorScheme.error,
+                          side: BorderSide(
+                              color: Theme.of(context).colorScheme.error),
+                        ),
+                        onPressed: isLoading
+                            ? null
+                            : () => _confirmReject(context, ref, user.userId),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton.icon(
+                        icon: const Icon(Icons.check, size: 18),
+                        label: const Text(AppStrings.approveUser),
+                        onPressed: (isLoading || missingProof)
+                            ? null
+                            : () => _confirmApprove(context, ref, user.userId),
+                      ),
+                    ],
                   ),
-                  onPressed: isLoading
-                      ? null
-                      : () => _confirmReject(context, ref, user.userId),
-                ),
-                const SizedBox(width: 8),
-                FilledButton.icon(
-                  icon: const Icon(Icons.check, size: 18),
-                  label: const Text(AppStrings.approveUser),
-                  onPressed: isLoading
-                      ? null
-                      : () => _confirmApprove(context, ref, user.userId),
-                ),
-              ],
-            ),
+                ],
+              );
+            }),
           ],
         ),
       ),
@@ -709,6 +742,45 @@ class _BlockedUserCard extends ConsumerWidget {
     } else {
       context.showSnackBar(AppStrings.userUnblocked);
     }
+  }
+}
+
+// ── Vista previa del comprobante de identidad [T-AUTH-09] ────────────────────
+
+class _IdentityProofPreview extends StatelessWidget {
+  const _IdentityProofPreview({required this.url});
+
+  final String url;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          AppStrings.identityProofViewLabel,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.network(
+            url,
+            height: 160,
+            width: double.infinity,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => Container(
+              height: 160,
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              alignment: Alignment.center,
+              child: const Icon(Icons.broken_image_outlined),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }
 

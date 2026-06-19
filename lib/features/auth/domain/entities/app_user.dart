@@ -49,6 +49,7 @@ class AppUser extends Equatable {
     this.falseReportsCount = 0,
     this.coverageAreaCenter,
     this.coverageRadiusKm,
+    this.identityProofUrl,
   });
 
   final String userId;
@@ -61,6 +62,8 @@ class AppUser extends Equatable {
   // Posición central del área de cobertura (Firestore GeoPoint se mapea a lat/lng)
   final ({double latitude, double longitude})? coverageAreaCenter;
   final double? coverageRadiusKm;
+  // URL del comprobante de servicio para verificación de identidad. [T-AUTH-09]
+  final String? identityProofUrl;
 
   bool get isActive => status == UserStatus.active;
   bool get isPending => status == UserStatus.pending;
@@ -77,6 +80,7 @@ class AppUser extends Equatable {
     int? falseReportsCount,
     ({double latitude, double longitude})? coverageAreaCenter,
     double? coverageRadiusKm,
+    String? identityProofUrl,
   }) {
     return AppUser(
       userId: userId ?? this.userId,
@@ -88,6 +92,7 @@ class AppUser extends Equatable {
       falseReportsCount: falseReportsCount ?? this.falseReportsCount,
       coverageAreaCenter: coverageAreaCenter ?? this.coverageAreaCenter,
       coverageRadiusKm: coverageRadiusKm ?? this.coverageRadiusKm,
+      identityProofUrl: identityProofUrl ?? this.identityProofUrl,
     );
   }
 
@@ -102,5 +107,6 @@ class AppUser extends Equatable {
         falseReportsCount,
         coverageAreaCenter,
         coverageRadiusKm,
+        identityProofUrl,
       ];
 }
