@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/admin/presentation/pages/admin_dashboard_page.dart';
+import '../features/admin/presentation/pages/algorithm_config_page.dart';
 import '../features/admin/presentation/pages/coverage_config_page.dart';
 import '../features/admin/presentation/pages/identity_verification_config_page.dart';
 import '../features/admin/presentation/pages/incident_moderation_page.dart';
@@ -40,6 +41,7 @@ abstract final class AppRoutes {
   static const adminIncidents = '/admin/incidents';
   static const adminCoverage = '/admin/coverage';
   static const adminIdentityVerification = '/admin/identity-verification';
+  static const adminAlgorithmConfig = '/admin/algorithm-config';
   static const alerts = '/alerts';
   static const unauthorized = '/unauthorized';
 
@@ -185,6 +187,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.adminIdentityVerification,
         builder: (_, __) => const IdentityVerificationConfigPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.adminAlgorithmConfig,
+        builder: (_, __) => const AlgorithmConfigPage(),
       ),
       GoRoute(
         path: AppRoutes.alerts,

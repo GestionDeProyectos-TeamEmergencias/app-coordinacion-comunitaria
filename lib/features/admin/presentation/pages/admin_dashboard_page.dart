@@ -64,14 +64,9 @@ class AdminDashboardPage extends ConsumerWidget {
           ),
           _DashboardCard(
             icon: Icons.tune,
-            title: 'Configuración del algoritmo NLP',
-            subtitle: 'Calibrar pesos y palabras clave (T-NLP-06)',
-            onTap: () {
-              // TODO(T-NLP-06): implementar calibración del algoritmo
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Próximamente: calibración NLP')),
-              );
-            },
+            title: AppStrings.algorithmConfig,
+            subtitle: AppStrings.algorithmConfigSubtitle,
+            onTap: () => context.go(AppRoutes.adminAlgorithmConfig),
           ),
         ],
       ),

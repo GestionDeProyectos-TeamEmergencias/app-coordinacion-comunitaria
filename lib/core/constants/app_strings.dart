@@ -97,6 +97,12 @@ abstract final class AppStrings {
   static const incidentModeration = 'Moderación de incidentes';
   static const coverageConfig = 'Área de cobertura';
   static const coverageConfigSubtitle = 'Configurar radio y centro (T-AUTH-06)';
+
+  // Configuración del algoritmo NLP [T-NLP-06]
+  static const algorithmConfig = 'Configuración del algoritmo NLP';
+  static const algorithmConfigSubtitle =
+      'Calibrar umbrales de prioridad sin redeploy.';
+  static const algorithmConfigUpdated = 'Calibración guardada correctamente.';
   static const coverageConfigUpdated =
       'Configuración de cobertura actualizada correctamente.';
 

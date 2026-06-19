@@ -8,20 +8,32 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Verifica que exista el documento del caller antes de hacer get(): evita
+    // que las reglas tiren "permission-denied" cuando el doc todavía no se
+    // creó (típico durante el primer flow de registro o si hay corrupción).
+    function callerDocExists() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
     function callerData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
     function isActive() {
-      return isAuthenticated() && callerData().status == 'active';
+      return callerDocExists() && callerData().status == 'active';
     }
 
     function isAdmin() {
-      return isActive() && callerData().role == 'administrador';
+      return callerDocExists() &&
+        callerData().status == 'active' &&
+        callerData().role == 'administrador';
     }
 
     function isReferente() {
-      return isActive() && callerData().role == 'referente_barrial';
+      return callerDocExists() &&
+        callerData().status == 'active' &&
+        callerData().role == 'referente_barrial';
     }
 
     function isAdminOrReferente() {
