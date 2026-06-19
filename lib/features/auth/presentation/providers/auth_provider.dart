@@ -101,6 +101,11 @@ final activeUsersProvider =
   return ref.watch(getActiveUsersUseCaseProvider)(role: role);
 });
 
+/// Stream en tiempo real de usuarios bloqueados. [T-AUTH-07]
+final blockedUsersProvider = StreamProvider<List<AppUser>>((ref) {
+  return ref.watch(_authRepositoryProvider).blockedUsersStream;
+});
+
 // ── Notifier para operaciones de auth ─────────────────────────────────────────
 
 class AuthNotifier extends StateNotifier<AsyncValue<void>> {

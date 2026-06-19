@@ -146,6 +146,27 @@ abstract final class AppStrings {
   static const userPromoted = 'Usuario promovido a referente barrial.';
   static const userDemoted = 'Usuario degradado a vecino informante.';
   static const noActiveUsers = 'No hay usuarios activos en este filtro.';
+
+  // Moderación de reportes falsos [T-AUTH-07]
+  static const markAsFalseReport = 'Marcar como falso';
+  static const markAsFalseConfirmTitle = '¿Marcar como reporte falso?';
+  static const markAsFalseConfirmBody =
+      'Esta acción suma un reporte falso al historial del autor. Si supera el umbral, su cuenta será bloqueada automáticamente.';
+  static const reportMarkedAsFalse = 'Reporte marcado como falso.';
+  static const reportAlreadyModerated =
+      'Este reporte ya estaba marcado como falso.';
+  static const userAutoBlocked =
+      'El usuario quedó bloqueado por superar el umbral de reportes falsos.';
+  static const tabBlocked = 'Bloqueados';
+  static const unblockUser = 'Desbloquear';
+  static const unblockConfirmTitle = '¿Desbloquear esta cuenta?';
+  static const unblockConfirmBody =
+      'El usuario podrá volver a iniciar sesión y reportar incidentes. Su contador de reportes falsos se reseteará.';
+  static const userUnblocked = 'Usuario desbloqueado correctamente.';
+  static const noBlockedUsers = 'No hay usuarios bloqueados.';
+  static const blockedAccountTitle = 'Cuenta bloqueada';
+  static const blockedAccountBody =
+      'Tu cuenta fue bloqueada por superar el umbral de reportes falsos. Contactá al administrador para más información.';
   static const lowReputationWarning = 'Reputación baja:';
 
   // Pantalla de gestión de alertas [T-AUTH-04 / RF-ROL-02]

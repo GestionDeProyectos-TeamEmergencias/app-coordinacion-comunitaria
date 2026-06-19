@@ -7,6 +7,7 @@ import '../features/admin/presentation/pages/incident_moderation_page.dart';
 import '../features/admin/presentation/pages/users_management_page.dart';
 import '../features/alerts/presentation/pages/referent_alerts_page.dart';
 import '../features/auth/domain/entities/app_user.dart';
+import '../features/auth/presentation/pages/blocked_page.dart';
 import '../features/auth/presentation/pages/login_page.dart';
 import '../features/auth/presentation/pages/pending_approval_page.dart';
 import '../features/auth/presentation/pages/register_page.dart';
@@ -27,6 +28,7 @@ abstract final class AppRoutes {
   static const register = '/register';
   static const pending = '/pending';
   static const rejected = '/rejected';
+  static const blocked = '/blocked';
   static const home = '/home';
   static const reportForm = '/report/form';
   static const map = '/map';
@@ -68,10 +70,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         return loc == AppRoutes.rejected ? null : AppRoutes.rejected;
       }
 
+      // Cuenta bloqueada por reportes falsos: redirigir a página de bloqueo. [T-AUTH-07]
+      if (user.status == UserStatus.blocked) {
+        return loc == AppRoutes.blocked ? null : AppRoutes.blocked;
+      }
+
       if (isOnAuthPage ||
           loc == AppRoutes.splash ||
           loc == AppRoutes.pending ||
-          loc == AppRoutes.rejected) {
+          loc == AppRoutes.rejected ||
+          loc == AppRoutes.blocked) {
         return AppRoutes.home;
       }
 
@@ -115,6 +123,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.rejected,
         builder: (_, __) => const RejectedPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.blocked,
+        builder: (_, __) => const BlockedPage(),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>

@@ -185,6 +185,17 @@ class AuthRemoteDataSource {
         );
   }
 
+  /// Stream en tiempo real de usuarios bloqueados (status == "blocked"). [T-AUTH-07]
+  Stream<List<UserModel>> blockedUsersStream({int limit = 200}) {
+    return _users
+        .where('status', isEqualTo: 'blocked')
+        .limit(limit)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs.map(UserModel.fromFirestore).toList(),
+        );
+  }
+
   /// Promueve un vecino informante al rol de referente barrial. [T-AUTH-04]
   /// RF-ROL-02: actualiza role en Firestore — los privilegios (alertas push,
   /// verificación in situ) se habilitan a partir del rol persistido.

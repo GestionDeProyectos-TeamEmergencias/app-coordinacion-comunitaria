@@ -26,11 +26,11 @@ import {
   saveAlgorithmConfig,
 } from "./algorithmConfig";
 
-import { moderateFalseReport } from "./moderation";
+import { moderateFalseReport, unblockUser } from "./moderation";
 
 admin.initializeApp();
 
-export { moderateFalseReport };
+export { moderateFalseReport, unblockUser };
 
 export const normalizeIncident = onDocumentCreated(
   "incidents/{incidentId}",
@@ -54,6 +54,27 @@ export const normalizeIncident = onDocumentCreated(
         incidentId,
         data,
       );
+
+      // T-AUTH-07: Rechazar reportes de usuarios bloqueados o inactivos.
+      const authorSnap = await firestore
+        .collection("users")
+        .doc(normalizedEvent.userId)
+        .get();
+      const authorStatus = authorSnap.data()?.status;
+      if (authorStatus !== "active") {
+        logger.warn("Incident rejected: author not active", {
+          incidentId,
+          userId: normalizedEvent.userId,
+          authorStatus,
+        });
+        await firestore.collection("incidents").doc(incidentId).update({
+          normalizedEvent,
+          normalizationWarnings: warnings,
+          status: "rechazado_autor_inactivo",
+          processedAt: FieldValue.serverTimestamp(),
+        });
+        return;
+      }
 
       // T-AUTH-06: Validacion geografica de cobertura
       const coverageConfig = await loadCoverageConfig(firestore);

@@ -6,6 +6,7 @@ import '../../../../core/extensions/context_extensions.dart';
 import '../../../../core/widgets/app_loading.dart';
 import '../../../auth/domain/entities/app_user.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../auth/presentation/providers/moderation_provider.dart';
 
 /// Panel de gestión de usuarios pendientes y activos.
 /// [T-AUTH-01] aprobación de cuentas pendientes.
@@ -17,7 +18,7 @@ class UsersManagementPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: const Text(AppStrings.usersManagement),
@@ -25,6 +26,7 @@ class UsersManagementPage extends ConsumerWidget {
             tabs: [
               Tab(text: AppStrings.tabPending),
               Tab(text: AppStrings.tabActive),
+              Tab(text: AppStrings.tabBlocked),
             ],
           ),
         ),
@@ -32,6 +34,7 @@ class UsersManagementPage extends ConsumerWidget {
           children: [
             _PendingUsersTab(),
             _ActiveUsersTab(),
+            _BlockedUsersTab(),
           ],
         ),
       ),
@@ -497,6 +500,107 @@ class _StatusChip extends StatelessWidget {
       padding: EdgeInsets.zero,
       visualDensity: VisualDensity.compact,
     );
+  }
+}
+
+// ── Tab: Bloqueados (T-AUTH-07) ──────────────────────────────────────────────
+
+class _BlockedUsersTab extends ConsumerWidget {
+  const _BlockedUsersTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final blockedAsync = ref.watch(blockedUsersProvider);
+
+    return blockedAsync.when(
+      loading: () => const AppLoading(message: 'Cargando bloqueados…'),
+      error: (e, _) => Center(
+        child: Text(
+          e.toString(),
+          style: TextStyle(color: Theme.of(context).colorScheme.error),
+        ),
+      ),
+      data: (users) => users.isEmpty
+          ? const _EmptyState(
+              icon: Icons.lock_open_outlined,
+              message: AppStrings.noBlockedUsers,
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: users.length,
+              itemBuilder: (context, index) =>
+                  _BlockedUserCard(user: users[index]),
+            ),
+    );
+  }
+}
+
+class _BlockedUserCard extends ConsumerWidget {
+  const _BlockedUserCard({required this.user});
+
+  final AppUser user;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isLoading = ref.watch(moderationNotifierProvider).isLoading;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _UserHeader(
+              user: user,
+              statusChip: _StatusChip.role(user.role),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Reportes falsos: ${user.falseReportsCount}',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+            ),
+            const SizedBox(height: 12),
+            const Divider(height: 1),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                FilledButton.icon(
+                  icon: const Icon(Icons.lock_open, size: 18),
+                  label: const Text(AppStrings.unblockUser),
+                  onPressed: isLoading
+                      ? null
+                      : () => _confirmUnblock(context, ref, user.userId),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmUnblock(
+      BuildContext context, WidgetRef ref, String uid) async {
+    final confirmed = await _showConfirmDialog(
+      context: context,
+      title: AppStrings.unblockConfirmTitle,
+      body: AppStrings.unblockConfirmBody,
+      confirmLabel: AppStrings.unblockUser,
+      confirmColor: Theme.of(context).colorScheme.primary,
+    );
+    if (confirmed != true || !context.mounted) return;
+    await ref.read(moderationNotifierProvider.notifier).unblock(userId: uid);
+    if (!context.mounted) return;
+    final state = ref.read(moderationNotifierProvider);
+    if (state.hasError) {
+      context.showSnackBar(state.error.toString(), isError: true);
+    } else {
+      context.showSnackBar(AppStrings.userUnblocked);
+    }
   }
 }
 
