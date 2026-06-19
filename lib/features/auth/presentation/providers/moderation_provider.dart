@@ -32,7 +32,9 @@ class ModerationNotifier extends StateNotifier<AsyncValue<void>> {
   Future<void> unblock({required String userId}) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(
-      () => _ref.read(moderationServiceProvider).desbloquearUsuario(userId: userId),
+      () => _ref
+          .read(moderationServiceProvider)
+          .desbloquearUsuario(userId: userId),
     );
   }
 }

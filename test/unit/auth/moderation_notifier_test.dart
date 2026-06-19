@@ -53,9 +53,8 @@ void main() {
 
       expect(fake.lastIncidentId, 'inc-1');
       expect(fake.lastUserId, 'usr-1');
-      final result = container
-          .read(moderationNotifierProvider.notifier)
-          .lastResult;
+      final result =
+          container.read(moderationNotifierProvider.notifier).lastResult;
       expect(result?.blocked, isFalse);
       expect(container.read(moderationNotifierProvider).hasError, isFalse);
     });
@@ -76,15 +75,13 @@ void main() {
             userId: 'usr-2',
           );
 
-      final result = container
-          .read(moderationNotifierProvider.notifier)
-          .lastResult;
+      final result =
+          container.read(moderationNotifierProvider.notifier).lastResult;
       expect(result?.blocked, isTrue);
     });
 
     test('propaga errores del servicio en el estado', () async {
-      final fake = _FakeService()
-        ..error = const FirestoreException('boom');
+      final fake = _FakeService()..error = const FirestoreException('boom');
       final container = ProviderContainer(overrides: [
         moderationServiceProvider.overrideWithValue(fake),
       ]);
