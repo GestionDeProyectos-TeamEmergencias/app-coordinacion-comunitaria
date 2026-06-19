@@ -8,6 +8,8 @@ import '../../../auth/domain/entities/app_user.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../auth/presentation/providers/moderation_provider.dart';
 
+enum ReputationFilter { all, low, good }
+
 /// Panel de gestión de usuarios pendientes y activos.
 /// [T-AUTH-01] aprobación de cuentas pendientes.
 /// [T-AUTH-04] promoción/degradación de referentes barriales (RF-ROL-02).
@@ -85,15 +87,27 @@ class _ActiveUsersTab extends ConsumerStatefulWidget {
 
 class _ActiveUsersTabState extends ConsumerState<_ActiveUsersTab> {
   UserRole? _roleFilter;
+  ReputationFilter _reputationFilter = ReputationFilter.all;
 
   @override
   Widget build(BuildContext context) {
     final activeAsync = ref.watch(activeUsersProvider(_roleFilter));
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: Text(
+            'Filtrar por Rol:',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
@@ -117,10 +131,58 @@ class _ActiveUsersTabState extends ConsumerState<_ActiveUsersTab> {
                   onSelected: () =>
                       setState(() => _roleFilter = UserRole.referenteBarrial),
                 ),
+                const SizedBox(width: 8),
+                _RoleFilterChip(
+                  label: AppStrings.roleAdmin,
+                  selected: _roleFilter == UserRole.administrador,
+                  onSelected: () =>
+                      setState(() => _roleFilter = UserRole.administrador),
+                ),
               ],
             ),
           ),
         ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: Text(
+            'Filtrar por Reputación:',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                FilterChip(
+                  label: const Text('Cualquiera'),
+                  selected: _reputationFilter == ReputationFilter.all,
+                  onSelected: (_) =>
+                      setState(() => _reputationFilter = ReputationFilter.all),
+                ),
+                const SizedBox(width: 8),
+                FilterChip(
+                  label: const Text('Baja reputación (< 30)'),
+                  selected: _reputationFilter == ReputationFilter.low,
+                  onSelected: (_) =>
+                      setState(() => _reputationFilter = ReputationFilter.low),
+                ),
+                const SizedBox(width: 8),
+                FilterChip(
+                  label: const Text('Reputación Normal/Alta (≥ 30)'),
+                  selected: _reputationFilter == ReputationFilter.good,
+                  onSelected: (_) =>
+                      setState(() => _reputationFilter = ReputationFilter.good),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
         Expanded(
           child: activeAsync.when(
             loading: () => const AppLoading(message: 'Cargando usuarios…'),
@@ -130,17 +192,30 @@ class _ActiveUsersTabState extends ConsumerState<_ActiveUsersTab> {
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ),
-            data: (users) => users.isEmpty
-                ? const _EmptyState(
-                    icon: Icons.people_outline,
-                    message: AppStrings.noActiveUsers,
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: users.length,
-                    itemBuilder: (context, index) =>
-                        _ActiveUserCard(user: users[index]),
-                  ),
+            data: (users) {
+              final filteredUsers = users.where((user) {
+                switch (_reputationFilter) {
+                  case ReputationFilter.all:
+                    return true;
+                  case ReputationFilter.low:
+                    return user.reputationScore < 30.0;
+                  case ReputationFilter.good:
+                    return user.reputationScore >= 30.0;
+                }
+              }).toList();
+
+              return filteredUsers.isEmpty
+                  ? const _EmptyState(
+                      icon: Icons.people_outline,
+                      message: AppStrings.noActiveUsers,
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: filteredUsers.length,
+                      itemBuilder: (context, index) =>
+                          _ActiveUserCard(user: filteredUsers[index]),
+                    );
+            },
           ),
         ),
       ],
@@ -319,6 +394,18 @@ class _ActiveUserCard extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.block, size: 18),
+                    label: const Text(AppStrings.blockUser),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.error,
+                      side: BorderSide(color: Theme.of(context).colorScheme.error),
+                    ),
+                    onPressed: isLoading
+                        ? null
+                        : () => _confirmBlock(context, ref, user.userId),
+                  ),
+                  const SizedBox(width: 8),
                   if (isReferent)
                     OutlinedButton.icon(
                       icon: const Icon(Icons.arrow_downward, size: 18),
@@ -383,6 +470,26 @@ class _ActiveUserCard extends ConsumerWidget {
       context.showSnackBar(error.toString(), isError: true);
     } else {
       context.showSnackBar(AppStrings.userDemoted);
+    }
+  }
+
+  Future<void> _confirmBlock(
+      BuildContext context, WidgetRef ref, String uid) async {
+    final confirmed = await _showConfirmDialog(
+      context: context,
+      title: AppStrings.blockConfirmTitle,
+      body: AppStrings.blockConfirmBody,
+      confirmLabel: AppStrings.blockUser,
+      confirmColor: Theme.of(context).colorScheme.error,
+    );
+    if (confirmed != true || !context.mounted) return;
+    await ref.read(userManagementNotifierProvider.notifier).blockUser(uid);
+    if (!context.mounted) return;
+    final error = ref.read(userManagementNotifierProvider).error;
+    if (error != null) {
+      context.showSnackBar(error.toString(), isError: true);
+    } else {
+      context.showSnackBar(AppStrings.userBlocked);
     }
   }
 }

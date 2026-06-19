@@ -98,6 +98,21 @@ void main() {
       expect(find.text(AppStrings.promoteToReferent), findsNothing);
     });
 
+    testWidgets('muestra acción Bloquear en card de vecino y referente', (tester) async {
+      await tester.pumpWidget(_wrap(active: [
+        _user(id: 'v1', name: 'Vecino Uno', role: UserRole.vecinoInformante),
+        _user(id: 'r1', name: 'Referente Uno', role: UserRole.referenteBarrial),
+      ]));
+      await tester.pump();
+
+      await tester.tap(find.text(AppStrings.tabActive));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Vecino Uno'), findsOneWidget);
+      expect(find.text('Referente Uno'), findsOneWidget);
+      expect(find.text(AppStrings.blockUser), findsNWidgets(2));
+    });
+
     testWidgets('muestra empty state cuando no hay usuarios activos',
         (tester) async {
       await tester.pumpWidget(_wrap());

@@ -37,4 +37,7 @@ abstract interface class AuthRepository {
 
   /// Stream en tiempo real de usuarios bloqueados.
   Stream<List<AppUser>> get blockedUsersStream;
+
+  /// Bloquea manualmente a un usuario: status → "blocked".
+  Future<void> blockUser(String uid);
 }

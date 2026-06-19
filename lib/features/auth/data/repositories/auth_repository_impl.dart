@@ -74,4 +74,7 @@ class AuthRepositoryImpl implements AuthRepository {
   Stream<List<AppUser>> get blockedUsersStream => _dataSource
       .blockedUsersStream()
       .map((models) => models.map((m) => m.toDomain()).toList());
+
+  @override
+  Future<void> blockUser(String uid) => _dataSource.blockUser(uid);
 }

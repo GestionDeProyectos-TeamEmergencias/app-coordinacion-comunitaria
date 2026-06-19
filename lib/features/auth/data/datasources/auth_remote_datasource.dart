@@ -216,6 +216,15 @@ class AuthRemoteDataSource {
     }
   }
 
+  /// Bloquea a un usuario: status → "blocked". [T-AUTH-08]
+  Future<void> blockUser(String uid) async {
+    try {
+      await _users.doc(uid).update({'status': 'blocked'});
+    } on FirebaseException catch (e) {
+      throw FirestoreException(e.message ?? 'Error al bloquear usuario.');
+    }
+  }
+
   Future<void> logout() => _auth.signOut();
 
   Future<UserModel?> getCurrentUser() async {
