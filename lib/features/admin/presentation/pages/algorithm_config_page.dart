@@ -49,8 +49,9 @@ class _AlgorithmConfigPageState extends ConsumerState<AlgorithmConfigPage> {
       _loadError = null;
     });
     try {
-      final callable =
-          FirebaseFunctions.instance.httpsCallable('getAlgorithmConfig');
+      // Nombre exportado en functions/src/index.ts (sufijo "Callable").
+      final callable = FirebaseFunctions.instance
+          .httpsCallable('getAlgorithmConfigCallable');
       final result = await callable.call<Map<Object?, Object?>>();
       final config = (result.data['config'] ?? {}) as Map<Object?, Object?>;
       final thresholds =
@@ -71,8 +72,8 @@ class _AlgorithmConfigPageState extends ConsumerState<AlgorithmConfigPage> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     try {
-      final callable =
-          FirebaseFunctions.instance.httpsCallable('updateAlgorithmConfig');
+      final callable = FirebaseFunctions.instance
+          .httpsCallable('updateAlgorithmConfigCallable');
       await callable.call<Map<Object?, Object?>>({
         'patch': {
           'priorityThresholds': {
@@ -132,7 +133,8 @@ class _AlgorithmConfigPageState extends ConsumerState<AlgorithmConfigPage> {
                           controller: _urgenteCtrl,
                           decoration: const InputDecoration(
                             labelText: 'Umbral Urgente (≥)',
-                            helperText: 'Score mínimo para marcar como Urgente.',
+                            helperText:
+                                'Score mínimo para marcar como Urgente.',
                           ),
                           keyboardType: TextInputType.number,
                           validator: _validateThreshold,
