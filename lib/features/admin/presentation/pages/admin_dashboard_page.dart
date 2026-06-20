@@ -52,15 +52,9 @@ class AdminDashboardPage extends ConsumerWidget {
           ),
           _DashboardCard(
             icon: Icons.notifications_active,
-            title: 'Notificaciones masivas',
-            subtitle: 'Enviar alertas a todos los vecinos (T-NLP-09)',
-            onTap: () {
-              // TODO(T-NLP-09): implementar envío de notificaciones masivas
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content: Text('Próximamente: notificaciones masivas')),
-              );
-            },
+            title: AppStrings.broadcastTitle,
+            subtitle: AppStrings.broadcastSubtitle,
+            onTap: () => context.go(AppRoutes.adminBroadcast),
           ),
           _DashboardCard(
             icon: Icons.tune,

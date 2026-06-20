@@ -99,6 +99,25 @@ abstract final class AppStrings {
   static const coverageConfigSubtitle = 'Configurar radio y centro del área.';
 
   // Configuración del algoritmo NLP [T-NLP-06]
+  // Notificaciones masivas [T-NLP-09]
+  static const broadcastTitle = 'Notificaciones masivas';
+  static const broadcastSubtitle =
+      'Enviá un push a todos los vecinos activos o a una zona geográfica específica.';
+  static const broadcastSendButton = 'Enviar notificación';
+  static const broadcastUseAreaToggle = 'Limitar a una zona geográfica';
+  static const broadcastUseAreaSubtitle =
+      'Si está desactivado, se envía a todos los vecinos activos.';
+  static const broadcastConfirmTitle = '¿Enviar notificación masiva?';
+  static const broadcastConfirmGlobal =
+      'La notificación se enviará a todos los vecinos activos con tokens registrados.';
+  static const broadcastConfirmZonal =
+      'La notificación se enviará a los vecinos activos dentro del área indicada.';
+  static const broadcastGenericError = 'Error al enviar la notificación.';
+  static const broadcastRadiusTooLarge =
+      'El radio no puede superar 100 000 m (100 km).';
+  static String broadcastSentSummary(int success, int failure) =>
+      'Enviada a $success dispositivos (fallaron $failure).';
+
   static const algorithmConfig = 'Configuración del algoritmo NLP';
   static const algorithmConfigSubtitle =
       'Calibrar umbrales de prioridad sin redeploy.';
