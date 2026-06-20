@@ -1,7 +1,7 @@
 # Backlog — App de Coordinación Comunitaria
 
 **Proyecto Jira:** [KAN — comunidad-team-nb4pgq0v.atlassian.net](https://comunidad-team-nb4pgq0v.atlassian.net)
-**Última sincronización:** 2026-06-18
+**Última sincronización:** 2026-06-20
 
 ---
 
@@ -20,11 +20,11 @@
 
 | Estado | Cantidad |
 |---|---|
-| ✅ Finalizado | 23 |
-| 🔄 En curso | 4 |
-| 🔍 En revisión | 4 |
-| ⬜ Por hacer | 10 |
-| **Total** | **41** |
+| ✅ Finalizado | 30 |
+| 🔄 En curso | 1 |
+| 🔍 En revisión | 0 |
+| ⬜ Por hacer | 6 |
+| **Total** | **37** |
 
 ---
 
@@ -50,11 +50,11 @@
 | KAN-43 | [T-AUTH-02] Login y autenticación Firebase Auth | ✅ Finalizado | Jeremías Aguirres | Medium |
 | KAN-44 | [T-AUTH-03] Control de acceso por roles | ✅ Finalizado | tmiquelez | Medium |
 | KAN-45 | [T-AUTH-04] Promoción de referente barrial | ✅ Finalizado | Jeremías Aguirres | Medium |
-| KAN-46 | [T-AUTH-05] Sistema de reputación por usuario | 🔍 En revisión | tmiquelez | Medium |
-| KAN-48 | [T-AUTH-06] Validación geográfica de reportes | 🔄 En curso | Jeremías Aguirres | Medium |
-| KAN-49 | [T-AUTH-07] Gestión de reportes falsos y bloqueos | 🔍 En revisión | tmiquelez | Medium |
-| KAN-50 | [T-AUTH-08] Panel de administración — gestión de usuarios | ⬜ Por hacer | Jeremías Aguirres | Medium |
-| KAN-51 | [T-AUTH-09] Verificación de identidad del vecino (configurable) | ⬜ Por hacer | tmiquelez | Medium |
+| KAN-46 | [T-AUTH-05] Sistema de reputación por usuario | ✅ Finalizado | tmiquelez | Medium |
+| KAN-48 | [T-AUTH-06] Validación geográfica de reportes | ✅ Finalizado | Jeremías Aguirres | Medium |
+| KAN-49 | [T-AUTH-07] Gestión de reportes falsos y bloqueos | ✅ Finalizado | tmiquelez | Medium |
+| KAN-50 | [T-AUTH-08] Panel de administración — gestión de usuarios | ✅ Finalizado | Jeremías Aguirres | Medium |
+| KAN-51 | [T-AUTH-09] Verificación de identidad del vecino (configurable) | ✅ Finalizado | tmiquelez | Medium |
 
 ---
 
@@ -81,9 +81,9 @@
 | KAN-58 | [T-NLP-04] Genkit Flow: clasificación de prioridad y score | ✅ Finalizado | Lucas Lovizzio | Medium |
 | KAN-59 | [T-NLP-05] Cloud Function: detección de riesgo vital | ✅ Finalizado | Eric Doyle | Medium |
 | KAN-64 | [T-NLP-06] Cloud Function: calibración del algoritmo | ✅ Finalizado | Lucas Lovizzio | Medium |
-| KAN-65 | [T-NLP-07] Sistema de alertas push FCM/APNs | 🔍 En revisión | Eric Doyle | Medium |
-| KAN-66 | [T-NLP-08] Persistencia y auditoría en Firestore | ⬜ Por hacer | Lucas Lovizzio | Medium |
-| KAN-67 | [T-NLP-09] Notificaciones masivas del administrador | 🔄 En curso | Eric Doyle | Medium |
+| KAN-65 | [T-NLP-07] Sistema de alertas push FCM/APNs | ✅ Finalizado | Eric Doyle | Medium |
+| KAN-66 | [T-NLP-08] Persistencia y auditoría en Firestore | ✅ Finalizado | Lucas Lovizzio | Medium |
+| KAN-67 | [T-NLP-09] Notificaciones masivas del administrador | ✅ Finalizado | Eric Doyle | Medium |
 
 ---
 
