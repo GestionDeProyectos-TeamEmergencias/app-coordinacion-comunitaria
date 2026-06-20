@@ -113,6 +113,16 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ── Colección: broadcasts (T-NLP-09) ─────────────────────────────────────
+    // Auditoría de notificaciones masivas enviadas por el admin.
+    // Escritura: solo desde el callable (con privilegios de admin SDK), nunca
+    // desde el cliente. Lectura: solo admins (panel de histórico futuro).
+
+    match /broadcasts/{document=**} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     // ── Denegación por defecto ─────────────────────────────────────────────────
     // Cualquier colección no listada arriba queda bloqueada.
     match /{document=**} {
