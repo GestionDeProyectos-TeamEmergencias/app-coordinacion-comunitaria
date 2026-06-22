@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -7,6 +7,9 @@ import '../../../../core/errors/app_exception.dart';
 
 /// Sube el comprobante de servicio a Firebase Storage y registra la URL en el
 /// documento del usuario. Path en Storage: `identity_proofs/{uid}.{ext}`. [T-AUTH-09]
+///
+/// Usa `putData` con bytes para que funcione tanto en mobile como en Flutter
+/// Web (donde `dart:io.File` no está disponible).
 class IdentityProofUploader {
   IdentityProofUploader({
     FirebaseStorage? storage,
@@ -19,13 +22,17 @@ class IdentityProofUploader {
 
   Future<String> uploadProof({
     required String userId,
-    required File photo,
+    required Uint8List bytes,
+    required String fileName,
   }) async {
     try {
-      final ext = photo.path.split('.').last;
+      final ext = fileName.contains('.') ? fileName.split('.').last : 'jpg';
       final path = 'identity_proofs/$userId.$ext';
       final ref = _storage.ref(path);
-      await ref.putFile(photo);
+      await ref.putData(
+        bytes,
+        SettableMetadata(contentType: 'image/$ext'),
+      );
       final url = await ref.getDownloadURL();
       await _firestore.collection('users').doc(userId).update({
         'identityProofUrl': url,

@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -152,11 +150,14 @@ class _IdentityProofSection extends ConsumerWidget {
       maxWidth: 1280,
       maxHeight: 1280,
     );
-    if (picked == null || !context.mounted) return;
+    if (picked == null) return;
+    final bytes = await picked.readAsBytes();
+    if (!context.mounted) return;
 
     await ref.read(identityProofNotifierProvider.notifier).upload(
           userId: userId,
-          photo: File(picked.path),
+          bytes: bytes,
+          fileName: picked.name,
         );
 
     if (!context.mounted) return;

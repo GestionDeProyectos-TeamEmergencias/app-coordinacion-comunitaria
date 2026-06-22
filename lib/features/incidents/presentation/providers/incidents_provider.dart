@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -90,7 +90,8 @@ class ReportNotifier extends StateNotifier<AsyncValue<String?>> {
     required double longitude,
     required String description,
     required IncidentCategory category,
-    File? photoFile,
+    Uint8List? photoBytes,
+    String? photoName,
   }) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
@@ -99,10 +100,12 @@ class ReportNotifier extends StateNotifier<AsyncValue<String?>> {
         throw const OutOfCoverageException();
       }
       String? photoUrl;
-      if (photoFile != null) {
-        photoUrl = await _ref
-            .read(_incidentsDataSourceProvider)
-            .uploadPhoto(photoFile, userId);
+      if (photoBytes != null) {
+        photoUrl = await _ref.read(_incidentsDataSourceProvider).uploadPhoto(
+              photoBytes,
+              photoName ?? 'photo.jpg',
+              userId,
+            );
       }
       return _ref.read(submitFormReportProvider)(
         userId: userId,

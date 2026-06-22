@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -13,12 +13,18 @@ class IdentityProofNotifier extends StateNotifier<AsyncValue<String?>> {
 
   final Ref _ref;
 
-  Future<void> upload({required String userId, required File photo}) async {
+  Future<void> upload({
+    required String userId,
+    required Uint8List bytes,
+    required String fileName,
+  }) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(
-      () => _ref
-          .read(identityProofUploaderProvider)
-          .uploadProof(userId: userId, photo: photo),
+      () => _ref.read(identityProofUploaderProvider).uploadProof(
+            userId: userId,
+            bytes: bytes,
+            fileName: fileName,
+          ),
     );
   }
 }

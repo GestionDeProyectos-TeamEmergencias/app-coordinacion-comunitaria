@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,7 +27,10 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
   final _formKey = GlobalKey<FormState>();
   final _descCtrl = TextEditingController();
   IncidentCategory? _category;
-  File? _photo;
+  // Bytes + nombre del archivo: representación universal que funciona tanto en
+  // mobile como en Flutter Web (donde `dart:io.File` no está disponible).
+  Uint8List? _photoBytes;
+  String? _photoName;
   bool _useVoice = false;
   bool _isSubmitting = false;
 
@@ -40,11 +43,21 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
   Future<void> _pickPhoto() async {
     final picker = ImagePicker();
     final picked = await picker.pickImage(
-        source: ImageSource.camera,
-        imageQuality: 70,
-        maxWidth: 1024,
-        maxHeight: 1024);
-    if (picked != null) setState(() => _photo = File(picked.path));
+      // En Web `ImageSource.camera` no está disponible; el picker abre el
+      // selector de archivos por defecto. Usar `gallery` mantiene la misma
+      // UX en mobile (galería) y en web (file picker).
+      source: ImageSource.gallery,
+      imageQuality: 70,
+      maxWidth: 1024,
+      maxHeight: 1024,
+    );
+    if (picked == null) return;
+    final bytes = await picked.readAsBytes();
+    if (!mounted) return;
+    setState(() {
+      _photoBytes = bytes;
+      _photoName = picked.name;
+    });
   }
 
   Future<Position?> _getPosition() async {
@@ -117,7 +130,8 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
             longitude: position.longitude,
             description: _descCtrl.text.trim(),
             category: _category!,
-            photoFile: _photo,
+            photoBytes: _photoBytes,
+            photoName: _photoName,
           );
 
       if (!mounted) return;
@@ -202,16 +216,20 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
               // Foto opcional (RF-REP-03)
               OutlinedButton.icon(
                 icon: const Icon(Icons.camera_alt),
-                label: Text(_photo == null
+                label: Text(_photoBytes == null
                     ? AppStrings.addPhoto
                     : AppStrings.photoSelected),
                 onPressed: _pickPhoto,
               ),
-              if (_photo != null) ...[
+              if (_photoBytes != null) ...[
                 const SizedBox(height: 8),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.file(_photo!, height: 180, fit: BoxFit.cover),
+                  child: Image.memory(
+                    _photoBytes!,
+                    height: 180,
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ],
               const SizedBox(height: 24),

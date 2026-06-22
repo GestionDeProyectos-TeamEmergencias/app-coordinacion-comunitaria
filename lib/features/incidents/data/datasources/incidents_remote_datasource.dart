@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -17,13 +17,23 @@ class IncidentsRemoteDataSource {
   CollectionReference<Map<String, dynamic>> get _incidents =>
       _firestore.collection('incidents');
 
-  /// Sube foto a Storage y retorna la URL de descarga. [T-REP-03]
-  Future<String> uploadPhoto(File photo, String userId) async {
+  /// Sube foto a Storage como bytes y retorna la URL de descarga. [T-REP-03]
+  ///
+  /// Usa `putData` en lugar de `putFile` para que funcione tanto en mobile
+  /// como en Flutter Web (donde `dart:io.File` no está disponible).
+  Future<String> uploadPhoto(
+    Uint8List bytes,
+    String fileName,
+    String userId,
+  ) async {
     try {
-      final ext = photo.path.split('.').last;
+      final ext = fileName.contains('.') ? fileName.split('.').last : 'jpg';
       final path = 'incidents/$userId/${const Uuid().v4()}.$ext';
       final ref = _storage.ref(path);
-      await ref.putFile(photo);
+      await ref.putData(
+        bytes,
+        SettableMetadata(contentType: 'image/$ext'),
+      );
       return await ref.getDownloadURL();
     } on FirebaseException catch (e) {
       throw StorageException(e.message ?? 'Error al subir la foto.');
