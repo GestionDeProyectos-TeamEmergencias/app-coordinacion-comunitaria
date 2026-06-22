@@ -14,7 +14,6 @@ class UserModel {
     required this.status,
     required this.reputationScore,
     required this.falseReportsCount,
-    required this.isBlocked,
     this.coverageLat,
     this.coverageLng,
     this.coverageRadiusKm,
@@ -27,11 +26,6 @@ class UserModel {
   final String status;
   final double reputationScore;
   final int falseReportsCount;
-  final bool isBlocked;
-  final double? coverageLat;
-  final double? coverageLng;
-  final double? coverageRadiusKm;
-
   factory UserModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data()!;
     return UserModel(
@@ -42,7 +36,6 @@ class UserModel {
       status: data['status'] as String? ?? 'pending',
       reputationScore: (data['reputationScore'] as num?)?.toDouble() ?? 100.0,
       falseReportsCount: data['falseReportsCount'] as int? ?? 0,
-      isBlocked: data['isBlocked'] as bool? ?? false,
       coverageLat: (data['coverageLat'] as num?)?.toDouble(),
       coverageLng: (data['coverageLng'] as num?)?.toDouble(),
       coverageRadiusKm: (data['coverageRadiusKm'] as num?)?.toDouble(),
@@ -56,7 +49,6 @@ class UserModel {
         'status': status,
         'reputationScore': reputationScore,
         'falseReportsCount': falseReportsCount,
-        'isBlocked': isBlocked,
         if (coverageLat != null) 'coverageLat': coverageLat,
         if (coverageLng != null) 'coverageLng': coverageLng,
         if (coverageRadiusKm != null) 'coverageRadiusKm': coverageRadiusKm,

@@ -2,13 +2,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/admin/presentation/pages/admin_dashboard_page.dart';
+import '../features/admin/presentation/pages/coverage_config_page.dart';
 import '../features/admin/presentation/pages/incident_moderation_page.dart';
 import '../features/admin/presentation/pages/users_management_page.dart';
+import '../features/alerts/presentation/pages/referent_alerts_page.dart';
 import '../features/auth/domain/entities/app_user.dart';
+import '../features/auth/presentation/pages/blocked_page.dart';
 import '../features/auth/presentation/pages/login_page.dart';
 import '../features/auth/presentation/pages/pending_approval_page.dart';
 import '../features/auth/presentation/pages/register_page.dart';
 import '../features/auth/presentation/pages/rejected_page.dart';
+import '../features/auth/presentation/pages/unauthorized_access_page.dart';
 import '../features/auth/presentation/providers/auth_provider.dart';
 import '../features/incidents/presentation/pages/home_page.dart';
 import '../features/incidents/presentation/pages/incident_detail_page.dart';
@@ -24,6 +28,7 @@ abstract final class AppRoutes {
   static const register = '/register';
   static const pending = '/pending';
   static const rejected = '/rejected';
+  static const blocked = '/blocked';
   static const home = '/home';
   static const reportForm = '/report/form';
   static const map = '/map';
@@ -32,6 +37,9 @@ abstract final class AppRoutes {
   static const admin = '/admin';
   static const adminUsers = '/admin/users';
   static const adminIncidents = '/admin/incidents';
+  static const adminCoverage = '/admin/coverage';
+  static const alerts = '/alerts';
+  static const unauthorized = '/unauthorized';
 
   static String incidentDetailPath(String id) => '/incident/$id';
 }
@@ -62,11 +70,35 @@ final routerProvider = Provider<GoRouter>((ref) {
         return loc == AppRoutes.rejected ? null : AppRoutes.rejected;
       }
 
+      // Cuenta bloqueada por reportes falsos: redirigir a página de bloqueo. [T-AUTH-07]
+      if (user.status == UserStatus.blocked) {
+        return loc == AppRoutes.blocked ? null : AppRoutes.blocked;
+      }
+
       if (isOnAuthPage ||
           loc == AppRoutes.splash ||
           loc == AppRoutes.pending ||
-          loc == AppRoutes.rejected) {
+          loc == AppRoutes.rejected ||
+          loc == AppRoutes.blocked) {
         return AppRoutes.home;
+      }
+
+      // --- RBAC: Restricciones de acceso por rol (T-AUTH-03) ---
+
+      // Rutas de administrador
+      if (loc.startsWith(AppRoutes.admin)) {
+        if (user.role != UserRole.administrador) {
+          return AppRoutes.unauthorized;
+        }
+      }
+
+      // Rutas de moderación (Referente Barrial o Administrador)
+      if (loc.startsWith(AppRoutes.incidentDetail.split(':')[0]) ||
+          loc == AppRoutes.adminIncidents ||
+          loc == AppRoutes.alerts) {
+        if (!user.role.canVerify) {
+          return AppRoutes.unauthorized;
+        }
       }
 
       return null;
@@ -91,6 +123,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.rejected,
         builder: (_, __) => const RejectedPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.blocked,
+        builder: (_, __) => const BlockedPage(),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
@@ -139,6 +175,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.adminIncidents,
         builder: (_, __) => const IncidentModerationPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.adminCoverage,
+        builder: (_, __) => const CoverageConfigPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.alerts,
+        builder: (_, __) => const ReferentAlertsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.unauthorized,
+        builder: (_, __) => const UnauthorizedAccessPage(),
       ),
     ],
   );
