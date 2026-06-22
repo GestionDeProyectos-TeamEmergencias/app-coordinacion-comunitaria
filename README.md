@@ -1,6 +1,6 @@
 # App de Coordinación Comunitaria
 
-![Flutter Version](https://img.shields.io/badge/Flutter-3.22+-02569B?logo=flutter) ![Firebase](https://img.shields.io/badge/Firebase-Genkit%20%7C%20Functions%20%7C%20Firestore-FFCA28?logo=firebase) ![Gemini](https://img.shields.io/badge/AI-Gemini%202.5%20Flash-8E75B2?logo=google) ![License](https://img.shields.io/badge/License-MIT-blue.svg)
+![Flutter Version](https://img.shields.io/badge/Flutter-3.22+-02569B?logo=flutter) ![Firebase](https://img.shields.io/badge/Firebase-Genkit%20%7C%20Functions%20%7C%20Firestore-FFCA28?logo=firebase) ![Gemini](https://img.shields.io/badge/AI-Gemini%202.5%20Flash-8E75B2?logo=google) [![License: GNU GPLv3](https://img.shields.io/badge/license-%20%20GNU%20GPLv3%20-green?style=plastic)](https://gnu.org)
 
 Plataforma de ciencia ciudadana para el reporte de incidentes urbanos no críticos (baches, luminarias rotas, basura, cables sueltos). Actúa como puente entre los vecinos y la administración municipal/vecinal de forma eficiente y geo-referenciada.
 
