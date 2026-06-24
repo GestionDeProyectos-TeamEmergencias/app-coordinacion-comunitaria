@@ -5,6 +5,8 @@
 
 **Estado del documento:** propuesta — a validar con el equipo y el docente antes de comenzar la implementación.
 
+> 🔴 **Antes de estas extensiones: cerrar la deuda de MVP.** Una auditoría de código posterior a este plan detectó que el MVP de la Segunda Iteración tiene flujos **a medias o rotos end-to-end** (push a referentes, derivación de emergencias 911/107, visibilidad del vecino en el mapa, decremento de reputación, seguridad de Storage, etc.). Esas tareas —categoría **`deuda-mvp`**, IDs `D-01…D-10`— **deben cerrarse antes de la entrega** y se gestionan, junto con la matriz de flujos a probar, en **[`docs/DEVOLUCION_PLAN_TERCERA_ITERACION.md`](./DEVOLUCION_PLAN_TERCERA_ITERACION.md) (§11 tablero de tickets y §12 flujos)**. **Este plan cubre solo las extensiones `F-01…F-07`**; la priorización real es: primero `deuda-mvp`, después las waves `F-0X`.
+
 ---
 
 ## 1. Contexto y motivación
@@ -225,6 +227,42 @@ Se mantiene el criterio actual: **toda lógica de negocio nueva** debe tener tes
 
 Las features pasan por la misma CI existente (PR-checks). Si una feature requiere deploy de Cloud Functions o de reglas Firestore, debe documentarse en el `.md` de la feature con los comandos exactos.
 
+### 6.5 Creación de tickets en Jira (obligatorio antes de codear)
+
+Antes de arrancar cada feature **se debe crear su ticket en Jira**, respetando las convenciones que venimos usando en el proyecto (ver `docs/BACKLOG.md` y `docs/WORKFLOW.md`). Cada una de las siete features (`F-01` … `F-07`) es **un ticket independiente**.
+
+**Convenciones a respetar (idénticas a la Segunda Iteración):**
+
+- **Proyecto:** `KAN` (`comunidad-team-nb4pgq0v.atlassian.net`).
+- **Tipo de issue:** `Tarea` (Task), enlazada a una épica.
+- **Épica:** crear una nueva épica **"Épica 6 — Tercera Iteración (Extensiones de Producto)"** y colgar de ella los siete tickets, para mantenerlos separados del alcance de las Iteraciones 1 y 2.
+- **Summary (título del ticket):** `[F-NN] Nombre de la feature` — mismo formato `[ID] Nombre` que usamos con `[T-XXX-NN]`. Ej.: `[F-01] Sección Mis reportes con edición del reporte propio`.
+- **Campos:** `Responsable` (assignee del equipo que la toma), `Prioridad` (según la wave: Wave 1 = High, Wave 2 = Medium, Wave 3 = Medium/Low), y en la **descripción**: link a la observación que cubre (`O1`…`O7` de la sección 2), la wave, la estimación, las dependencias y el link al `.md` de la feature (sección 6.2) cuando exista.
+- **Branch / commit:** los IDs de Jira y los `[F-NN]` de commit/branch deben coincidir (ver sección 6.1).
+
+**Categorización obligatoria (label de Jira):** cada ticket lleva **exactamente uno** de estos dos labels, según el criterio:
+
+- **`ajuste-feedback`** — la feature **ajusta, clarifica o completa** algo que ya estaba previsto en el SRS / la planificación, o que el docente pidió corregir. No agrega alcance nuevo: lo termina o lo afina.
+- **`extra`** — la feature es **funcionalidad nueva que excede el SRS v1.1**, aunque haya sido disparada por feedback. Agrega alcance que antes no existía.
+
+Además, agregar el label común **`iteracion-3`** a los siete tickets para poder filtrarlos como conjunto.
+
+**Asignación de categoría por feature:**
+
+| Ticket | Feature | Categoría (label) | Origen | Observación | Justificación de la categoría |
+|---|---|---|---|---|---|
+| F-01 | Mis reportes con edición | `ajuste-feedback` | Uso real | O1 | El SRS §3.1.1 ya preveía "historial de reportes propios"; se completa y se le agrega edición. |
+| F-02 | Definición de cliente objetivo | `ajuste-feedback` | Docente | O2 | El cliente ya está definido en el Informe de Viabilidad y el SRS §1.4; se operacionaliza (persona/journey). |
+| F-03 | Selector de ubicación interactivo | `ajuste-feedback` | Uso real | O3 | Ajusta el flujo de captura de ubicación ya existente (RF-REP-01); no es alcance nuevo. |
+| F-04 | Reacciones de la comunidad | `extra` | Docente | O4 | Reputación **por reporte**: el SRS solo tiene reputación **por usuario** (RF-MOD-01). Es alcance nuevo. |
+| F-05 | Validación bilateral del cierre | `extra` | Docente | O5 | RF-ADM-02 define cierre unilateral del admin; la confirmación del reportero es un flujo nuevo. |
+| F-06 | Evidencia opcional al cerrar | `extra` | Uso real | O6 | Evidencia de resolución al cierre no figura en el SRS; es una capacidad nueva. |
+| F-07 | Polígono de cobertura | `ajuste-feedback` | Docente | O7 | RF-REP-01 y RF-ADM-01 ya dicen "polígono **o** radio"; el MVP descopeó a círculo. Se completa lo especificado. |
+
+> **Importante para el docente:** los tickets `ajuste-feedback` (F-01, F-02, F-03, F-07) **no son alcance nuevo** sino cierre de cosas ya especificadas o pedidas; solo los `extra` (F-04, F-05, F-06) amplían el SRS y son los que requieren la justificación de scope de la sección 7. Mantener esta distinción explícita evita que el docente lea las cuatro primeras como "scope creep".
+
+**Después de crear los tickets:** actualizar el espejo `docs/BACKLOG.md` (nueva sección "Épica 6 — Tercera Iteración") con las claves `KAN-NN`, el estado y el responsable de cada uno, y la fecha de sincronización.
+
 ---
 
 ## 7. Justificación del scope expansion (para el docente)
@@ -251,7 +289,7 @@ La planificación original no las contempló porque dependían de **feedback de 
 ## 9. Próximos pasos
 
 1. **Validar este plan con el equipo y el docente** (esta semana).
-2. **Crear las tareas en Jira** con IDs `F-01` a `F-07` y los detalles correspondientes.
+2. **Crear las tareas en Jira** con IDs `F-01` a `F-07`, siguiendo las convenciones y la categorización (`extra` / `ajuste-feedback`) de la sección **6.5**, y reflejarlas en `docs/BACKLOG.md`.
 3. **Arrancar Wave 1** en paralelo (las tres features son independientes).
 4. **Documentar cada feature cerrada** según las convenciones de la sección 6.2.
 5. **Demo final** al cerrar las tres waves, mostrando antes/después de cada observación.
