@@ -69,7 +69,14 @@ enum IncidentStatus {
   // cobertura configurada. [T-AUTH-06]
   rechazadoFueraDeCobertura,
   // Marcado por un admin/referente como reporte falso o malintencionado. [T-AUTH-07]
-  falso;
+  falso,
+  // Marcado por el backend cuando detecta riesgo vital en la descripción
+  // (`vitalRiskDetectionFlow`). El pipeline se corta y NO se generan alertas
+  // comunitarias; el cliente muestra derivación a 911/107. [D-03 / RF-PRI-05]
+  vitalRiskDetected,
+  // Marcado por el backend cuando el autor del reporte no está activo
+  // (`pending`/`blocked`/`rejected`). [D-03 / T-AUTH-07]
+  rechazadoAutorInactivo;
 
   static IncidentStatus fromString(String value) => switch (value) {
         'recibido' => IncidentStatus.recibido,
@@ -79,6 +86,8 @@ enum IncidentStatus {
         'rechazado_fuera_de_cobertura' =>
           IncidentStatus.rechazadoFueraDeCobertura,
         'falso' => IncidentStatus.falso,
+        'vital_risk_detected' => IncidentStatus.vitalRiskDetected,
+        'rechazado_autor_inactivo' => IncidentStatus.rechazadoAutorInactivo,
         _ => IncidentStatus.recibido,
       };
 
@@ -90,6 +99,8 @@ enum IncidentStatus {
         IncidentStatus.rechazadoFueraDeCobertura =>
           'rechazado_fuera_de_cobertura',
         IncidentStatus.falso => 'falso',
+        IncidentStatus.vitalRiskDetected => 'vital_risk_detected',
+        IncidentStatus.rechazadoAutorInactivo => 'rechazado_autor_inactivo',
       };
 
   String get displayName => switch (this) {
@@ -99,6 +110,8 @@ enum IncidentStatus {
         IncidentStatus.solucionado => 'Solucionado',
         IncidentStatus.rechazadoFueraDeCobertura => 'Fuera de cobertura',
         IncidentStatus.falso => 'Falso',
+        IncidentStatus.vitalRiskDetected => 'Riesgo vital — derivado a 911/107',
+        IncidentStatus.rechazadoAutorInactivo => 'Rechazado (autor inactivo)',
       };
 }
 

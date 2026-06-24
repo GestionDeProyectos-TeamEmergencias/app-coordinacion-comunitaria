@@ -14,6 +14,8 @@ import '../../../../core/widgets/app_button.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/entities/incident_event.dart';
 import '../providers/incidents_provider.dart';
+import '../providers/vital_risk_provider.dart';
+import '../widgets/vital_risk_dialog.dart';
 import '../widgets/voice_report_widget.dart';
 
 class ReportFormPage extends ConsumerStatefulWidget {
@@ -118,6 +120,19 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
       ),
     );
     try {
+      // Chequeo de riesgo vital antes de pedir GPS / enviar. Si la descripción
+      // tiene términos críticos (911/107), derivamos al usuario y NO creamos
+      // el incident. [D-03 / RF-PRI-05]
+      final description = _descCtrl.text.trim();
+      final vitalRisk =
+          await ref.read(vitalRiskCheckServiceProvider).check(description);
+      if (!mounted) return;
+      if (vitalRisk.isVitalRisk) {
+        messenger.hideCurrentSnackBar();
+        await VitalRiskDialog.show(context, vitalRisk);
+        return;
+      }
+
       final position = await _getPosition();
       if (position == null || !mounted) return;
 
@@ -128,7 +143,7 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
             userId: user.userId,
             latitude: position.latitude,
             longitude: position.longitude,
-            description: _descCtrl.text.trim(),
+            description: description,
             category: _category!,
             photoBytes: _photoBytes,
             photoName: _photoName,

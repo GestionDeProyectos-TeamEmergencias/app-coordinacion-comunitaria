@@ -48,6 +48,9 @@ dependencies:
   cupertino_icons: ^1.0.8
   cloud_functions: ^5.6.2
 
+  # ── Deep links (tel:, mailto:) — usado para derivación a 911/107. [D-03]
+  url_launcher: ^6.3.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
