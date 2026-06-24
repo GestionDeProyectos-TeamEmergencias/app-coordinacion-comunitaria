@@ -71,16 +71,19 @@ service cloud.firestore {
     }
 
     // ── Colección: incidents ───────────────────────────────────────────────────
-    // Los vecinos solo ven sus propios incidentes.
-    // Referentes y admins ven todos.
+    // Mapa del barrio (SRS §3.1.1): cualquier usuario activo lee los incidentes
+    // del barrio. La identidad del reportero (`userId`) viaja en el doc pero la
+    // colección `users/{uid}` sigue blindada a dueño + admin, así que el UID
+    // queda opaco para terceros. La sanitización visual (no mostrar userId a
+    // quien no sea dueño/admin/referente) se asegura en la capa de UI. [D-02]
     // Solo referentes y admins pueden cambiar estado/prioridad.
 
     match /incidents/{incidentId} {
-      // Lectura: usuario activo que sea dueño del incidente, referente, o admin.
-      allow read: if isActive() && (
-        resource.data.userId == request.auth.uid ||
-        isAdminOrReferente()
-      );
+      // Lectura: cualquier usuario activo. La granularidad de filtros (qué
+      // incidents se muestran en cada pantalla) se delega al cliente, no a las
+      // reglas, para evitar acoplar la regla a la evolución del enum de status
+      // y a índices compuestos. [D-02]
+      allow read: if isActive();
 
       // Creación: cualquier usuario activo puede reportar,
       // pero el userId del incidente debe ser el suyo.

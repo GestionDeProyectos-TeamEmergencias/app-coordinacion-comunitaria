@@ -72,5 +72,24 @@ void main() {
 
       expect(result.length, 2);
     });
+
+    // El "mapa del barrio" (D-02) muestra incidents públicos activos. Los
+    // marcados `falso` o `rechazado_fuera_de_cobertura` son ruido o sanción de
+    // moderación: aunque la regla Firestore permita leerlos, el cliente los
+    // excluye de la lista pública.
+    test('excluye incidentes falsos y fuera de cobertura', () async {
+      when(() => mockDs.watchIncidents()).thenAnswer(
+        (_) => Stream.value([
+          _makeModel(id: '1', status: 'recibido'),
+          _makeModel(id: '2', status: 'falso'),
+          _makeModel(id: '3', status: 'rechazado_fuera_de_cobertura'),
+          _makeModel(id: '4', status: 'en_reparacion'),
+        ]),
+      );
+
+      final result = await repo.watchActiveIncidents().first;
+
+      expect(result.map((i) => i.eventId), unorderedEquals(['1', '4']));
+    });
   });
 }

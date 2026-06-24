@@ -44,10 +44,10 @@ final submitVoiceReportProvider = Provider<SubmitVoiceReportUseCase>((ref) {
 
 // ── Stream de incidentes ─────────────────────────────────────────────────────
 
-final incidentsStreamProvider = StreamProvider<List<IncidentEvent>>((ref) {
-  return ref.watch(incidentsRepositoryProvider).watchIncidents();
-});
-
+// Stream del "mapa del barrio" (SRS §3.1.1): incidents públicos activos del
+// barrio, sin sancionados (`falso`) ni descartados (`rechazado_fuera_de_cobertura`)
+// ni solucionados. Es la única vista pública del MVP — el historial completo
+// queda para F-01 (Mis reportes). [D-02]
 final activeIncidentsStreamProvider =
     StreamProvider<List<IncidentEvent>>((ref) {
   return ref.watch(incidentsRepositoryProvider).watchActiveIncidents();
