@@ -17,6 +17,9 @@ class IncidentStatusBadge extends StatelessWidget {
       IncidentStatus.solucionado => AppColors.statusSolved,
       IncidentStatus.rechazadoFueraDeCobertura => AppColors.priorityUrgent,
       IncidentStatus.falso => AppColors.priorityUrgent,
+      // Riesgo vital: rojo crítico, igual que prioridad urgente. [D-03]
+      IncidentStatus.vitalRiskDetected => AppColors.priorityUrgent,
+      IncidentStatus.rechazadoAutorInactivo => AppColors.priorityUrgent,
     };
 
     return Chip(

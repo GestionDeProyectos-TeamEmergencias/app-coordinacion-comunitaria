@@ -23,7 +23,11 @@ class IncidentsRepositoryImpl implements IncidentsRepository {
             .where((i) =>
                 i.status != IncidentStatus.solucionado &&
                 i.status != IncidentStatus.rechazadoFueraDeCobertura &&
-                i.status != IncidentStatus.falso)
+                i.status != IncidentStatus.falso &&
+                // Riesgo vital y autor inactivo no son incidentes activos del
+                // barrio: el pipeline ya los descartó. [D-03]
+                i.status != IncidentStatus.vitalRiskDetected &&
+                i.status != IncidentStatus.rechazadoAutorInactivo)
             .toList(),
       );
 

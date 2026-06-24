@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:url_launcher/url_launcher.dart';
+
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/extensions/context_extensions.dart';
 import '../../../../core/widgets/app_loading.dart';
@@ -39,6 +41,13 @@ class IncidentDetailPage extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Defense-in-depth: si el cliente no chequeó pre-envío (versión
+              // vieja, race) y el incident quedó marcado, el reportero ve el
+              // aviso al abrir el detalle. [D-03]
+              if (incident.status == IncidentStatus.vitalRiskDetected) ...[
+                const _VitalRiskBanner(),
+                const SizedBox(height: 16),
+              ],
               if (incident.photoUrl != null)
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
@@ -309,6 +318,77 @@ class _MarkAsFalseButton extends ConsumerWidget {
     } else {
       context.showSnackBar(AppStrings.reportMarkedAsFalse);
     }
+  }
+}
+
+class _VitalRiskBanner extends StatelessWidget {
+  const _VitalRiskBanner();
+
+  Future<void> _call(String number) async {
+    try {
+      await launchUrl(Uri(scheme: 'tel', path: number));
+    } catch (_) {/* swallow */}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: scheme.errorContainer,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: scheme.error, width: 2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: scheme.error, size: 32),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  AppStrings.vitalRiskTitle,
+                  style: TextStyle(
+                    color: scheme.onErrorContainer,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            AppStrings.vitalRiskBody,
+            style: TextStyle(color: scheme.onErrorContainer),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  icon: const Icon(Icons.phone),
+                  onPressed: () => _call('911'),
+                  style: FilledButton.styleFrom(backgroundColor: scheme.error),
+                  label: const Text(AppStrings.emergencyCall911),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: FilledButton.icon(
+                  icon: const Icon(Icons.phone),
+                  onPressed: () => _call('107'),
+                  style: FilledButton.styleFrom(backgroundColor: scheme.error),
+                  label: const Text(AppStrings.emergencyCall107),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
 

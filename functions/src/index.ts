@@ -402,3 +402,46 @@ export const updateAlgorithmConfigCallable = onCall(async (request) => {
 });
 
 export { updateUserReputationOnValidation } from "./reputationManager";
+
+// ── Derivación a 911/107 — chequeo síncrono pre-envío (D-03) ────────────────
+// Permite al cliente Flutter consultar si la descripción de un reporte dispara
+// riesgo vital ANTES de crear el incident. Si la respuesta es `isVitalRisk:
+// true`, el cliente muestra el diálogo de derivación a 911/107 y NO persiste
+// el reporte, evitando ensuciar Firestore con documentos `vital_risk_detected`.
+// El backend mantiene su check defensivo en `normalizeIncident` por si llega
+// un incident desde un cliente que skipea el callable. [RF-PRI-05]
+
+export const checkVitalRiskCallable = onCall(async (request) => {
+  if (!request.auth?.uid) {
+    throw new HttpsError(
+      "unauthenticated",
+      "Autenticación requerida para evaluar riesgo vital.",
+    );
+  }
+
+  const description = request.data?.description;
+  if (typeof description !== "string") {
+    throw new HttpsError(
+      "invalid-argument",
+      "`description` debe ser un string (puede ser vacío).",
+    );
+  }
+
+  // Trim defensivo para evitar trivializar el dictionary contra whitespace.
+  const trimmed = description.trim();
+
+  const firestore = admin.firestore();
+  const config = await loadAlgorithmConfig(firestore);
+  const result = await vitalRiskDetectionFlow({
+    description: trimmed.length === 0 ? null : trimmed,
+    config,
+  });
+
+  return {
+    isVitalRisk: result.isVitalRisk,
+    matchedTerms: result.matchedTerms,
+    riskCategory: result.riskCategory,
+    emergencyNumbers: result.emergencyNumbers,
+    reason: result.reason,
+  };
+});
