@@ -4,7 +4,7 @@ import '../../domain/entities/app_user.dart';
 
 // Colección Firestore: 'users'
 // Campos: userId, email, displayName, role, status, reputationScore,
-//         coverageLat?, coverageLng?, coverageRadiusKm?, createdAt
+//         coverageLat?, coverageLng?, coverageRadiusKm?, fcmTokens, createdAt
 class UserModel {
   const UserModel({
     required this.userId,
@@ -18,6 +18,7 @@ class UserModel {
     this.coverageLng,
     this.coverageRadiusKm,
     this.identityProofUrl,
+    this.fcmTokens = const [],
   });
 
   final String userId;
@@ -37,6 +38,10 @@ class UserModel {
   // puede descargar el archivo, por eso es crítico que las reglas de Firestore
   // no expongan el campo a otros usuarios. [T-AUTH-09]
   final String? identityProofUrl;
+  // Tokens FCM del usuario. Un usuario puede tener múltiples dispositivos
+  // logueados (web + mobile, varios celulares). El backend (T-NLP-07 /
+  // T-NLP-09) hace multicast a todos los tokens. [D-01]
+  final List<String> fcmTokens;
 
   factory UserModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data()!;
@@ -52,6 +57,9 @@ class UserModel {
       coverageLng: (data['coverageLng'] as num?)?.toDouble(),
       coverageRadiusKm: (data['coverageRadiusKm'] as num?)?.toDouble(),
       identityProofUrl: data['identityProofUrl'] as String?,
+      fcmTokens: (data['fcmTokens'] as List<dynamic>? ?? const [])
+          .whereType<String>()
+          .toList(),
     );
   }
 
@@ -66,6 +74,7 @@ class UserModel {
         if (coverageLng != null) 'coverageLng': coverageLng,
         if (coverageRadiusKm != null) 'coverageRadiusKm': coverageRadiusKm,
         if (identityProofUrl != null) 'identityProofUrl': identityProofUrl,
+        'fcmTokens': fcmTokens,
       };
 
   AppUser toDomain() => AppUser(
@@ -81,5 +90,6 @@ class UserModel {
             : null,
         coverageRadiusKm: coverageRadiusKm,
         identityProofUrl: identityProofUrl,
+        fcmTokens: fcmTokens,
       );
 }

@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../notifications/presentation/providers/fcm_service_provider.dart';
 import '../../data/datasources/auth_remote_datasource.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/entities/app_user.dart';
@@ -142,6 +143,10 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
 
   Future<void> logout() async {
     state = const AsyncValue.loading();
+    // Sacar el token FCM del array del usuario ANTES del signOut. Si lo hacemos
+    // después, las reglas Firestore niegan el update porque el request ya no
+    // tiene `request.auth`. Best-effort: el servicio no propaga errores. [D-01]
+    await _ref.read(fcmServiceProvider).unregisterCurrent();
     state = await AsyncValue.guard(
       () => _ref.read(logoutUseCaseProvider)(),
     );

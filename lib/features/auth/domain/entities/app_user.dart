@@ -50,6 +50,7 @@ class AppUser extends Equatable {
     this.coverageAreaCenter,
     this.coverageRadiusKm,
     this.identityProofUrl,
+    this.fcmTokens = const [],
   });
 
   final String userId;
@@ -64,6 +65,8 @@ class AppUser extends Equatable {
   final double? coverageRadiusKm;
   // URL del comprobante de servicio para verificación de identidad. [T-AUTH-09]
   final String? identityProofUrl;
+  // Tokens FCM registrados por este usuario. Múltiples dispositivos posibles. [D-01]
+  final List<String> fcmTokens;
 
   bool get isActive => status == UserStatus.active;
   bool get isPending => status == UserStatus.pending;
@@ -81,6 +84,7 @@ class AppUser extends Equatable {
     ({double latitude, double longitude})? coverageAreaCenter,
     double? coverageRadiusKm,
     String? identityProofUrl,
+    List<String>? fcmTokens,
   }) {
     return AppUser(
       userId: userId ?? this.userId,
@@ -93,6 +97,7 @@ class AppUser extends Equatable {
       coverageAreaCenter: coverageAreaCenter ?? this.coverageAreaCenter,
       coverageRadiusKm: coverageRadiusKm ?? this.coverageRadiusKm,
       identityProofUrl: identityProofUrl ?? this.identityProofUrl,
+      fcmTokens: fcmTokens ?? this.fcmTokens,
     );
   }
 
@@ -108,5 +113,6 @@ class AppUser extends Equatable {
         coverageAreaCenter,
         coverageRadiusKm,
         identityProofUrl,
+        fcmTokens,
       ];
 }

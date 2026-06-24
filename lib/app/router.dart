@@ -21,6 +21,7 @@ import '../features/incidents/presentation/pages/home_page.dart';
 import '../features/incidents/presentation/pages/incident_detail_page.dart';
 import '../features/incidents/presentation/pages/report_form_page.dart';
 import '../features/map/presentation/pages/map_page.dart';
+import '../features/notifications/presentation/pages/referent_location_setup_page.dart';
 import '../features/profile/presentation/pages/profile_page.dart';
 import '../features/splash/presentation/pages/splash_page.dart';
 import 'main_shell.dart';
@@ -46,6 +47,8 @@ abstract final class AppRoutes {
   static const adminBroadcast = '/admin/broadcast';
   static const alerts = '/alerts';
   static const unauthorized = '/unauthorized';
+  // Setup obligatorio de ubicación para Referentes Barriales. [D-01]
+  static const referentLocationSetup = '/referent/setup-location';
 
   static String incidentDetailPath(String id) => '/incident/$id';
 }
@@ -86,6 +89,21 @@ final routerProvider = Provider<GoRouter>((ref) {
           loc == AppRoutes.pending ||
           loc == AppRoutes.rejected ||
           loc == AppRoutes.blocked) {
+        return AppRoutes.home;
+      }
+
+      // Referente Barrial activo sin ubicación de cobertura → setup obligatorio.
+      // El backend (findNearbyReferentes) descarta referentes sin coverageLat/Lng,
+      // por lo que no recibirían pushes hasta completar este paso. [D-01]
+      if (user.role == UserRole.referenteBarrial &&
+          user.coverageAreaCenter == null) {
+        return loc == AppRoutes.referentLocationSetup
+            ? null
+            : AppRoutes.referentLocationSetup;
+      }
+
+      // Una vez seteada la ubicación, no permitir volver a la pantalla de setup.
+      if (loc == AppRoutes.referentLocationSetup) {
         return AppRoutes.home;
       }
 
@@ -205,6 +223,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.unauthorized,
         builder: (_, __) => const UnauthorizedAccessPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.referentLocationSetup,
+        builder: (_, __) => const ReferentLocationSetupPage(),
       ),
     ],
   );
