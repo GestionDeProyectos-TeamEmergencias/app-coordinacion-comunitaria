@@ -17,7 +17,9 @@ class HomePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authStateProvider).valueOrNull;
-    final incidentsAsync = ref.watch(incidentsStreamProvider);
+    // Mapa del barrio (SRS §3.1.1): muestra incidents públicos activos, no los
+    // marcados falsos/rechazados/solucionados. [D-02]
+    final incidentsAsync = ref.watch(activeIncidentsStreamProvider);
 
     return Scaffold(
       appBar: AppBar(
