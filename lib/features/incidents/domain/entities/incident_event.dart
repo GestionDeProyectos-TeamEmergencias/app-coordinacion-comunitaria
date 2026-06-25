@@ -189,6 +189,54 @@ enum IncidentPriority {
       };
 }
 
+/// Estado de la validación bilateral del cierre. Ortogonal al `status` para no
+/// contaminar la máquina de estados documentada en el SRS (decisión §5.2 de la
+/// devolución). [F-05]
+enum ClosureConfirmationState {
+  pendiente,
+  confirmado,
+  disputado;
+
+  String get firestoreValue => switch (this) {
+        ClosureConfirmationState.pendiente => 'pendiente',
+        ClosureConfirmationState.confirmado => 'confirmado',
+        ClosureConfirmationState.disputado => 'disputado',
+      };
+
+  String get displayName => switch (this) {
+        ClosureConfirmationState.pendiente => 'Pendiente de confirmación',
+        ClosureConfirmationState.confirmado => 'Cierre confirmado',
+        ClosureConfirmationState.disputado => 'Cierre disputado',
+      };
+
+  static ClosureConfirmationState? fromString(String? value) => switch (value) {
+        'pendiente' => ClosureConfirmationState.pendiente,
+        'confirmado' => ClosureConfirmationState.confirmado,
+        'disputado' => ClosureConfirmationState.disputado,
+        _ => null,
+      };
+}
+
+class ClosureConfirmation extends Equatable {
+  const ClosureConfirmation({
+    required this.state,
+    required this.by,
+    required this.at,
+    this.note,
+  });
+
+  final ClosureConfirmationState state;
+  // uid de quien cerró el reporte (admin/referente) si state=pendiente.
+  // uid del reportero si state=confirmado/disputado.
+  final String by;
+  final DateTime at;
+  // Obligatoria si state=disputado. Opcional en otros estados.
+  final String? note;
+
+  @override
+  List<Object?> get props => [state, by, at, note];
+}
+
 /// Reacción de un vecino activo sobre un incident — "Confirmo" o "No es así".
 /// Persistida en `incidents/{id}/reactions/{userId}`. El backend (F-04) agrega
 /// los contadores en el doc del incident. [F-04]
@@ -318,6 +366,7 @@ class IncidentEvent extends Equatable {
     this.disputesCount = 0,
     this.confirmationScore = 0.0,
     this.communityValidated = false,
+    this.closureConfirmation,
   });
 
   final String? eventId;
@@ -352,6 +401,10 @@ class IncidentEvent extends Equatable {
   final int disputesCount;
   final double confirmationScore;
   final bool communityValidated;
+  // Validación bilateral del cierre. Null hasta que admin/referente cierra; ahí
+  // se setea con state=pendiente y luego el reportero confirma/disputa o el
+  // auto-cierre programado lo confirma por timeout. [F-05]
+  final ClosureConfirmation? closureConfirmation;
 
   IncidentEvent copyWith({
     String? eventId,
@@ -376,6 +429,7 @@ class IncidentEvent extends Equatable {
     int? disputesCount,
     double? confirmationScore,
     bool? communityValidated,
+    ClosureConfirmation? closureConfirmation,
   }) {
     return IncidentEvent(
       eventId: eventId ?? this.eventId,
@@ -401,6 +455,7 @@ class IncidentEvent extends Equatable {
       disputesCount: disputesCount ?? this.disputesCount,
       confirmationScore: confirmationScore ?? this.confirmationScore,
       communityValidated: communityValidated ?? this.communityValidated,
+      closureConfirmation: closureConfirmation ?? this.closureConfirmation,
     );
   }
 
@@ -428,5 +483,6 @@ class IncidentEvent extends Equatable {
         disputesCount,
         confirmationScore,
         communityValidated,
+        closureConfirmation,
       ];
 }

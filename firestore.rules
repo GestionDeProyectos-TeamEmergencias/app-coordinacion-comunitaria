@@ -40,6 +40,42 @@ service cloud.firestore {
       return isAdmin() || isReferente();
     }
 
+    // ── Validación bilateral del cierre (F-05) ─────────────────────────────────
+    // Permite al dueño tocar `closureConfirmation` cuando el incident está en
+    // `solucionado` con state=pendiente. Hay dos caminos:
+    //
+    //   1. Confirmar: solo cambia closureConfirmation.state a 'confirmado',
+    //      sin tocar status.
+    //   2. Disputar: cambia closureConfirmation.state a 'disputado' Y status
+    //      vuelve a 'en_reparacion'. Es la única transición desde solucionado
+    //      permitida vía cliente (excepción documentada al grafo D-07).
+    //
+    // statusHistory es array de auditoría: se acepta su mutación dentro de
+    // ambos caminos siempre que el resto de la regla se cumpla.
+
+    function isOwnerConfirmingClosure() {
+      return resource.data.userId == request.auth.uid &&
+        resource.data.status == 'solucionado' &&
+        resource.data.closureConfirmation.state == 'pendiente' &&
+        request.resource.data.diff(resource.data)
+          .affectedKeys()
+          .hasOnly(['closureConfirmation']) &&
+        request.resource.data.closureConfirmation.state == 'confirmado';
+    }
+
+    function isOwnerDisputingClosure() {
+      return resource.data.userId == request.auth.uid &&
+        resource.data.status == 'solucionado' &&
+        resource.data.closureConfirmation.state == 'pendiente' &&
+        request.resource.data.diff(resource.data)
+          .affectedKeys()
+          .hasOnly(['closureConfirmation', 'status', 'statusHistory']) &&
+        request.resource.data.closureConfirmation.state == 'disputado' &&
+        request.resource.data.status == 'en_reparacion' &&
+        request.resource.data.closureConfirmation.note is string &&
+        request.resource.data.closureConfirmation.note.size() > 0;
+    }
+
     // ── Máquina de estados de incidents (D-07 / RF-ADM-02) ────────────────────
     // El grafo replica el del cliente (`IncidentStatus.allowedTransitions`):
     //   recibido     → {programado, en_reparacion, solucionado}
@@ -153,7 +189,10 @@ service cloud.firestore {
           resource.data.status == 'recibido' &&
           request.resource.data.diff(resource.data)
             .affectedKeys()
-            .hasOnly(['description', 'photoUrl', 'category']))
+            .hasOnly(['description', 'photoUrl', 'category'])) ||
+        // F-05: el dueño confirma o disputa el cierre.
+        (isActive() && isOwnerConfirmingClosure()) ||
+        (isActive() && isOwnerDisputingClosure())
       );
 
       // Eliminación: solo admins.

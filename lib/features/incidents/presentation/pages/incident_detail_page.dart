@@ -13,6 +13,7 @@ import '../../../auth/domain/entities/app_user.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../auth/presentation/providers/moderation_provider.dart';
 import '../../domain/entities/incident_event.dart';
+import '../providers/closure_confirmation_provider.dart';
 import '../providers/incident_admin_provider.dart';
 import '../providers/incidents_provider.dart';
 import '../providers/reactions_provider.dart';
@@ -110,6 +111,27 @@ class IncidentDetailPage extends ConsumerWidget {
                 const Divider(height: 32),
                 _ReferentVerificationSummary(
                   verification: incident.referentVerification!,
+                ),
+              ],
+              // Validación bilateral del cierre: solo visible al reportero
+              // cuando hay un cierre pendiente. Aparece arriba del bloque de
+              // validación comunitaria porque es una acción del flujo. [F-05]
+              if (user != null &&
+                  user.userId == incident.userId &&
+                  incident.closureConfirmation?.state ==
+                      ClosureConfirmationState.pendiente) ...[
+                const Divider(height: 32),
+                _ClosureConfirmationSection(
+                  incidentId: incidentId,
+                  ownerUid: user.userId,
+                  closure: incident.closureConfirmation!,
+                ),
+              ] else if (incident.closureConfirmation != null) ...[
+                // Estado final visible a todos cuando hubo confirmación o
+                // disputa: información pasiva. [F-05]
+                const Divider(height: 32),
+                _ClosureConfirmationSummary(
+                  closure: incident.closureConfirmation!,
                 ),
               ],
               // Validación comunitaria: señal social blanda. Visible a todos.
@@ -401,6 +423,243 @@ class _MarkAsFalseButton extends ConsumerWidget {
     } else {
       context.showSnackBar(AppStrings.reportMarkedAsFalse);
     }
+  }
+}
+
+/// Validación bilateral del cierre: el reportero confirma o disputa el cierre
+/// que hizo el admin/referente. [F-05]
+class _ClosureConfirmationSection extends ConsumerWidget {
+  const _ClosureConfirmationSection({
+    required this.incidentId,
+    required this.ownerUid,
+    required this.closure,
+  });
+
+  final String incidentId;
+  final String ownerUid;
+  final ClosureConfirmation closure;
+
+  Future<void> _confirm(BuildContext context, WidgetRef ref) async {
+    await ref.read(closureConfirmationNotifierProvider.notifier).confirm(
+          incidentId: incidentId,
+          ownerUid: ownerUid,
+        );
+    if (!context.mounted) return;
+    final state = ref.read(closureConfirmationNotifierProvider);
+    if (state.hasError) {
+      context.showSnackBar(state.error.toString(), isError: true);
+    } else {
+      context.showSnackBar('Cierre confirmado. Gracias por la respuesta.');
+    }
+  }
+
+  Future<void> _dispute(BuildContext context, WidgetRef ref) async {
+    final note = await showDialog<String>(
+      context: context,
+      builder: (_) => const _DisputeDialog(),
+    );
+    if (note == null || note.trim().isEmpty || !context.mounted) return;
+    await ref.read(closureConfirmationNotifierProvider.notifier).dispute(
+          incidentId: incidentId,
+          ownerUid: ownerUid,
+          note: note.trim(),
+        );
+    if (!context.mounted) return;
+    final state = ref.read(closureConfirmationNotifierProvider);
+    if (state.hasError) {
+      context.showSnackBar(state.error.toString(), isError: true);
+    } else {
+      context.showSnackBar(
+          'Disputa registrada. El reporte volvió a En reparación.');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isLoading = ref.watch(closureConfirmationNotifierProvider).isLoading;
+    final scheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: scheme.primaryContainer.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: scheme.primary),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.task_alt, color: scheme.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '¿La solución de tu reporte es correcta?',
+                  style: TextStyle(
+                    color: scheme.onPrimaryContainer,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'El equipo marcó este reporte como solucionado el '
+            '${_formatDate(closure.at)}. Tu confirmación cierra el ciclo; '
+            'si no es así, podés disputar y vuelve a "En reparación".',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  icon: const Icon(Icons.check_circle),
+                  label: const Text('Confirmar'),
+                  onPressed: isLoading ? null : () => _confirm(context, ref),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(44),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.report_problem_outlined),
+                  label: const Text('Disputar'),
+                  onPressed: isLoading ? null : () => _dispute(context, ref),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: scheme.error,
+                    side: BorderSide(color: scheme.error),
+                    minimumSize: const Size.fromHeight(44),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Resumen pasivo del estado de validación bilateral, visible a todos cuando
+/// ya fue confirmado o disputado. [F-05]
+class _ClosureConfirmationSummary extends StatelessWidget {
+  const _ClosureConfirmationSummary({required this.closure});
+
+  final ClosureConfirmation closure;
+
+  @override
+  Widget build(BuildContext context) {
+    final isConfirmed = closure.state == ClosureConfirmationState.confirmado;
+    final color = isConfirmed
+        ? Colors.green.shade700
+        : Theme.of(context).colorScheme.error;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isConfirmed ? Icons.verified : Icons.report_problem_outlined,
+                color: color,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  closure.state.displayName,
+                  style: TextStyle(color: color, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Registrado el ${_formatDate(closure.at)}'
+            '${closure.by == 'auto' ? ' (auto-cierre por inactividad)' : ''}.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          if (closure.note != null && closure.note!.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Nota: ${closure.note!}',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Dialog que pide nota obligatoria para disputar el cierre. [F-05]
+class _DisputeDialog extends StatefulWidget {
+  const _DisputeDialog();
+
+  @override
+  State<_DisputeDialog> createState() => _DisputeDialogState();
+}
+
+class _DisputeDialogState extends State<_DisputeDialog> {
+  final _noteCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _noteCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final noteOk = _noteCtrl.text.trim().isNotEmpty;
+    return AlertDialog(
+      title: const Text('Disputar el cierre'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'Contanos por qué no está solucionado. Tu nota va a quedar '
+            'visible para el administrador.',
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _noteCtrl,
+            autofocus: true,
+            maxLines: 3,
+            onChanged: (_) => setState(() {}),
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              hintText: 'Ej.: el bache sigue ahí, no lo repararon.',
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed:
+              noteOk ? () => Navigator.of(context).pop(_noteCtrl.text) : null,
+          style: FilledButton.styleFrom(
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+          child: const Text('Disputar'),
+        ),
+      ],
+    );
   }
 }
 

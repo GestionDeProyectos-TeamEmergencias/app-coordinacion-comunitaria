@@ -46,6 +46,11 @@ export const AlgorithmConfigSchema = z.object({
     threshold: z.number().min(0).max(1),
     minReactions: z.number().int().min(1).max(100),
   }),
+  // Cierre bilateral (F-05): si el reportero no confirma ni disputa en
+  // `autoConfirmAfterDays`, el sistema lo confirma automáticamente.
+  closureConfirmation: z.object({
+    autoConfirmAfterDays: z.number().int().min(1).max(60),
+  }),
 });
 
 export type AlgorithmConfig = z.infer<typeof AlgorithmConfigSchema>;
@@ -109,6 +114,9 @@ export const DEFAULT_ALGORITHM_CONFIG: AlgorithmConfig = {
   communityValidation: {
     threshold: 0.7,
     minReactions: 3,
+  },
+  closureConfirmation: {
+    autoConfirmAfterDays: 7,
   },
 };
 
@@ -242,6 +250,10 @@ function mergeConfig(
     communityValidation: {
       ...base.communityValidation,
       ...(patch.communityValidation ?? {}),
+    },
+    closureConfirmation: {
+      ...base.closureConfirmation,
+      ...(patch.closureConfirmation ?? {}),
     },
   };
 }

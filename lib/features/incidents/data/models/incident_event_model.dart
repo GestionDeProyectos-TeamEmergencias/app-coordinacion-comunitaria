@@ -27,6 +27,7 @@ class IncidentEventModel {
     this.disputesCount = 0,
     this.confirmationScore = 0.0,
     this.communityValidated = false,
+    this.closureConfirmation,
   });
 
   final String eventId;
@@ -55,6 +56,8 @@ class IncidentEventModel {
   final int disputesCount;
   final double confirmationScore;
   final bool communityValidated;
+  // Raw map; se convierte a `ClosureConfirmation` en `toDomain`. [F-05]
+  final Map<String, dynamic>? closureConfirmation;
 
   factory IncidentEventModel.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> doc,
@@ -98,6 +101,10 @@ class IncidentEventModel {
       disputesCount: (data['disputesCount'] as num?)?.toInt() ?? 0,
       confirmationScore: (data['confirmationScore'] as num?)?.toDouble() ?? 0.0,
       communityValidated: data['communityValidated'] as bool? ?? false,
+      closureConfirmation: data['closureConfirmation'] is Map
+          ? Map<String, dynamic>.from(
+              data['closureConfirmation'] as Map<dynamic, dynamic>)
+          : null,
     );
   }
 
@@ -147,6 +154,7 @@ class IncidentEventModel {
         disputesCount: disputesCount,
         confirmationScore: confirmationScore,
         communityValidated: communityValidated,
+        closureConfirmation: _closureConfirmationFromMap(closureConfirmation),
       );
 
   factory IncidentEventModel.fromDomain(IncidentEvent event) =>
@@ -225,4 +233,25 @@ Map<String, dynamic> resolutionActionToMap(ResolutionAction a) => {
       'by': a.by,
       if (a.byDisplayName != null) 'byDisplayName': a.byDisplayName,
       'at': Timestamp.fromDate(a.at),
+    };
+
+ClosureConfirmation? _closureConfirmationFromMap(Map<String, dynamic>? m) {
+  if (m == null) return null;
+  final state = ClosureConfirmationState.fromString(m['state'] as String?);
+  final by = m['by'] as String?;
+  if (state == null || by == null) return null;
+  final at = m['at'];
+  return ClosureConfirmation(
+    state: state,
+    by: by,
+    at: at is Timestamp ? at.toDate() : DateTime.now(),
+    note: m['note'] as String?,
+  );
+}
+
+Map<String, dynamic> closureConfirmationToMap(ClosureConfirmation c) => {
+      'state': c.state.firestoreValue,
+      'by': c.by,
+      'at': Timestamp.fromDate(c.at),
+      if (c.note != null && c.note!.trim().isNotEmpty) 'note': c.note!.trim(),
     };
