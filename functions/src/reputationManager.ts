@@ -14,7 +14,7 @@ export async function updateUserReputationLogic(
   afterData: admin.firestore.DocumentData,
   incidentId: string
 ) {
-  if (beforeData.status === afterData.status && beforeData.verifiedAsFalse === afterData.verifiedAsFalse) {
+  if (beforeData.status === afterData.status && beforeData.moderatedAsFalse === afterData.moderatedAsFalse) {
     return; // Optimización: no hay cambios que afecten la reputación
   }
 
@@ -28,8 +28,11 @@ export async function updateUserReputationLogic(
   ) {
     delta = REPUTATION_INCREMENT;
   }
-  // Negative validation: Using a separate flag verifiedAsFalse
-  else if (beforeData.verifiedAsFalse !== true && afterData.verifiedAsFalse === true) {
+  // Negative validation: el campo `moderatedAsFalse` lo escribe `moderation.ts`
+  // (callable `moderateFalseReport`) cuando un admin/referente sanciona el
+  // reporte. Antes de D-08 este código leía `verifiedAsFalse` — un nombre que
+  // nadie escribía — y por eso la reputación nunca bajaba en producción.
+  else if (beforeData.moderatedAsFalse !== true && afterData.moderatedAsFalse === true) {
     delta = -REPUTATION_DECREMENT;
   }
 

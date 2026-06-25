@@ -81,14 +81,14 @@ describe("updateUserReputationLogic", () => {
     expect(store["incidents/incident1"].data?.reputationApplied).toBe(true);
   });
 
-  it("should decrement reputation when incident is verifiedAsFalse", async () => {
+  it("should decrement reputation when incident is moderatedAsFalse", async () => {
     const { firestore, store } = buildFakeFirestore({
       "users/user2": { data: { reputationScore: 50 } },
-      "incidents/incident2": { data: { verifiedAsFalse: true } },
+      "incidents/incident2": { data: { moderatedAsFalse: true } },
     });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await updateUserReputationLogic(firestore as any, "user2", { verifiedAsFalse: false }, { verifiedAsFalse: true }, "incident2");
+    await updateUserReputationLogic(firestore as any, "user2", { moderatedAsFalse: false }, { moderatedAsFalse: true }, "incident2");
 
     expect(store["users/user2"].data?.reputationScore).toBe(35);
     expect(store["incidents/incident2"].data?.reputationApplied).toBe(true);
@@ -109,11 +109,11 @@ describe("updateUserReputationLogic", () => {
   it("should not go below min reputation limit", async () => {
     const { firestore, store } = buildFakeFirestore({
       "users/user4": { data: { reputationScore: 10 } },
-      "incidents/incident4": { data: { verifiedAsFalse: true } },
+      "incidents/incident4": { data: { moderatedAsFalse: true } },
     });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await updateUserReputationLogic(firestore as any, "user4", { verifiedAsFalse: false }, { verifiedAsFalse: true }, "incident4");
+    await updateUserReputationLogic(firestore as any, "user4", { moderatedAsFalse: false }, { moderatedAsFalse: true }, "incident4");
 
     expect(store["users/user4"].data?.reputationScore).toBe(0);
   });
@@ -131,7 +131,7 @@ describe("updateUserReputationLogic", () => {
     expect(store["incidents/incident5"].data?.reputationApplied).toBe(true);
   });
 
-  it("should early return if status and verifiedAsFalse did not change", async () => {
+  it("should early return if status and moderatedAsFalse did not change", async () => {
     const { firestore, store } = buildFakeFirestore({
       "users/user8": { data: { reputationScore: 50 } },
       "incidents/incident8": { data: { status: "programado" } },
@@ -169,12 +169,82 @@ describe("updateUserReputationLogic", () => {
   it("should default to 100 if user has no reputationScore", async () => {
     const { firestore, store } = buildFakeFirestore({
       "users/user6": { data: { } },
-      "incidents/incident6": { data: { verifiedAsFalse: true } },
+      "incidents/incident6": { data: { moderatedAsFalse: true } },
     });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await updateUserReputationLogic(firestore as any, "user6", { verifiedAsFalse: false }, { verifiedAsFalse: true }, "incident6");
+    await updateUserReputationLogic(firestore as any, "user6", { moderatedAsFalse: false }, { moderatedAsFalse: true }, "incident6");
 
     expect(store["users/user6"].data?.reputationScore).toBe(85);
+  });
+
+  // ── Tests de integración moderation.ts ↔ reputationManager.ts [D-08] ──────
+  // Estos tests **no** setean a mano el campo que el trigger lee. En cambio,
+  // simulan exactamente el snapshot `before`/`after` que produce el callable
+  // `moderateFalseReport` (moderation.ts:90-95) y verifican que el trigger
+  // efectivamente decrementa la reputación. Antes de D-08 estos pasaban en
+  // verde pero los datos reales nunca disparaban el camino — el test viejo
+  // setea `moderatedAsFalse` a mano y oculta el bug. Estos lo desnudan.
+  describe("[D-08] integración con moderation.ts", () => {
+    it("decrementa reputación con el shape exacto del callable moderateFalseReport", async () => {
+      const { firestore, store } = buildFakeFirestore({
+        "users/reporter": { data: { reputationScore: 70, falseReportsCount: 0 } },
+        // El incidente está como lo deja moderation.ts después de update():
+        // los campos escritos en la transacción moderation.ts:90-95.
+        "incidents/incidentX": {
+          data: {
+            status: "falso",
+            moderatedAsFalse: true,
+            moderatedAt: new Date().toISOString(),
+            moderatedBy: "admin-caller",
+            userId: "reporter",
+          },
+        },
+      });
+
+      // before = estado del incident antes del callable (no había sido moderado);
+      // after = estado del incident después del update de moderation.ts.
+      const before = { status: "recibido", userId: "reporter" };
+      const after = {
+        status: "falso",
+        moderatedAsFalse: true,
+        moderatedAt: new Date().toISOString(),
+        moderatedBy: "admin-caller",
+        userId: "reporter",
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await updateUserReputationLogic(firestore as any, "reporter", before, after, "incidentX");
+
+      expect(store["users/reporter"].data?.reputationScore).toBe(55);
+      expect(store["incidents/incidentX"].data?.reputationApplied).toBe(true);
+    });
+
+    it("no decrementa de nuevo si moderation.ts es invocado dos veces (idempotencia conjunta)", async () => {
+      const { firestore, store } = buildFakeFirestore({
+        "users/reporter2": { data: { reputationScore: 70 } },
+        "incidents/incidentY": {
+          data: {
+            status: "falso",
+            moderatedAsFalse: true,
+            reputationApplied: true,  // ya se aplicó por la primera invocación
+            userId: "reporter2",
+          },
+        },
+      });
+
+      // Si moderation.ts es invocado de nuevo, su propia guarda
+      // (`if (incidentData.moderatedAsFalse === true) return`) corta antes.
+      // Pero si por alguna razón se dispara el trigger de nuevo con el mismo
+      // shape, el guard de `reputationApplied` en reputationManager debe
+      // evitar el doble decremento.
+      const before = { status: "falso", moderatedAsFalse: true, userId: "reporter2" };
+      const after = { status: "falso", moderatedAsFalse: true, userId: "reporter2" };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await updateUserReputationLogic(firestore as any, "reporter2", before, after, "incidentY");
+
+      expect(store["users/reporter2"].data?.reputationScore).toBe(70);
+    });
   });
 });
