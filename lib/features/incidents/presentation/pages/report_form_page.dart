@@ -34,6 +34,11 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
   Uint8List? _photoBytes;
   String? _photoName;
   bool _useVoice = false;
+  // Persiste mientras la descripción provenga de transcripción por voz —
+  // sobrevive a la edición manual posterior. Decisión D-10: corregir la
+  // transcripción no convierte el reporte en `form`. Se resetea al cancelar
+  // el modo voz explícitamente o al enviar con éxito.
+  bool _originatedFromVoice = false;
   bool _isSubmitting = false;
 
   @override
@@ -106,7 +111,9 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
   Future<void> _submit() async {
     if (_isSubmitting) return;
     if (!_formKey.currentState!.validate()) return;
-    if (_category == null) {
+    // Voice (D-10): no exigimos categoría — el caso de uso `submitVoice` la
+    // deja nula y el pipeline NLP la enriquece (semanticExtraction).
+    if (!_originatedFromVoice && _category == null) {
       context.showSnackBar(AppStrings.selectCategoryError, isError: true);
       return;
     }
@@ -139,15 +146,29 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
       final user = ref.read(authStateProvider).valueOrNull;
       if (user == null || !mounted) return;
 
-      await ref.read(reportNotifierProvider.notifier).submitForm(
-            userId: user.userId,
-            latitude: position.latitude,
-            longitude: position.longitude,
-            description: description,
-            category: _category!,
-            photoBytes: _photoBytes,
-            photoName: _photoName,
-          );
+      final notifier = ref.read(reportNotifierProvider.notifier);
+      if (_originatedFromVoice) {
+        // Reporte abreviado por voz (RF-REP-02 / T-INF-04). `sourceType: voice`
+        // se setea en el use case dedicado. No mandamos categoría ni foto:
+        // el use case voice no las soporta y el SRS define voice como modo
+        // abreviado. [D-10]
+        await notifier.submitVoice(
+          userId: user.userId,
+          latitude: position.latitude,
+          longitude: position.longitude,
+          transcribedText: description,
+        );
+      } else {
+        await notifier.submitForm(
+          userId: user.userId,
+          latitude: position.latitude,
+          longitude: position.longitude,
+          description: description,
+          category: _category!,
+          photoBytes: _photoBytes,
+          photoName: _photoName,
+        );
+      }
 
       if (!mounted) return;
       final error = ref.read(reportNotifierProvider).error;
@@ -198,6 +219,10 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
                   onTranscription: (text) => setState(() {
                     _descCtrl.text = text;
                     _useVoice = false;
+                    // D-10: marcar el origen como voz. Sobrevive a la edición
+                    // manual posterior — solo se limpia si el usuario cancela
+                    // explícitamente con el chip o si el envío fue exitoso.
+                    _originatedFromVoice = true;
                   }),
                 )
               else
@@ -212,40 +237,60 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
                       ? AppStrings.descriptionError
                       : null,
                 ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<IncidentCategory>(
-                decoration: const InputDecoration(
-                  labelText: AppStrings.selectCategory,
-                  border: OutlineInputBorder(),
-                ),
-                initialValue: _category,
-                items: IncidentCategory.values
-                    .map(
-                      (c) => DropdownMenuItem(
-                          value: c, child: Text(c.displayName)),
-                    )
-                    .toList(),
-                onChanged: (v) => setState(() => _category = v),
-              ),
-              const SizedBox(height: 16),
-              // Foto opcional (RF-REP-03)
-              OutlinedButton.icon(
-                icon: const Icon(Icons.camera_alt),
-                label: Text(_photoBytes == null
-                    ? AppStrings.addPhoto
-                    : AppStrings.photoSelected),
-                onPressed: _pickPhoto,
-              ),
-              if (_photoBytes != null) ...[
+              if (_originatedFromVoice) ...[
                 const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.memory(
-                    _photoBytes!,
-                    height: 180,
-                    fit: BoxFit.cover,
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: InputChip(
+                    avatar: const Icon(Icons.mic, size: 18),
+                    label: const Text('Reporte por voz'),
+                    onDeleted: () => setState(() {
+                      _originatedFromVoice = false;
+                      _descCtrl.clear();
+                    }),
+                    deleteIcon: const Icon(Icons.close, size: 18),
                   ),
                 ),
+              ],
+              const SizedBox(height: 16),
+              // Categoría y foto: solo en modo formulario. El reporte por voz
+              // es deliberadamente abreviado (T-INF-04 / RF-REP-02); el NLP
+              // enriquece la categoría desde la descripción transcripta. [D-10]
+              if (!_originatedFromVoice) ...[
+                DropdownButtonFormField<IncidentCategory>(
+                  decoration: const InputDecoration(
+                    labelText: AppStrings.selectCategory,
+                    border: OutlineInputBorder(),
+                  ),
+                  initialValue: _category,
+                  items: IncidentCategory.values
+                      .map(
+                        (c) => DropdownMenuItem(
+                            value: c, child: Text(c.displayName)),
+                      )
+                      .toList(),
+                  onChanged: (v) => setState(() => _category = v),
+                ),
+                const SizedBox(height: 16),
+                // Foto opcional (RF-REP-03)
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.camera_alt),
+                  label: Text(_photoBytes == null
+                      ? AppStrings.addPhoto
+                      : AppStrings.photoSelected),
+                  onPressed: _pickPhoto,
+                ),
+                if (_photoBytes != null) ...[
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.memory(
+                      _photoBytes!,
+                      height: 180,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ],
               ],
               const SizedBox(height: 24),
               AppButton(
