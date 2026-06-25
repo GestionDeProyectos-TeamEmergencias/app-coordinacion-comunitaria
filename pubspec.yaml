@@ -70,6 +70,7 @@ dev_dependencies:
   mocktail: ^1.0.4
   fake_cloud_firestore: ^3.0.3
   firebase_auth_mocks: ^0.14.1
+  firebase_storage_mocks: ^0.7.0
 
 flutter:
   uses-material-design: true

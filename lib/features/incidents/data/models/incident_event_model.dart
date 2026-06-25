@@ -18,6 +18,8 @@ class IncidentEventModel {
     this.priority,
     this.priorityScore,
     this.statusHistory = const [],
+    this.referentVerification,
+    this.referentVerificationHistory = const [],
   });
 
   final String eventId;
@@ -33,6 +35,9 @@ class IncidentEventModel {
   final String? priority;
   final double? priorityScore;
   final List<Map<String, dynamic>> statusHistory;
+  // Raw maps de Firestore; se convierten a `ReferentVerification` en `toDomain`.
+  final Map<String, dynamic>? referentVerification;
+  final List<Map<String, dynamic>> referentVerificationHistory;
 
   factory IncidentEventModel.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> doc,
@@ -43,6 +48,10 @@ class IncidentEventModel {
     final history = (data['statusHistory'] as List<dynamic>? ?? [])
         .whereType<Map<String, dynamic>>()
         .toList();
+    final verificationHistory =
+        (data['referentVerificationHistory'] as List<dynamic>? ?? [])
+            .whereType<Map<String, dynamic>>()
+            .toList();
     return IncidentEventModel(
       eventId: doc.id,
       userId: data['userId'] as String,
@@ -57,6 +66,11 @@ class IncidentEventModel {
       priority: data['priority'] as String?,
       priorityScore: (data['priorityScore'] as num?)?.toDouble(),
       statusHistory: history,
+      referentVerification: data['referentVerification'] is Map
+          ? Map<String, dynamic>.from(
+              data['referentVerification'] as Map<dynamic, dynamic>)
+          : null,
+      referentVerificationHistory: verificationHistory,
     );
   }
 
@@ -90,6 +104,12 @@ class IncidentEventModel {
             priority != null ? IncidentPriority.fromString(priority!) : null,
         priorityScore: priorityScore,
         statusHistory: statusHistory.map(_statusChangeFromMap).toList(),
+        referentVerification:
+            _referentVerificationFromMap(referentVerification),
+        referentVerificationHistory: referentVerificationHistory
+            .map(_referentVerificationFromMap)
+            .whereType<ReferentVerification>()
+            .toList(),
       );
 
   factory IncidentEventModel.fromDomain(IncidentEvent event) =>
@@ -122,4 +142,30 @@ Map<String, dynamic> statusChangeToMap(IncidentStatusChange change) => {
       'status': change.status.firestoreValue,
       'timestamp': Timestamp.fromDate(change.timestamp),
       if (change.changedBy != null) 'changedBy': change.changedBy,
+    };
+
+ReferentVerification? _referentVerificationFromMap(Map<String, dynamic>? m) {
+  if (m == null) return null;
+  final state = ReferentVerificationState.fromString(m['state'] as String?);
+  final by = m['by'] as String?;
+  final photoUrl = m['photoUrl'] as String?;
+  if (state == null || by == null || photoUrl == null) return null;
+  final at = m['at'];
+  return ReferentVerification(
+    state: state,
+    by: by,
+    byDisplayName: m['byDisplayName'] as String?,
+    note: m['note'] as String?,
+    photoUrl: photoUrl,
+    at: at is Timestamp ? at.toDate() : DateTime.now(),
+  );
+}
+
+Map<String, dynamic> referentVerificationToMap(ReferentVerification v) => {
+      'state': v.state.firestoreValue,
+      'by': v.by,
+      if (v.byDisplayName != null) 'byDisplayName': v.byDisplayName,
+      if (v.note != null && v.note!.trim().isNotEmpty) 'note': v.note!.trim(),
+      'photoUrl': v.photoUrl,
+      'at': Timestamp.fromDate(v.at),
     };

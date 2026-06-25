@@ -117,7 +117,23 @@ void main() {
       expect(find.text(AppStrings.updateStatusTitle), findsNothing);
     });
 
-    testWidgets('muestra el selector de estado para referentes y admins',
+    // D-05: el selector de estado lo gestiona solo el admin. El referente
+    // tiene su propio bloque de "Verificación de campo" (confirmar/descartar
+    // con foto), ortogonal al ciclo de estados.
+    testWidgets('muestra el selector de estado para administradores',
+        (tester) async {
+      await tester.pumpWidget(_wrap(
+        incident: _buildIncident(),
+        currentUserRole: UserRole.administrador,
+      ));
+      await tester.pump();
+
+      expect(find.text(AppStrings.updateStatusTitle), findsOneWidget);
+      expect(
+          find.byType(DropdownButtonFormField<IncidentStatus>), findsOneWidget);
+    });
+
+    testWidgets('oculta el selector de estado para referentes barriales',
         (tester) async {
       await tester.pumpWidget(_wrap(
         incident: _buildIncident(),
@@ -125,9 +141,7 @@ void main() {
       ));
       await tester.pump();
 
-      expect(find.text(AppStrings.updateStatusTitle), findsOneWidget);
-      expect(
-          find.byType(DropdownButtonFormField<IncidentStatus>), findsOneWidget);
+      expect(find.text(AppStrings.updateStatusTitle), findsNothing);
     });
   });
 }
