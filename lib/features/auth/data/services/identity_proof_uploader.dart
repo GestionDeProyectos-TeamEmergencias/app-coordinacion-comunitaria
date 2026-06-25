@@ -6,7 +6,14 @@ import 'package:firebase_storage/firebase_storage.dart';
 import '../../../../core/errors/app_exception.dart';
 
 /// Sube el comprobante de servicio a Firebase Storage y registra la URL en el
-/// documento del usuario. Path en Storage: `identity_proofs/{uid}.{ext}`. [T-AUTH-09]
+/// documento del usuario. Path en Storage: `identity_proofs/{uid}/proof.{ext}`.
+/// [T-AUTH-09 + D-09]
+///
+/// El path cambió de `identity_proofs/{uid}.{ext}` (legacy) a una carpeta
+/// dedicada para que `storage.rules` pueda matcher por dueño con sintaxis
+/// estándar (sin regex). La re-subida sobreescribe el archivo anterior, lo
+/// que evita acumular comprobantes huérfanos. Los archivos legacy quedan
+/// accesibles por read-only via una regla específica en `storage.rules`.
 ///
 /// Usa `putData` con bytes para que funcione tanto en mobile como en Flutter
 /// Web (donde `dart:io.File` no está disponible).
@@ -27,7 +34,7 @@ class IdentityProofUploader {
   }) async {
     try {
       final ext = fileName.contains('.') ? fileName.split('.').last : 'jpg';
-      final path = 'identity_proofs/$userId.$ext';
+      final path = 'identity_proofs/$userId/proof.$ext';
       final ref = _storage.ref(path);
       await ref.putData(
         bytes,

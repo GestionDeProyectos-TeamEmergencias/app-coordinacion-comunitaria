@@ -1,0 +1,98 @@
+rules_version = '2';
+
+// Reglas de Firebase Storage. [D-09]
+// Diseño alineado con `firestore.rules`: solo usuarios `active` operan sobre la
+// app; los comprobantes de identidad son PII y se protegen estrictamente; las
+// fotos de incidentes son públicas dentro del barrio (consistente con D-02).
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ── Helpers ─────────────────────────────────────────────────────────────
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function callerExists() {
+      return isAuthenticated() &&
+        firestore.exists(/databases/(default)/documents/users/$(request.auth.uid));
+    }
+
+    function callerData() {
+      return firestore.get(
+        /databases/(default)/documents/users/$(request.auth.uid)
+      ).data;
+    }
+
+    function isActive() {
+      return callerExists() && callerData().status == 'active';
+    }
+
+    function isAdmin() {
+      return isActive() && callerData().role == 'administrador';
+    }
+
+    function isReferente() {
+      return isActive() && callerData().role == 'referente_barrial';
+    }
+
+    function isAdminOrReferente() {
+      return isAdmin() || isReferente();
+    }
+
+    // ── Comprobante de domicilio (PII sensible) ─────────────────────────────
+    // Path nuevo: `identity_proofs/{userId}/{fileName}` — carpeta dedicada por
+    // dueño. Lectura: dueño + admin. Escritura: solo dueño autenticado (no
+    // exigimos `isActive()` porque el comprobante se sube ANTES de la aprobación
+    // — el user está `pending` cuando lo carga, T-AUTH-09).
+
+    match /identity_proofs/{userId}/{fileName} {
+      allow read: if isAuthenticated() &&
+        (request.auth.uid == userId || isAdmin());
+      allow write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Path legacy: `identity_proofs/{uid}.{ext}` (pre-D-09). Soporte read-only
+    // para no romper los `identityProofUrl` ya persistidos en `users/{uid}`.
+    // La escritura sigue por el path nuevo; este match deniega writes.
+
+    match /identity_proofs/{fileName} {
+      // Extraemos el `uid` del filename (formato `{uid}.{ext}`). Los UIDs de
+      // Firebase Auth son alfanuméricos, así que `\.` separa uid de ext sin
+      // ambigüedad. Si el filename no matchea el patrón esperado, deny.
+      allow read: if isAuthenticated() && (
+        fileName.matches(request.auth.uid + '\\..*') ||
+        isAdmin()
+      );
+      allow write: if false;
+    }
+
+    // ── Fotos del reporte de incidente ──────────────────────────────────────
+    // Path: `incidents/{userId}/{fileName}`. Las fotos son parte del incident
+    // público del barrio (D-02): lectura para cualquier activo. Escritura:
+    // solo el dueño activo (no exigimos coincidencia con un incident específico
+    // — la consistencia con `incidents/{id}.userId` la valida Firestore).
+
+    match /incidents/{userId}/{fileName} {
+      allow read: if isActive();
+      allow write: if isActive() && request.auth.uid == userId;
+    }
+
+    // ── Evidencia de verificación del Referente Barrial [D-05] ──────────────
+    // Path: `incidents/{incidentId}/verifications/{fileName}`. La evidencia
+    // es señal pública del estado del incident (visible a vecinos, admins y
+    // al propio reportero). Escritura: admin o referente activo.
+
+    match /incidents/{incidentId}/verifications/{fileName} {
+      allow read: if isActive();
+      allow write: if isAdminOrReferente();
+    }
+
+    // ── Denegación por defecto ──────────────────────────────────────────────
+    // Cualquier ruta no listada queda bloqueada para lectura y escritura.
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
