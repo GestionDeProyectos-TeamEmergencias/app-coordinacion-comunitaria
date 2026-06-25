@@ -19,6 +19,8 @@ import '../features/auth/presentation/pages/unauthorized_access_page.dart';
 import '../features/auth/presentation/providers/auth_provider.dart';
 import '../features/incidents/presentation/pages/home_page.dart';
 import '../features/incidents/presentation/pages/incident_detail_page.dart';
+import '../features/incidents/presentation/pages/my_report_edit_page.dart';
+import '../features/incidents/presentation/pages/my_reports_page.dart';
 import '../features/incidents/presentation/pages/report_form_page.dart';
 import '../features/map/presentation/pages/map_page.dart';
 import '../features/notifications/presentation/pages/referent_location_setup_page.dart';
@@ -53,8 +55,12 @@ abstract final class AppRoutes {
   static const referentLocationSetup = '/referent/setup-location';
   // Términos y Condiciones (gate y reader, según query param). [D-04]
   static const terms = '/terms';
+  // Historial y edición de reportes propios. [F-01]
+  static const myReports = '/my-reports';
+  static const myReportEdit = '/my-reports/:id';
 
   static String incidentDetailPath(String id) => '/incident/$id';
+  static String myReportEditPath(String id) => '/my-reports/$id';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -248,6 +254,15 @@ final routerProvider = Provider<GoRouter>((ref) {
             mode: isReader ? TermsPageMode.reader : TermsPageMode.gate,
           );
         },
+      ),
+      GoRoute(
+        path: AppRoutes.myReports,
+        builder: (_, __) => const MyReportsPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.myReportEdit,
+        builder: (_, state) =>
+            MyReportEditPage(incidentId: state.pathParameters['id']!),
       ),
     ],
   );

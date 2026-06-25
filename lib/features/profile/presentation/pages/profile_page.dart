@@ -64,6 +64,14 @@ class ProfilePage extends ConsumerWidget {
             ),
             const Divider(height: 1),
           ],
+          // Historial de reportes propios + edición. [F-01]
+          ListTile(
+            leading: const Icon(Icons.assignment_outlined),
+            title: const Text('Mis reportes'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push(AppRoutes.myReports),
+          ),
+          const Divider(height: 1),
           // Acceso de consulta a los T&C aceptados. [D-04]
           ListTile(
             leading: const Icon(Icons.description_outlined),

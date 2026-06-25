@@ -131,11 +131,12 @@ service cloud.firestore {
       // - Referente: solo `referentVerification` y `referentVerificationHistory`
       //   (verificación de campo, RF-ROL-02(b)). NO puede tocar `status`,
       //   `priority`, `category`, `actions` u otros campos. [D-05]
-      // - Vecino dueño: solo `description` y `photoUrl`, y únicamente mientras
-      //   el incidente siga en `recibido` (aún no procesado por NLP). T-REP-03.
-      //   D-06 refinó esto a allowlist explícita: antes había una blacklist que
-      //   dejaba al dueño tocar `category` (lo que vaciaba RF-ADM-03) y
-      //   `actions` (lo que rompía el feed de auditoría del admin).
+      // - Vecino dueño: `description`, `photoUrl` y `category`, únicamente
+      //   mientras el incidente siga en `recibido`. F-01 amplía la allowlist
+      //   D-06 con `category` para que el reportero pueda corregir la categoría
+      //   que asignó en el form antes de que el NLP la procese. Una vez salido
+      //   de `recibido`, la categoría queda bajo control del admin (D-06).
+      //   `actions` y `categoryChangedBy/At` siguen fuera del alcance del dueño.
       allow update: if isActive() && (
         (isAdmin() &&
           (!request.resource.data.diff(resource.data)
@@ -152,7 +153,7 @@ service cloud.firestore {
           resource.data.status == 'recibido' &&
           request.resource.data.diff(resource.data)
             .affectedKeys()
-            .hasOnly(['description', 'photoUrl']))
+            .hasOnly(['description', 'photoUrl', 'category']))
       );
 
       // Eliminación: solo admins.

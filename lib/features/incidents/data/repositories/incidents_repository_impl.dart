@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import '../../domain/entities/incident_event.dart';
 import '../../domain/repositories/incidents_repository.dart';
 import '../datasources/incidents_remote_datasource.dart';
@@ -30,6 +32,34 @@ class IncidentsRepositoryImpl implements IncidentsRepository {
                 i.status != IncidentStatus.rechazadoAutorInactivo)
             .toList(),
       );
+
+  @override
+  Stream<List<IncidentEvent>> watchMyIncidents(String userId) =>
+      _dataSource.watchMyIncidents(userId).map(
+            (models) => models.map((m) => m.toDomain()).toList(),
+          );
+
+  @override
+  Future<void> updateOwnIncidentDraft(
+    String eventId, {
+    String? description,
+    IncidentCategory? category,
+    String? photoUrl,
+  }) =>
+      _dataSource.updateOwnIncidentDraft(
+        eventId,
+        description: description,
+        category: category?.firestoreValue,
+        photoUrl: photoUrl,
+      );
+
+  @override
+  Future<String> uploadPhoto(
+    Uint8List bytes,
+    String fileName,
+    String userId,
+  ) =>
+      _dataSource.uploadPhoto(bytes, fileName, userId);
 
   @override
   Future<IncidentEvent> getIncidentById(String eventId) async {

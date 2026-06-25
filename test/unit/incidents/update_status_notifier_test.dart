@@ -36,6 +36,19 @@ class _FakeRepo implements IncidentsRepository {
       throw UnimplementedError();
   @override
   Stream<List<IncidentEvent>> watchIncidents() => throw UnimplementedError();
+  @override
+  Stream<List<IncidentEvent>> watchMyIncidents(String userId) =>
+      throw UnimplementedError();
+  @override
+  Future<void> updateOwnIncidentDraft(
+    String eventId, {
+    String? description,
+    IncidentCategory? category,
+    String? photoUrl,
+  }) =>
+      throw UnimplementedError();
+  @override
+  Future<String> uploadPhoto(_, __, ___) => throw UnimplementedError();
 }
 
 void main() {
