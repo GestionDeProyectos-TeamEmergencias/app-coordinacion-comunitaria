@@ -49,6 +49,19 @@ class _FakeRepo implements IncidentsRepository {
       throw UnimplementedError();
   @override
   Future<String> uploadPhoto(_, __, ___) => throw UnimplementedError();
+  @override
+  Future<void> confirmOwnClosure({
+    required String eventId,
+    required String ownerUid,
+  }) =>
+      throw UnimplementedError();
+  @override
+  Future<void> disputeOwnClosure({
+    required String eventId,
+    required String ownerUid,
+    required String note,
+  }) =>
+      throw UnimplementedError();
 }
 
 void main() {

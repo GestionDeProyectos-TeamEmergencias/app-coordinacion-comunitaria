@@ -54,6 +54,25 @@ class IncidentsRepositoryImpl implements IncidentsRepository {
       );
 
   @override
+  Future<void> confirmOwnClosure({
+    required String eventId,
+    required String ownerUid,
+  }) =>
+      _dataSource.confirmOwnClosure(eventId: eventId, ownerUid: ownerUid);
+
+  @override
+  Future<void> disputeOwnClosure({
+    required String eventId,
+    required String ownerUid,
+    required String note,
+  }) =>
+      _dataSource.disputeOwnClosure(
+        eventId: eventId,
+        ownerUid: ownerUid,
+        note: note,
+      );
+
+  @override
   Future<String> uploadPhoto(
     Uint8List bytes,
     String fileName,

@@ -127,7 +127,10 @@ class IncidentsRemoteDataSource {
     String status, {
     String? changedBy,
   }) async {
-    await _incidents.doc(eventId).update({
+    // F-05: cuando el cierre llega a `solucionado`, inicializamos la validación
+    // bilateral con `closureConfirmation.state = pendiente`. El reportero verá
+    // los botones Confirmar/Disputar y recibirá push (trigger backend).
+    final patch = <String, dynamic>{
       'status': status,
       'statusHistory': FieldValue.arrayUnion([
         {
@@ -136,6 +139,73 @@ class IncidentsRemoteDataSource {
           if (changedBy != null) 'changedBy': changedBy,
         }
       ]),
-    });
+    };
+    if (status == 'solucionado' && changedBy != null) {
+      patch['closureConfirmation'] = {
+        'state': 'pendiente',
+        'by': changedBy,
+        'at': Timestamp.now(),
+      };
+    }
+    await _incidents.doc(eventId).update(patch);
+  }
+
+  /// El reportero confirma el cierre. Solo aplicable cuando
+  /// `closureConfirmation.state == pendiente`. [F-05]
+  Future<void> confirmOwnClosure({
+    required String eventId,
+    required String ownerUid,
+  }) async {
+    try {
+      await _incidents.doc(eventId).update({
+        'closureConfirmation': {
+          'state': 'confirmado',
+          'by': ownerUid,
+          'at': Timestamp.now(),
+        },
+      });
+    } on FirebaseException catch (e) {
+      throw FirestoreException(
+        e.message ?? 'No se pudo confirmar el cierre.',
+      );
+    }
+  }
+
+  /// El reportero disputa el cierre con nota obligatoria. La regla Firestore
+  /// permite la transición simultánea: status → en_reparacion y
+  /// closureConfirmation.state → disputado. [F-05]
+  Future<void> disputeOwnClosure({
+    required String eventId,
+    required String ownerUid,
+    required String note,
+  }) async {
+    final trimmed = note.trim();
+    if (trimmed.isEmpty) {
+      throw const FirestoreException(
+        'La disputa requiere una nota.',
+      );
+    }
+    try {
+      await _incidents.doc(eventId).update({
+        'status': 'en_reparacion',
+        'statusHistory': FieldValue.arrayUnion([
+          {
+            'status': 'en_reparacion',
+            'timestamp': Timestamp.now(),
+            'changedBy': ownerUid,
+          }
+        ]),
+        'closureConfirmation': {
+          'state': 'disputado',
+          'by': ownerUid,
+          'at': Timestamp.now(),
+          'note': trimmed,
+        },
+      });
+    } on FirebaseException catch (e) {
+      throw FirestoreException(
+        e.message ?? 'No se pudo registrar tu disputa.',
+      );
+    }
   }
 }

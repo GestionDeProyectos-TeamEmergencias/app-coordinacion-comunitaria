@@ -34,4 +34,18 @@ abstract interface class IncidentsRepository {
     String fileName,
     String userId,
   );
+
+  /// El reportero confirma el cierre del reporte. [F-05]
+  Future<void> confirmOwnClosure({
+    required String eventId,
+    required String ownerUid,
+  });
+
+  /// El reportero disputa el cierre con nota obligatoria. Vuelve el status a
+  /// `enReparacion`. [F-05]
+  Future<void> disputeOwnClosure({
+    required String eventId,
+    required String ownerUid,
+    required String note,
+  });
 }
