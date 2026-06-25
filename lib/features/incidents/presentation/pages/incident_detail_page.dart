@@ -15,6 +15,7 @@ import '../../../auth/presentation/providers/moderation_provider.dart';
 import '../../domain/entities/incident_event.dart';
 import '../providers/incident_admin_provider.dart';
 import '../providers/incidents_provider.dart';
+import '../providers/reactions_provider.dart';
 import '../providers/referent_verification_provider.dart';
 import '../widgets/incident_status_badge.dart';
 
@@ -103,13 +104,23 @@ class IncidentDetailPage extends ConsumerWidget {
                     '${incident.latitude.toStringAsFixed(5)}, ${incident.longitude.toStringAsFixed(5)}',
               ),
               // Resumen de verificación del referente (visible a todos cuando
-              // existe — es señal pública del estado de campo). [D-05]
+              // existe — es señal **autoritativa**). Por encima del bloque de
+              // validación comunitaria por decisión de F-04 (jerarquía). [D-05]
               if (incident.referentVerification != null) ...[
                 const Divider(height: 32),
                 _ReferentVerificationSummary(
                   verification: incident.referentVerification!,
                 ),
               ],
+              // Validación comunitaria: señal social blanda. Visible a todos.
+              // El dueño y los referentes/admin no votan, pero sí ven el score.
+              // [F-04]
+              const Divider(height: 32),
+              _CommunityValidationSection(
+                incidentId: incidentId,
+                incident: incident,
+                callerUser: user,
+              ),
               // Avance de ciclo de vida (RF-ADM-02): solo el admin. El
               // referente verifica con su propio widget, sin tocar `status`.
               // [D-05 alinea esto con la jerarquía SRS]
@@ -390,6 +401,192 @@ class _MarkAsFalseButton extends ConsumerWidget {
     } else {
       context.showSnackBar(AppStrings.reportMarkedAsFalse);
     }
+  }
+}
+
+/// Sección de validación comunitaria: contador de "Confirmo"/"No es así" +
+/// badge "Validado por la comunidad" cuando el score supera el umbral. [F-04]
+///
+/// Comportamiento:
+/// - Cualquier vecino activo distinto del dueño puede votar.
+/// - El dueño, admins y referentes solo ven el conteo (no pueden votar).
+/// - Tap en el botón ya elegido retira el voto.
+/// - Las reglas Firestore son la última palabra: si por alguna razón se
+///   intenta votarse a sí mismo, el server lo rechaza.
+class _CommunityValidationSection extends ConsumerWidget {
+  const _CommunityValidationSection({
+    required this.incidentId,
+    required this.incident,
+    required this.callerUser,
+  });
+
+  final String incidentId;
+  final IncidentEvent incident;
+  final AppUser? callerUser;
+
+  bool get _isOwner =>
+      callerUser != null && callerUser!.userId == incident.userId;
+
+  bool get _canVote {
+    if (callerUser == null) return false;
+    if (_isOwner) return false;
+    return true;
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final myReactionAsync = _canVote
+        ? ref.watch(myReactionForIncidentProvider(incidentId))
+        : const AsyncValue<ReactionType?>.data(null);
+    final current = myReactionAsync.valueOrNull;
+    final isLoading = ref.watch(reactionsNotifierProvider).isLoading;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Validación comunitaria',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+            if (incident.communityValidated) const _CommunityValidatedBadge(),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '${incident.confirmsCount} confirmaciones · '
+          '${incident.disputesCount} disputas '
+          '(${(incident.confirmationScore * 100).toStringAsFixed(0)}% de '
+          'acuerdo)',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        const SizedBox(height: 12),
+        if (_isOwner)
+          Text(
+            'Es tu reporte: no podés votarlo.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.outline,
+                ),
+          )
+        else if (!_canVote)
+          Text(
+            'Iniciá sesión para votar.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.outline,
+                ),
+          )
+        else
+          Row(
+            children: [
+              Expanded(
+                child: _ReactionButton(
+                  label: 'Confirmo',
+                  icon: Icons.thumb_up_alt_outlined,
+                  iconActive: Icons.thumb_up_alt,
+                  active: current == ReactionType.confirm,
+                  loading: isLoading,
+                  onPressed: () =>
+                      ref.read(reactionsNotifierProvider.notifier).toggle(
+                            incidentId: incidentId,
+                            target: ReactionType.confirm,
+                            current: current,
+                          ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _ReactionButton(
+                  label: 'No es así',
+                  icon: Icons.thumb_down_alt_outlined,
+                  iconActive: Icons.thumb_down_alt,
+                  active: current == ReactionType.dispute,
+                  loading: isLoading,
+                  onPressed: () =>
+                      ref.read(reactionsNotifierProvider.notifier).toggle(
+                            incidentId: incidentId,
+                            target: ReactionType.dispute,
+                            current: current,
+                          ),
+                ),
+              ),
+            ],
+          ),
+      ],
+    );
+  }
+}
+
+class _ReactionButton extends StatelessWidget {
+  const _ReactionButton({
+    required this.label,
+    required this.icon,
+    required this.iconActive,
+    required this.active,
+    required this.loading,
+    required this.onPressed,
+  });
+
+  final String label;
+  final IconData icon;
+  final IconData iconActive;
+  final bool active;
+  final bool loading;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = active
+        ? FilledButton.styleFrom(minimumSize: const Size.fromHeight(40))
+        : OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(40));
+    final iconWidget = Icon(active ? iconActive : icon, size: 18);
+    final labelText = Text(label);
+    return active
+        ? FilledButton.icon(
+            onPressed: loading ? null : onPressed,
+            icon: iconWidget,
+            label: labelText,
+            style: style,
+          )
+        : OutlinedButton.icon(
+            onPressed: loading ? null : onPressed,
+            icon: iconWidget,
+            label: labelText,
+            style: style,
+          );
+  }
+}
+
+class _CommunityValidatedBadge extends StatelessWidget {
+  const _CommunityValidatedBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.green.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.green.shade700),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.verified_user, size: 14, color: Colors.green.shade700),
+          const SizedBox(width: 4),
+          Text(
+            'Validado por la comunidad',
+            style: TextStyle(
+              color: Colors.green.shade700,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

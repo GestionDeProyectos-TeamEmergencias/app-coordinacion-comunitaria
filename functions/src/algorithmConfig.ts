@@ -39,6 +39,13 @@ export const AlgorithmConfigSchema = z.object({
     alta: z.number().int().min(0).max(100),
     media: z.number().int().min(0).max(100),
   }),
+  // Validación comunitaria (F-04): el reporte se etiqueta como
+  // `communityValidated: true` cuando alcanza un score de confirmación >=
+  // `threshold` con al menos `minReactions` reacciones totales.
+  communityValidation: z.object({
+    threshold: z.number().min(0).max(1),
+    minReactions: z.number().int().min(1).max(100),
+  }),
 });
 
 export type AlgorithmConfig = z.infer<typeof AlgorithmConfigSchema>;
@@ -98,6 +105,10 @@ export const DEFAULT_ALGORITHM_CONFIG: AlgorithmConfig = {
     urgente: 80,
     alta: 60,
     media: 30,
+  },
+  communityValidation: {
+    threshold: 0.7,
+    minReactions: 3,
   },
 };
 
@@ -227,6 +238,10 @@ function mergeConfig(
     priorityThresholds: {
       ...base.priorityThresholds,
       ...(patch.priorityThresholds ?? {}),
+    },
+    communityValidation: {
+      ...base.communityValidation,
+      ...(patch.communityValidation ?? {}),
     },
   };
 }

@@ -23,6 +23,10 @@ class IncidentEventModel {
     this.actions = const [],
     this.categoryChangedBy,
     this.categoryChangedAt,
+    this.confirmsCount = 0,
+    this.disputesCount = 0,
+    this.confirmationScore = 0.0,
+    this.communityValidated = false,
   });
 
   final String eventId;
@@ -46,6 +50,11 @@ class IncidentEventModel {
   // Auditoría del último cambio manual de categoría. [D-06]
   final String? categoryChangedBy;
   final DateTime? categoryChangedAt;
+  // Persisten desde el trigger `aggregateReactionsOnWritten`. [F-04]
+  final int confirmsCount;
+  final int disputesCount;
+  final double confirmationScore;
+  final bool communityValidated;
 
   factory IncidentEventModel.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> doc,
@@ -85,6 +94,10 @@ class IncidentEventModel {
       actions: actions,
       categoryChangedBy: data['categoryChangedBy'] as String?,
       categoryChangedAt: (data['categoryChangedAt'] as Timestamp?)?.toDate(),
+      confirmsCount: (data['confirmsCount'] as num?)?.toInt() ?? 0,
+      disputesCount: (data['disputesCount'] as num?)?.toInt() ?? 0,
+      confirmationScore: (data['confirmationScore'] as num?)?.toDouble() ?? 0.0,
+      communityValidated: data['communityValidated'] as bool? ?? false,
     );
   }
 
@@ -130,6 +143,10 @@ class IncidentEventModel {
             .toList(),
         categoryChangedBy: categoryChangedBy,
         categoryChangedAt: categoryChangedAt,
+        confirmsCount: confirmsCount,
+        disputesCount: disputesCount,
+        confirmationScore: confirmationScore,
+        communityValidated: communityValidated,
       );
 
   factory IncidentEventModel.fromDomain(IncidentEvent event) =>

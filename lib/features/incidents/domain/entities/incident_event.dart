@@ -189,6 +189,25 @@ enum IncidentPriority {
       };
 }
 
+/// Reacción de un vecino activo sobre un incident — "Confirmo" o "No es así".
+/// Persistida en `incidents/{id}/reactions/{userId}`. El backend (F-04) agrega
+/// los contadores en el doc del incident. [F-04]
+enum ReactionType {
+  confirm,
+  dispute;
+
+  String get firestoreValue => switch (this) {
+        ReactionType.confirm => 'confirm',
+        ReactionType.dispute => 'dispute',
+      };
+
+  static ReactionType? fromString(String? value) => switch (value) {
+        'confirm' => ReactionType.confirm,
+        'dispute' => ReactionType.dispute,
+        _ => null,
+      };
+}
+
 /// Verificación de campo del Referente Barrial sobre un incidente. [D-05 /
 /// RF-ROL-02(b)]
 ///
@@ -295,6 +314,10 @@ class IncidentEvent extends Equatable {
     this.actions = const [],
     this.categoryChangedBy,
     this.categoryChangedAt,
+    this.confirmsCount = 0,
+    this.disputesCount = 0,
+    this.confirmationScore = 0.0,
+    this.communityValidated = false,
   });
 
   final String? eventId;
@@ -323,6 +346,12 @@ class IncidentEvent extends Equatable {
   // quién la hizo, para que el dueño vea que el admin intervino. [D-06]
   final String? categoryChangedBy;
   final DateTime? categoryChangedAt;
+  // Conteos y score de reacciones de la comunidad. Lo persiste el trigger
+  // `aggregateReactionsOnWritten`. [F-04]
+  final int confirmsCount;
+  final int disputesCount;
+  final double confirmationScore;
+  final bool communityValidated;
 
   IncidentEvent copyWith({
     String? eventId,
@@ -343,6 +372,10 @@ class IncidentEvent extends Equatable {
     List<ResolutionAction>? actions,
     String? categoryChangedBy,
     DateTime? categoryChangedAt,
+    int? confirmsCount,
+    int? disputesCount,
+    double? confirmationScore,
+    bool? communityValidated,
   }) {
     return IncidentEvent(
       eventId: eventId ?? this.eventId,
@@ -364,6 +397,10 @@ class IncidentEvent extends Equatable {
       actions: actions ?? this.actions,
       categoryChangedBy: categoryChangedBy ?? this.categoryChangedBy,
       categoryChangedAt: categoryChangedAt ?? this.categoryChangedAt,
+      confirmsCount: confirmsCount ?? this.confirmsCount,
+      disputesCount: disputesCount ?? this.disputesCount,
+      confirmationScore: confirmationScore ?? this.confirmationScore,
+      communityValidated: communityValidated ?? this.communityValidated,
     );
   }
 
@@ -387,5 +424,9 @@ class IncidentEvent extends Equatable {
         actions,
         categoryChangedBy,
         categoryChangedAt,
+        confirmsCount,
+        disputesCount,
+        confirmationScore,
+        communityValidated,
       ];
 }
