@@ -91,13 +91,16 @@ service cloud.firestore {
         request.resource.data.userId == request.auth.uid;
 
       // Actualización:
-      // - Admin: cualquier campo (gestión del ciclo de vida operativo).
+      // - Admin: cualquier campo. Incluye `category`, `categoryChangedBy`,
+      //   `categoryChangedAt` y `actions` (RF-ADM-03 cubierto por D-06).
       // - Referente: solo `referentVerification` y `referentVerificationHistory`
       //   (verificación de campo, RF-ROL-02(b)). NO puede tocar `status`,
-      //   `priority` u otros campos: su intervención es ortogonal y NO debe
-      //   simular la autoridad del admin sobre la máquina de estados. [D-05]
-      // - Vecino dueño: descripción/foto mientras el incidente siga en
-      //   `recibido` (aún no procesado por NLP). T-REP-03.
+      //   `priority`, `category`, `actions` u otros campos. [D-05]
+      // - Vecino dueño: solo `description` y `photoUrl`, y únicamente mientras
+      //   el incidente siga en `recibido` (aún no procesado por NLP). T-REP-03.
+      //   D-06 refinó esto a allowlist explícita: antes había una blacklist que
+      //   dejaba al dueño tocar `category` (lo que vaciaba RF-ADM-03) y
+      //   `actions` (lo que rompía el feed de auditoría del admin).
       allow update: if isActive() && (
         isAdmin() ||
         (isReferente() &&
@@ -106,8 +109,9 @@ service cloud.firestore {
             .hasOnly(['referentVerification', 'referentVerificationHistory'])) ||
         (resource.data.userId == request.auth.uid &&
           resource.data.status == 'recibido' &&
-          !request.resource.data.diff(resource.data)
-            .affectedKeys().hasAny(['status', 'priority', 'priorityScore', 'userId']))
+          request.resource.data.diff(resource.data)
+            .affectedKeys()
+            .hasOnly(['description', 'photoUrl']))
       );
 
       // Eliminación: solo admins.

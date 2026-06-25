@@ -13,6 +13,7 @@ import '../../../auth/domain/entities/app_user.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../auth/presentation/providers/moderation_provider.dart';
 import '../../domain/entities/incident_event.dart';
+import '../providers/incident_admin_provider.dart';
 import '../providers/incidents_provider.dart';
 import '../providers/referent_verification_provider.dart';
 import '../widgets/incident_status_badge.dart';
@@ -74,7 +75,14 @@ class IncidentDetailPage extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 12),
-              if (incident.category != null)
+              // Categoría: solo lectura para todos, editable para admin. [D-06]
+              if (user?.role == UserRole.administrador)
+                _CategoryEditor(
+                  incidentId: incidentId,
+                  current: incident.category,
+                  adminUid: user!.userId,
+                )
+              else if (incident.category != null)
                 _InfoRow(
                     label: 'Categoría', value: incident.category!.displayName),
               if (incident.description != null)
@@ -135,6 +143,16 @@ class IncidentDetailPage extends ConsumerWidget {
               ],
               const Divider(height: 32),
               _StatusHistoryTimeline(history: incident.statusHistory),
+              // Acciones de resolución del admin (RF-ADM-03). Visible a todos
+              // como rendición de cuentas; editable solo por el admin. [D-06]
+              const Divider(height: 32),
+              _ResolutionActionsSection(
+                incidentId: incidentId,
+                actions: incident.actions,
+                isAdmin: user?.role == UserRole.administrador,
+                adminUid: user?.userId,
+                adminDisplayName: user?.displayName,
+              ),
             ],
           ),
         ),
@@ -578,6 +596,204 @@ class _ReferentVerificationActionsState
             ),
           ],
         ),
+      ],
+    );
+  }
+}
+
+/// Editor de categoría para el Administrador. Reemplaza el `_InfoRow` de
+/// solo lectura cuando el caller es admin. [D-06 / RF-ADM-03]
+class _CategoryEditor extends ConsumerWidget {
+  const _CategoryEditor({
+    required this.incidentId,
+    required this.current,
+    required this.adminUid,
+  });
+
+  final String incidentId;
+  final IncidentCategory? current;
+  final String adminUid;
+
+  void _onChanged(BuildContext context, WidgetRef ref, IncidentCategory? next) {
+    if (next == null || next == current) return;
+    ref.read(incidentAdminNotifierProvider.notifier).reassignCategory(
+          incidentId: incidentId,
+          category: next,
+          adminUid: adminUid,
+        );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isLoading = ref.watch(incidentAdminNotifierProvider).isLoading;
+    ref.listen(incidentAdminNotifierProvider, (_, next) {
+      if (next.isLoading) return;
+      if (next.hasError) {
+        context.showSnackBar(next.error.toString(), isError: true);
+      }
+    });
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const SizedBox(
+            width: 110,
+            child: Text(
+              'Categoría:',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+          Expanded(
+            child: DropdownButtonFormField<IncidentCategory>(
+              key: ValueKey(current),
+              initialValue: current,
+              isDense: true,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
+              items: IncidentCategory.values
+                  .map((c) => DropdownMenuItem(
+                        value: c,
+                        child: Text('${c.emoji} ${c.displayName}'),
+                      ))
+                  .toList(),
+              onChanged: isLoading ? null : (v) => _onChanged(context, ref, v),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Sección "Acciones tomadas": feed cronológico de notas que registra el
+/// Administrador a lo largo del ciclo de resolución. Visible al vecino dueño
+/// como rendición de cuentas. [D-06 / RF-ADM-03]
+class _ResolutionActionsSection extends ConsumerStatefulWidget {
+  const _ResolutionActionsSection({
+    required this.incidentId,
+    required this.actions,
+    required this.isAdmin,
+    required this.adminUid,
+    required this.adminDisplayName,
+  });
+
+  final String incidentId;
+  final List<ResolutionAction> actions;
+  final bool isAdmin;
+  final String? adminUid;
+  final String? adminDisplayName;
+
+  @override
+  ConsumerState<_ResolutionActionsSection> createState() =>
+      _ResolutionActionsSectionState();
+}
+
+class _ResolutionActionsSectionState
+    extends ConsumerState<_ResolutionActionsSection> {
+  final _noteCtrl = TextEditingController();
+  bool _awaitingFeedback = false;
+
+  @override
+  void dispose() {
+    _noteCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _addAction() async {
+    final note = _noteCtrl.text.trim();
+    if (note.isEmpty || widget.adminUid == null) return;
+    setState(() => _awaitingFeedback = true);
+    await ref.read(incidentAdminNotifierProvider.notifier).addAction(
+          incidentId: widget.incidentId,
+          note: note,
+          adminUid: widget.adminUid!,
+          adminDisplayName: widget.adminDisplayName,
+        );
+    if (!mounted) return;
+    final result = ref.read(incidentAdminNotifierProvider);
+    setState(() => _awaitingFeedback = false);
+    if (result.hasError) {
+      context.showSnackBar(result.error.toString(), isError: true);
+      return;
+    }
+    _noteCtrl.clear();
+    context.showSnackBar('Acción registrada.');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isLoading =
+        _awaitingFeedback && ref.watch(incidentAdminNotifierProvider).isLoading;
+    final sorted = [...widget.actions]..sort((a, b) => b.at.compareTo(a.at));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Acciones tomadas',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        if (sorted.isEmpty)
+          Text(
+            widget.isAdmin
+                ? 'Todavía no se registraron acciones.'
+                : 'El administrador aún no registró acciones sobre tu reporte.',
+            style: Theme.of(context).textTheme.bodySmall,
+          )
+        else
+          ...sorted.map(
+            (a) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.task_alt, size: 18, color: Colors.grey),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(a.note),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${a.byDisplayName ?? a.by} · ${_formatDate(a.at)}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        if (widget.isAdmin) ...[
+          const SizedBox(height: 12),
+          TextField(
+            controller: _noteCtrl,
+            enabled: !isLoading,
+            decoration: const InputDecoration(
+              labelText: 'Nueva acción',
+              hintText: 'Ej.: derivado a Obras Públicas',
+              border: OutlineInputBorder(),
+              isDense: true,
+            ),
+            maxLines: 2,
+          ),
+          const SizedBox(height: 8),
+          FilledButton.icon(
+            icon: const Icon(Icons.add),
+            label: Text(isLoading ? 'Registrando…' : 'Registrar acción'),
+            onPressed: isLoading ? null : _addAction,
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(44),
+            ),
+          ),
+        ],
       ],
     );
   }

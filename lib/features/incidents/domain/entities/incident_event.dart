@@ -188,6 +188,26 @@ class ReferentVerification extends Equatable {
   List<Object?> get props => [state, by, byDisplayName, at, note, photoUrl];
 }
 
+/// Acción de resolución registrada por el Administrador en el ciclo de vida
+/// del incidente. Parte del feed de auditoría visible al vecino dueño. [D-06 /
+/// RF-ADM-03]
+class ResolutionAction extends Equatable {
+  const ResolutionAction({
+    required this.note,
+    required this.by,
+    required this.at,
+    this.byDisplayName,
+  });
+
+  final String note;
+  final String by; // uid del admin
+  final String? byDisplayName;
+  final DateTime at;
+
+  @override
+  List<Object?> get props => [note, by, byDisplayName, at];
+}
+
 class IncidentStatusChange extends Equatable {
   const IncidentStatusChange({
     required this.status,
@@ -220,6 +240,9 @@ class IncidentEvent extends Equatable {
     this.statusHistory = const [],
     this.referentVerification,
     this.referentVerificationHistory = const [],
+    this.actions = const [],
+    this.categoryChangedBy,
+    this.categoryChangedAt,
   });
 
   final String? eventId;
@@ -240,6 +263,14 @@ class IncidentEvent extends Equatable {
   // Histórico de verificaciones (incluye re-verificaciones). El último coincide
   // con `referentVerification`. Es el feed de auditoría visible al admin. [D-05]
   final List<ReferentVerification> referentVerificationHistory;
+  // Acciones registradas por el Administrador en el ciclo de resolución.
+  // Visible al vecino dueño como rendición de cuentas. [D-06 / RF-ADM-03]
+  final List<ResolutionAction> actions;
+  // Auditoría del último cambio manual de categoría (uid + timestamp). El
+  // valor de `category` ya refleja la corrección; estos dos campos guardan
+  // quién la hizo, para que el dueño vea que el admin intervino. [D-06]
+  final String? categoryChangedBy;
+  final DateTime? categoryChangedAt;
 
   IncidentEvent copyWith({
     String? eventId,
@@ -257,6 +288,9 @@ class IncidentEvent extends Equatable {
     List<IncidentStatusChange>? statusHistory,
     ReferentVerification? referentVerification,
     List<ReferentVerification>? referentVerificationHistory,
+    List<ResolutionAction>? actions,
+    String? categoryChangedBy,
+    DateTime? categoryChangedAt,
   }) {
     return IncidentEvent(
       eventId: eventId ?? this.eventId,
@@ -275,6 +309,9 @@ class IncidentEvent extends Equatable {
       referentVerification: referentVerification ?? this.referentVerification,
       referentVerificationHistory:
           referentVerificationHistory ?? this.referentVerificationHistory,
+      actions: actions ?? this.actions,
+      categoryChangedBy: categoryChangedBy ?? this.categoryChangedBy,
+      categoryChangedAt: categoryChangedAt ?? this.categoryChangedAt,
     );
   }
 
@@ -295,5 +332,8 @@ class IncidentEvent extends Equatable {
         statusHistory,
         referentVerification,
         referentVerificationHistory,
+        actions,
+        categoryChangedBy,
+        categoryChangedAt,
       ];
 }
