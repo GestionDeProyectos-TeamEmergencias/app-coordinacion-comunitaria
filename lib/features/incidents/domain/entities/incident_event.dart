@@ -113,6 +113,58 @@ enum IncidentStatus {
         IncidentStatus.vitalRiskDetected => 'Riesgo vital — derivado a 911/107',
         IncidentStatus.rechazadoAutorInactivo => 'Rechazado (autor inactivo)',
       };
+
+  /// Transiciones válidas que el Administrador puede ejecutar desde el cliente
+  /// para `this` como estado actual. Excluye **siempre** los estados
+  /// marcadores (`falso`, `rechazadoFueraDeCobertura`, `vitalRiskDetected`,
+  /// `rechazadoAutorInactivo`): esos los pone el backend con Admin SDK y no
+  /// están bajo el control del dropdown manual. [D-07 / RF-ADM-02 / O4]
+  ///
+  /// `falso` queda con **un solo camino**: el callable `moderateFalseReport`
+  /// (T-AUTH-07), que dispara el decremento de reputación (D-08).
+  ///
+  /// `solucionado` es terminal por D-07: F-05 (cierre bilateral) gestionará
+  /// disputa/reapertura con un campo **ortogonal** (`closureConfirmation`),
+  /// no tocando `status` hacia atrás.
+  List<IncidentStatus> get allowedTransitions => switch (this) {
+        IncidentStatus.recibido => const [
+            IncidentStatus.programado,
+            IncidentStatus.enReparacion,
+            IncidentStatus.solucionado,
+          ],
+        IncidentStatus.programado => const [
+            IncidentStatus.recibido,
+            IncidentStatus.enReparacion,
+            IncidentStatus.solucionado,
+          ],
+        IncidentStatus.enReparacion => const [
+            IncidentStatus.programado,
+            IncidentStatus.solucionado,
+          ],
+        // Terminales: ni el ciclo operativo ni los marcadores tienen salida
+        // manual desde el dropdown.
+        IncidentStatus.solucionado ||
+        IncidentStatus.falso ||
+        IncidentStatus.rechazadoFueraDeCobertura ||
+        IncidentStatus.vitalRiskDetected ||
+        IncidentStatus.rechazadoAutorInactivo =>
+          const [],
+      };
+
+  /// `true` si la transición `this → next` es válida. La identidad
+  /// (`this == next`) cuenta como válida (no es un cambio efectivo). [D-07]
+  bool canTransitionTo(IncidentStatus next) =>
+      next == this || allowedTransitions.contains(next);
+
+  /// `true` si desde `this` se puede marcar como `falso` vía callable. No
+  /// permitimos moderar incidents ya cerrados o ya sancionados. [D-07]
+  bool get canBeMarkedAsFalse => switch (this) {
+        IncidentStatus.recibido ||
+        IncidentStatus.programado ||
+        IncidentStatus.enReparacion =>
+          true,
+        _ => false,
+      };
 }
 
 enum IncidentPriority {

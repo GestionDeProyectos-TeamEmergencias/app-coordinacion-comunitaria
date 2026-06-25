@@ -40,6 +40,35 @@ service cloud.firestore {
       return isAdmin() || isReferente();
     }
 
+    // ── Máquina de estados de incidents (D-07 / RF-ADM-02) ────────────────────
+    // El grafo replica el del cliente (`IncidentStatus.allowedTransitions`):
+    //   recibido     → {programado, en_reparacion, solucionado}
+    //   programado   → {recibido, en_reparacion, solucionado}
+    //   en_reparacion→ {programado, solucionado}
+    //   solucionado  → {} (terminal; F-05 abrirá disputa por campo ortogonal)
+    // Los estados marcadores (`falso`, `rechazado_fuera_de_cobertura`,
+    // `vital_risk_detected`, `rechazado_autor_inactivo`) los pone el backend
+    // con Admin SDK — NUNCA son válidos vía dropdown del cliente. `falso`
+    // tiene su único camino vía el callable `moderateFalseReport`.
+
+    function isValidStatusTransition(oldStatus, newStatus) {
+      return newStatus == oldStatus ||
+        (oldStatus == 'recibido' && (
+          newStatus == 'programado' ||
+          newStatus == 'en_reparacion' ||
+          newStatus == 'solucionado'
+        )) ||
+        (oldStatus == 'programado' && (
+          newStatus == 'recibido' ||
+          newStatus == 'en_reparacion' ||
+          newStatus == 'solucionado'
+        )) ||
+        (oldStatus == 'en_reparacion' && (
+          newStatus == 'programado' ||
+          newStatus == 'solucionado'
+        ));
+    }
+
     // ── Colección: users ───────────────────────────────────────────────────────
     // Un vecino solo puede ver su propio documento.
     // Un admin puede ver y modificar cualquier usuario.
@@ -91,8 +120,14 @@ service cloud.firestore {
         request.resource.data.userId == request.auth.uid;
 
       // Actualización:
-      // - Admin: cualquier campo. Incluye `category`, `categoryChangedBy`,
-      //   `categoryChangedAt` y `actions` (RF-ADM-03 cubierto por D-06).
+      // - Admin: cualquier campo, **pero** si está tocando `status`, la
+      //   transición debe estar en el grafo permitido (D-07). Esto bloquea
+      //   saltos arbitrarios (p. ej. recibido → solucionado sin pasar por
+      //   en_reparacion no, pero saltos largos hacia adelante sí) y, sobre
+      //   todo, impide setear estados marcadores (`falso`, etc.) desde el
+      //   dropdown del cliente. `falso` queda con un único camino: el
+      //   callable `moderateFalseReport` (que corre con Admin SDK y no cae
+      //   bajo estas reglas).
       // - Referente: solo `referentVerification` y `referentVerificationHistory`
       //   (verificación de campo, RF-ROL-02(b)). NO puede tocar `status`,
       //   `priority`, `category`, `actions` u otros campos. [D-05]
@@ -102,7 +137,13 @@ service cloud.firestore {
       //   dejaba al dueño tocar `category` (lo que vaciaba RF-ADM-03) y
       //   `actions` (lo que rompía el feed de auditoría del admin).
       allow update: if isActive() && (
-        isAdmin() ||
+        (isAdmin() &&
+          (!request.resource.data.diff(resource.data)
+              .affectedKeys().hasAny(['status']) ||
+            isValidStatusTransition(
+              resource.data.status,
+              request.resource.data.status
+            ))) ||
         (isReferente() &&
           request.resource.data.diff(resource.data)
             .affectedKeys()

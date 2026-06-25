@@ -132,8 +132,11 @@ class IncidentDetailPage extends ConsumerWidget {
                 ),
               ],
               // Marcar como falso: disponible para admin y referente vía el
-              // callable `moderateFalseReport` (T-AUTH-07).
-              if (user?.role.canVerify == true) ...[
+              // callable `moderateFalseReport` (T-AUTH-07). Único camino a
+              // `falso` (D-07). Solo desde estados activos del ciclo: ya
+              // resuelto / ya sancionado no se reabre por este camino.
+              if (user?.role.canVerify == true &&
+                  incident.status.canBeMarkedAsFalse) ...[
                 const SizedBox(height: 12),
                 _MarkAsFalseButton(
                   incidentId: incidentId,
@@ -206,6 +209,11 @@ class _StatusUpdaterState extends ConsumerState<_StatusUpdater> {
       setState(() => _awaitingFeedback = false);
     });
 
+    // El dropdown solo expone transiciones válidas desde el estado actual.
+    // Estados terminales (`solucionado` y marcadores) no permiten cambio
+    // manual desde el cliente (la regla Firestore también lo bloquea). [D-07]
+    final transitions = widget.currentStatus.allowedTransitions;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -214,23 +222,39 @@ class _StatusUpdaterState extends ConsumerState<_StatusUpdater> {
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: 8),
-        // Key fuerza recrear el dropdown cuando otro usuario cambia el estado
-        // remotamente, así la selección refleja el valor del stream.
-        DropdownButtonFormField<IncidentStatus>(
-          key: ValueKey(widget.currentStatus),
-          initialValue: widget.currentStatus,
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
-            isDense: true,
+        if (transitions.isEmpty)
+          Text(
+            'El ciclo de vida de este incidente ya está cerrado '
+            '(${widget.currentStatus.displayName}). '
+            'No hay transiciones válidas desde acá.',
+            style: Theme.of(context).textTheme.bodySmall,
+          )
+        else
+          DropdownButtonFormField<IncidentStatus>(
+            // Key fuerza recrear el dropdown cuando otro usuario cambia el
+            // estado remotamente, así la selección refleja el valor del stream.
+            key: ValueKey(widget.currentStatus),
+            initialValue: widget.currentStatus,
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              isDense: true,
+            ),
+            items: [
+              // El estado actual aparece como opción "seleccionada" pero
+              // deshabilitada para que el usuario vea de dónde parte.
+              DropdownMenuItem(
+                value: widget.currentStatus,
+                child: Text(widget.currentStatus.displayName),
+              ),
+              ...transitions.map(
+                (s) => DropdownMenuItem(
+                  value: s,
+                  child: Text(s.displayName),
+                ),
+              ),
+            ],
+            onChanged: isLoading ? null : _onChanged,
           ),
-          items: IncidentStatus.values
-              .map((s) => DropdownMenuItem(
-                    value: s,
-                    child: Text(s.displayName),
-                  ))
-              .toList(),
-          onChanged: isLoading ? null : _onChanged,
-        ),
         if (isLoading) ...[
           const SizedBox(height: 8),
           const LinearProgressIndicator(),
