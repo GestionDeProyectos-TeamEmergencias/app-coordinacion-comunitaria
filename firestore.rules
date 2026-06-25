@@ -158,6 +158,32 @@ service cloud.firestore {
 
       // Eliminación: solo admins.
       allow delete: if isAdmin();
+
+      // ── Subcolección: reactions de la comunidad (F-04) ────────────────────
+      // Cada vecino activo puede dejar UNA reacción ('confirm' o 'dispute')
+      // sobre un incident ajeno. El dueño del incident NO puede votarse. El
+      // doc tiene como id el uid del votante. Un trigger (Cloud Function)
+      // agrega los conteos en el doc padre (`confirmsCount`, `confirmationScore`,
+      // `communityValidated`).
+      match /reactions/{userId} {
+        // Lectura: cualquier user activo (el score es público dentro del barrio).
+        allow read: if isActive();
+
+        // Crear o actualizar: user activo, doc propio, NO es dueño del incident.
+        // El sketch del plan original tenía `incidents.data.userId` lo cual no
+        // es referencia válida en este match — usamos `get()` del doc padre.
+        // [Corrección F-04 sobre §5.3 de la devolución]
+        allow create, update: if isActive() &&
+          request.auth.uid == userId &&
+          get(/databases/$(database)/documents/incidents/$(incidentId)).data.userId
+            != request.auth.uid &&
+          request.resource.data.by == request.auth.uid &&
+          (request.resource.data.type == 'confirm' ||
+            request.resource.data.type == 'dispute');
+
+        // Eliminar: el propio votante puede retirar su voto.
+        allow delete: if isActive() && request.auth.uid == userId;
+      }
     }
 
     // ── Colección: config ──────────────────────────────────────────────────────

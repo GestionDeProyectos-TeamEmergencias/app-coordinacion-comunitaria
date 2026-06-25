@@ -402,6 +402,7 @@ export const updateAlgorithmConfigCallable = onCall(async (request) => {
 });
 
 export { updateUserReputationOnValidation } from "./reputationManager";
+export { aggregateReactionsOnWritten } from "./reactionsAggregator";
 
 // ── Derivación a 911/107 — chequeo síncrono pre-envío (D-03) ────────────────
 // Permite al cliente Flutter consultar si la descripción de un reporte dispara
