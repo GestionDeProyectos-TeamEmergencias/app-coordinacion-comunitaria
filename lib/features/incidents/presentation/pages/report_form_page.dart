@@ -1,9 +1,7 @@
-import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -14,7 +12,9 @@ import '../../../../core/widgets/app_button.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../domain/entities/incident_event.dart';
 import '../providers/incidents_provider.dart';
+import '../providers/location_picker_provider.dart';
 import '../providers/vital_risk_provider.dart';
+import '../widgets/location_picker_card.dart';
 import '../widgets/vital_risk_dialog.dart';
 import '../widgets/voice_report_widget.dart';
 
@@ -67,46 +67,8 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
     });
   }
 
-  Future<Position?> _getPosition() async {
-    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      if (mounted) {
-        context.showSnackBar(AppStrings.locationUnavailable, isError: true);
-      }
-      return null;
-    }
-
-    var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
-    if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever) {
-      if (mounted) {
-        context.showSnackBar(AppStrings.locationUnavailable, isError: true);
-      }
-      return null;
-    }
-
-    try {
-      return await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.medium,
-          timeLimit: Duration(seconds: 5),
-        ),
-      );
-    } on TimeoutException catch (_) {
-      if (mounted) {
-        context.showSnackBar(AppStrings.locationTimeout, isError: true);
-      }
-      return null;
-    } catch (_) {
-      if (mounted) {
-        context.showSnackBar(AppStrings.locationUnavailable, isError: true);
-      }
-      return null;
-    }
-  }
+  // F-03: la ubicación se elige desde `LocationPickerCard` y vive en
+  // `locationPickerProvider`. Ya no hace falta `_getPosition()` acá.
 
   Future<void> _submit() async {
     if (_isSubmitting) return;
@@ -140,8 +102,18 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
         return;
       }
 
-      final position = await _getPosition();
-      if (position == null || !mounted) return;
+      // F-03: la ubicación viene del selector interactivo. El usuario puede
+      // haberla ajustado manualmente; si nunca se cargó (GPS falló y no
+      // fijó manualmente), abortamos con mensaje.
+      final selected = ref.read(locationPickerProvider).selected;
+      if (selected == null) {
+        messenger.hideCurrentSnackBar();
+        context.showSnackBar(
+          'Fijá la ubicación del incidente en el mapa antes de enviar.',
+          isError: true,
+        );
+        return;
+      }
 
       final user = ref.read(authStateProvider).valueOrNull;
       if (user == null || !mounted) return;
@@ -154,15 +126,15 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
         // abreviado. [D-10]
         await notifier.submitVoice(
           userId: user.userId,
-          latitude: position.latitude,
-          longitude: position.longitude,
+          latitude: selected.latitude,
+          longitude: selected.longitude,
           transcribedText: description,
         );
       } else {
         await notifier.submitForm(
           userId: user.userId,
-          latitude: position.latitude,
-          longitude: position.longitude,
+          latitude: selected.latitude,
+          longitude: selected.longitude,
           description: description,
           category: _category!,
           photoBytes: _photoBytes,
@@ -252,6 +224,16 @@ class _ReportFormPageState extends ConsumerState<ReportFormPage> {
                   ),
                 ),
               ],
+              const SizedBox(height: 16),
+              // Selector de ubicación interactivo. Arranca pidiendo GPS y
+              // permite al usuario ajustar manualmente con tap o drag del
+              // marker. [F-03 / RF-REP-01]
+              Text(
+                'Ubicación del incidente',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: 8),
+              const LocationPickerCard(),
               const SizedBox(height: 16),
               // Categoría y foto: solo en modo formulario. El reporte por voz
               // es deliberadamente abreviado (T-INF-04 / RF-REP-02); el NLP
