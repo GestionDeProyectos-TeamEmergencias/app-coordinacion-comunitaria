@@ -137,6 +137,57 @@ enum IncidentPriority {
       };
 }
 
+/// Verificación de campo del Referente Barrial sobre un incidente. [D-05 /
+/// RF-ROL-02(b)]
+///
+/// Ortogonal al `status` del incidente: el referente confirma o descarta lo
+/// que vio en terreno; el admin gestiona el ciclo de vida operativo. La
+/// confirmación del referente es señal **autoritativa**, distinta de la señal
+/// social blanda que va a aportar la comunidad (F-04).
+enum ReferentVerificationState {
+  confirmed,
+  dismissed;
+
+  String get firestoreValue => switch (this) {
+        ReferentVerificationState.confirmed => 'confirmed',
+        ReferentVerificationState.dismissed => 'dismissed',
+      };
+
+  String get displayName => switch (this) {
+        ReferentVerificationState.confirmed => 'Confirmado por referente',
+        ReferentVerificationState.dismissed => 'Descartado por referente',
+      };
+
+  static ReferentVerificationState? fromString(String? value) =>
+      switch (value) {
+        'confirmed' => ReferentVerificationState.confirmed,
+        'dismissed' => ReferentVerificationState.dismissed,
+        _ => null,
+      };
+}
+
+class ReferentVerification extends Equatable {
+  const ReferentVerification({
+    required this.state,
+    required this.by,
+    required this.at,
+    required this.photoUrl,
+    this.byDisplayName,
+    this.note,
+  });
+
+  final ReferentVerificationState state;
+  final String by; // uid del referente
+  final String? byDisplayName;
+  final DateTime at;
+  final String? note;
+  // Evidencia fotográfica obligatoria (RF-ROL-02(b)).
+  final String photoUrl;
+
+  @override
+  List<Object?> get props => [state, by, byDisplayName, at, note, photoUrl];
+}
+
 class IncidentStatusChange extends Equatable {
   const IncidentStatusChange({
     required this.status,
@@ -167,6 +218,8 @@ class IncidentEvent extends Equatable {
     this.priority,
     this.priorityScore,
     this.statusHistory = const [],
+    this.referentVerification,
+    this.referentVerificationHistory = const [],
   });
 
   final String? eventId;
@@ -182,6 +235,11 @@ class IncidentEvent extends Equatable {
   final IncidentPriority? priority;
   final double? priorityScore;
   final List<IncidentStatusChange> statusHistory;
+  // Última verificación autoritativa hecha por un Referente Barrial. [D-05]
+  final ReferentVerification? referentVerification;
+  // Histórico de verificaciones (incluye re-verificaciones). El último coincide
+  // con `referentVerification`. Es el feed de auditoría visible al admin. [D-05]
+  final List<ReferentVerification> referentVerificationHistory;
 
   IncidentEvent copyWith({
     String? eventId,
@@ -197,6 +255,8 @@ class IncidentEvent extends Equatable {
     IncidentPriority? priority,
     double? priorityScore,
     List<IncidentStatusChange>? statusHistory,
+    ReferentVerification? referentVerification,
+    List<ReferentVerification>? referentVerificationHistory,
   }) {
     return IncidentEvent(
       eventId: eventId ?? this.eventId,
@@ -212,6 +272,9 @@ class IncidentEvent extends Equatable {
       priority: priority ?? this.priority,
       priorityScore: priorityScore ?? this.priorityScore,
       statusHistory: statusHistory ?? this.statusHistory,
+      referentVerification: referentVerification ?? this.referentVerification,
+      referentVerificationHistory:
+          referentVerificationHistory ?? this.referentVerificationHistory,
     );
   }
 
@@ -230,5 +293,7 @@ class IncidentEvent extends Equatable {
         priority,
         priorityScore,
         statusHistory,
+        referentVerification,
+        referentVerificationHistory,
       ];
 }

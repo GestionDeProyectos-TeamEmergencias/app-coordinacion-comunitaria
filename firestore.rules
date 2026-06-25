@@ -91,11 +91,19 @@ service cloud.firestore {
         request.resource.data.userId == request.auth.uid;
 
       // Actualización:
-      // - Referentes y admins pueden actualizar cualquier campo.
-      // - El vecino dueño solo puede editar descripción/foto mientras el
-      //   incidente siga en estado 'recibido' (aún no procesado por NLP).
+      // - Admin: cualquier campo (gestión del ciclo de vida operativo).
+      // - Referente: solo `referentVerification` y `referentVerificationHistory`
+      //   (verificación de campo, RF-ROL-02(b)). NO puede tocar `status`,
+      //   `priority` u otros campos: su intervención es ortogonal y NO debe
+      //   simular la autoridad del admin sobre la máquina de estados. [D-05]
+      // - Vecino dueño: descripción/foto mientras el incidente siga en
+      //   `recibido` (aún no procesado por NLP). T-REP-03.
       allow update: if isActive() && (
-        isAdminOrReferente() ||
+        isAdmin() ||
+        (isReferente() &&
+          request.resource.data.diff(resource.data)
+            .affectedKeys()
+            .hasOnly(['referentVerification', 'referentVerificationHistory'])) ||
         (resource.data.userId == request.auth.uid &&
           resource.data.status == 'recibido' &&
           !request.resource.data.diff(resource.data)

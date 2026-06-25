@@ -1,15 +1,20 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/extensions/context_extensions.dart';
+import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_loading.dart';
+import '../../../auth/domain/entities/app_user.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../auth/presentation/providers/moderation_provider.dart';
 import '../../domain/entities/incident_event.dart';
 import '../providers/incidents_provider.dart';
+import '../providers/referent_verification_provider.dart';
 import '../widgets/incident_status_badge.dart';
 
 String _formatDate(DateTime dt) {
@@ -89,13 +94,38 @@ class IncidentDetailPage extends ConsumerWidget {
                 value:
                     '${incident.latitude.toStringAsFixed(5)}, ${incident.longitude.toStringAsFixed(5)}',
               ),
-              if (user?.role.canVerify == true) ...[
+              // Resumen de verificación del referente (visible a todos cuando
+              // existe — es señal pública del estado de campo). [D-05]
+              if (incident.referentVerification != null) ...[
+                const Divider(height: 32),
+                _ReferentVerificationSummary(
+                  verification: incident.referentVerification!,
+                ),
+              ],
+              // Avance de ciclo de vida (RF-ADM-02): solo el admin. El
+              // referente verifica con su propio widget, sin tocar `status`.
+              // [D-05 alinea esto con la jerarquía SRS]
+              if (user?.role == UserRole.administrador) ...[
                 const Divider(height: 32),
                 _StatusUpdater(
                   incidentId: incidentId,
                   currentStatus: incident.status,
                   userId: user!.userId,
                 ),
+              ],
+              // Acción del Referente Barrial: confirmar / descartar con foto
+              // como evidencia. [D-05 / RF-ROL-02(b)]
+              if (user?.role == UserRole.referenteBarrial) ...[
+                const Divider(height: 32),
+                _ReferentVerificationActions(
+                  incidentId: incidentId,
+                  user: user!,
+                  current: incident.referentVerification,
+                ),
+              ],
+              // Marcar como falso: disponible para admin y referente vía el
+              // callable `moderateFalseReport` (T-AUTH-07).
+              if (user?.role.canVerify == true) ...[
                 const SizedBox(height: 12),
                 _MarkAsFalseButton(
                   incidentId: incidentId,
@@ -318,6 +348,238 @@ class _MarkAsFalseButton extends ConsumerWidget {
     } else {
       context.showSnackBar(AppStrings.reportMarkedAsFalse);
     }
+  }
+}
+
+/// Resumen de la última verificación de campo del referente. Visible a todos
+/// los usuarios cuando existe — es señal pública del estado del incident.
+/// [D-05]
+class _ReferentVerificationSummary extends StatelessWidget {
+  const _ReferentVerificationSummary({required this.verification});
+
+  final ReferentVerification verification;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isConfirmed =
+        verification.state == ReferentVerificationState.confirmed;
+    final color = isConfirmed ? Colors.green.shade700 : scheme.error;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isConfirmed ? Icons.verified : Icons.gpp_bad_outlined,
+                color: color,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  verification.state.displayName,
+                  style: TextStyle(
+                    color: color,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Por ${verification.byDisplayName ?? verification.by} · '
+            '${_formatDate(verification.at)}',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          if (verification.note != null && verification.note!.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(verification.note!),
+          ],
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.network(
+              verification.photoUrl,
+              height: 160,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) =>
+                  const SizedBox(height: 160, child: Icon(Icons.broken_image)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Bloque interactivo para que el Referente Barrial confirme o descarte el
+/// incidente con foto como evidencia. [D-05 / RF-ROL-02(b)]
+class _ReferentVerificationActions extends ConsumerStatefulWidget {
+  const _ReferentVerificationActions({
+    required this.incidentId,
+    required this.user,
+    required this.current,
+  });
+
+  final String incidentId;
+  final AppUser user;
+  final ReferentVerification? current;
+
+  @override
+  ConsumerState<_ReferentVerificationActions> createState() =>
+      _ReferentVerificationActionsState();
+}
+
+class _ReferentVerificationActionsState
+    extends ConsumerState<_ReferentVerificationActions> {
+  final _noteCtrl = TextEditingController();
+  Uint8List? _photoBytes;
+  String? _photoName;
+  ReferentVerificationState? _pendingState;
+
+  @override
+  void dispose() {
+    _noteCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickPhoto() async {
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 70,
+      maxWidth: 1024,
+      maxHeight: 1024,
+    );
+    if (picked == null) return;
+    final bytes = await picked.readAsBytes();
+    if (!mounted) return;
+    setState(() {
+      _photoBytes = bytes;
+      _photoName = picked.name;
+    });
+  }
+
+  Future<void> _submit(ReferentVerificationState state) async {
+    if (_photoBytes == null) {
+      context.showSnackBar(
+        'Adjuntá una foto como evidencia antes de enviar.',
+        isError: true,
+      );
+      return;
+    }
+    setState(() => _pendingState = state);
+    await ref.read(referentVerificationNotifierProvider.notifier).verify(
+          incidentId: widget.incidentId,
+          verificationState: state,
+          photoBytes: _photoBytes!,
+          photoName: _photoName ?? 'verification.jpg',
+          referentUid: widget.user.userId,
+          referentDisplayName: widget.user.displayName,
+          note: _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
+        );
+    if (!mounted) return;
+    setState(() => _pendingState = null);
+    final result = ref.read(referentVerificationNotifierProvider);
+    if (result.hasError) {
+      context.showSnackBar(result.error.toString(), isError: true);
+      return;
+    }
+    context.showSnackBar(
+      state == ReferentVerificationState.confirmed
+          ? 'Incidente confirmado por el referente.'
+          : 'Incidente descartado por el referente.',
+    );
+    // Reset para una re-verificación posterior si hace falta.
+    setState(() {
+      _photoBytes = null;
+      _photoName = null;
+      _noteCtrl.clear();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isLoading = ref.watch(referentVerificationNotifierProvider).isLoading;
+    final hasPhoto = _photoBytes != null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.current == null
+              ? 'Verificación de campo'
+              : 'Re-verificar (sobrescribe el último estado)',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _noteCtrl,
+          decoration: const InputDecoration(
+            labelText: 'Nota (opcional)',
+            border: OutlineInputBorder(),
+            hintText: 'Detalles de lo que viste en terreno',
+          ),
+          maxLines: 2,
+          enabled: !isLoading,
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          icon: const Icon(Icons.camera_alt),
+          label: Text(hasPhoto ? 'Foto cargada ✓' : 'Adjuntar evidencia'),
+          onPressed: isLoading ? null : _pickPhoto,
+        ),
+        if (hasPhoto) ...[
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.memory(
+              _photoBytes!,
+              height: 140,
+              fit: BoxFit.cover,
+            ),
+          ),
+        ],
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: AppButton(
+                label: 'Confirmar',
+                icon: Icons.verified,
+                isLoading: _pendingState == ReferentVerificationState.confirmed,
+                onPressed: isLoading
+                    ? null
+                    : () => _submit(ReferentVerificationState.confirmed),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.gpp_bad_outlined),
+                label: const Text('Descartar'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.error,
+                  minimumSize: const Size.fromHeight(48),
+                ),
+                onPressed: isLoading
+                    ? null
+                    : () => _submit(ReferentVerificationState.dismissed),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
   }
 }
 
