@@ -24,6 +24,8 @@ import '../features/map/presentation/pages/map_page.dart';
 import '../features/notifications/presentation/pages/referent_location_setup_page.dart';
 import '../features/profile/presentation/pages/profile_page.dart';
 import '../features/splash/presentation/pages/splash_page.dart';
+import '../features/terms/presentation/pages/terms_page.dart';
+import '../features/terms/presentation/providers/terms_provider.dart';
 import 'main_shell.dart';
 
 abstract final class AppRoutes {
@@ -49,6 +51,8 @@ abstract final class AppRoutes {
   static const unauthorized = '/unauthorized';
   // Setup obligatorio de ubicación para Referentes Barriales. [D-01]
   static const referentLocationSetup = '/referent/setup-location';
+  // Términos y Condiciones (gate y reader, según query param). [D-04]
+  static const terms = '/terms';
 
   static String incidentDetailPath(String id) => '/incident/$id';
 }
@@ -105,6 +109,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Una vez seteada la ubicación, no permitir volver a la pantalla de setup.
       if (loc == AppRoutes.referentLocationSetup) {
         return AppRoutes.home;
+      }
+
+      // Usuario activo sin T&C aceptados (o con versión obsoleta) → gate. [D-04]
+      // El modo `reader` (accedido desde Perfil) lleva query `?mode=read` y NO
+      // es bloqueado: el usuario ya aceptó, está consultando.
+      final isReaderMode = state.uri.queryParameters['mode'] == 'read';
+      if (!hasAcceptedCurrentTerms(user) && !isReaderMode) {
+        return loc == AppRoutes.terms ? null : AppRoutes.terms;
       }
 
       // --- RBAC: Restricciones de acceso por rol (T-AUTH-03) ---
@@ -227,6 +239,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.referentLocationSetup,
         builder: (_, __) => const ReferentLocationSetupPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.terms,
+        builder: (_, state) {
+          final isReader = state.uri.queryParameters['mode'] == 'read';
+          return TermsPage(
+            mode: isReader ? TermsPageMode.reader : TermsPageMode.gate,
+          );
+        },
       ),
     ],
   );

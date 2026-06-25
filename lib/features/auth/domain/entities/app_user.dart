@@ -51,6 +51,8 @@ class AppUser extends Equatable {
     this.coverageRadiusKm,
     this.identityProofUrl,
     this.fcmTokens = const [],
+    this.termsAcceptedVersion,
+    this.termsAcceptedAt,
   });
 
   final String userId;
@@ -67,6 +69,10 @@ class AppUser extends Equatable {
   final String? identityProofUrl;
   // Tokens FCM registrados por este usuario. Múltiples dispositivos posibles. [D-01]
   final List<String> fcmTokens;
+  // Versión de los Términos y Condiciones aceptados por el usuario. Si es
+  // menor a `TermsConfig.currentVersion`, el router lo redirige al gate. [D-04]
+  final int? termsAcceptedVersion;
+  final DateTime? termsAcceptedAt;
 
   bool get isActive => status == UserStatus.active;
   bool get isPending => status == UserStatus.pending;
@@ -85,6 +91,8 @@ class AppUser extends Equatable {
     double? coverageRadiusKm,
     String? identityProofUrl,
     List<String>? fcmTokens,
+    int? termsAcceptedVersion,
+    DateTime? termsAcceptedAt,
   }) {
     return AppUser(
       userId: userId ?? this.userId,
@@ -98,6 +106,8 @@ class AppUser extends Equatable {
       coverageRadiusKm: coverageRadiusKm ?? this.coverageRadiusKm,
       identityProofUrl: identityProofUrl ?? this.identityProofUrl,
       fcmTokens: fcmTokens ?? this.fcmTokens,
+      termsAcceptedVersion: termsAcceptedVersion ?? this.termsAcceptedVersion,
+      termsAcceptedAt: termsAcceptedAt ?? this.termsAcceptedAt,
     );
   }
 
@@ -114,5 +124,7 @@ class AppUser extends Equatable {
         coverageRadiusKm,
         identityProofUrl,
         fcmTokens,
+        termsAcceptedVersion,
+        termsAcceptedAt,
       ];
 }

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/router.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../core/constants/terms_config.dart';
 import '../../../auth/domain/entities/app_user.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
@@ -62,6 +64,14 @@ class ProfilePage extends ConsumerWidget {
             ),
             const Divider(height: 1),
           ],
+          // Acceso de consulta a los T&C aceptados. [D-04]
+          ListTile(
+            leading: const Icon(Icons.description_outlined),
+            title: const Text(TermsConfig.title),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('${AppRoutes.terms}?mode=read'),
+          ),
+          const Divider(height: 1),
           ListTile(
             leading: const Icon(Icons.logout),
             title: const Text(AppStrings.logout),

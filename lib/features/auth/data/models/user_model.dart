@@ -19,6 +19,8 @@ class UserModel {
     this.coverageRadiusKm,
     this.identityProofUrl,
     this.fcmTokens = const [],
+    this.termsAcceptedVersion,
+    this.termsAcceptedAt,
   });
 
   final String userId;
@@ -42,6 +44,10 @@ class UserModel {
   // logueados (web + mobile, varios celulares). El backend (T-NLP-07 /
   // T-NLP-09) hace multicast a todos los tokens. [D-01]
   final List<String> fcmTokens;
+  // Versión de los T&C aceptados (compara contra `TermsConfig.currentVersion`).
+  // Null → nunca aceptó; el router redirige al gate. [D-04]
+  final int? termsAcceptedVersion;
+  final DateTime? termsAcceptedAt;
 
   factory UserModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data()!;
@@ -60,6 +66,8 @@ class UserModel {
       fcmTokens: (data['fcmTokens'] as List<dynamic>? ?? const [])
           .whereType<String>()
           .toList(),
+      termsAcceptedVersion: (data['termsAcceptedVersion'] as num?)?.toInt(),
+      termsAcceptedAt: (data['termsAcceptedAt'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -91,5 +99,7 @@ class UserModel {
         coverageRadiusKm: coverageRadiusKm,
         identityProofUrl: identityProofUrl,
         fcmTokens: fcmTokens,
+        termsAcceptedVersion: termsAcceptedVersion,
+        termsAcceptedAt: termsAcceptedAt,
       );
 }
