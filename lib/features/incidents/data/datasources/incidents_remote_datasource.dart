@@ -68,6 +68,43 @@ class IncidentsRemoteDataSource {
         );
   }
 
+  /// Stream de los incidents propios del user actual, sin filtro de status
+  /// (incluye solucionados, falsos, etc.). Ordenado por fecha desc. [F-01]
+  Stream<List<IncidentEventModel>> watchMyIncidents(String userId) {
+    return _incidents
+        .where('userId', isEqualTo: userId)
+        .orderBy('timestamp', descending: true)
+        .snapshots()
+        .map(
+          (snap) => snap.docs.map(IncidentEventModel.fromFirestore).toList(),
+        );
+  }
+
+  /// Actualiza los campos editables por el dueño en estado `recibido`.
+  /// Solo se persisten los campos no-null pasados. La regla Firestore valida
+  /// que el caller es el dueño activo y que el incident sigue en `recibido`.
+  /// [F-01]
+  Future<void> updateOwnIncidentDraft(
+    String eventId, {
+    String? description,
+    String? category,
+    String? photoUrl,
+  }) async {
+    final patch = <String, dynamic>{
+      if (description != null) 'description': description,
+      if (category != null) 'category': category,
+      if (photoUrl != null) 'photoUrl': photoUrl,
+    };
+    if (patch.isEmpty) return;
+    try {
+      await _incidents.doc(eventId).update(patch);
+    } on FirebaseException catch (e) {
+      throw FirestoreException(
+        e.message ?? 'No se pudo actualizar el reporte.',
+      );
+    }
+  }
+
   Future<IncidentEventModel> getIncidentById(String eventId) async {
     final doc = await _incidents.doc(eventId).get();
     if (!doc.exists) {
