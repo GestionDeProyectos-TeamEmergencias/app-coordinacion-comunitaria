@@ -176,8 +176,7 @@ class IncidentDetailPage extends ConsumerWidget {
                   incidentId: incidentId,
                   currentStatus: incident.status,
                   userId: user!.userId,
-                  referenteOnlyClosure:
-                      user.role == UserRole.referenteBarrial,
+                  referenteOnlyClosure: user.role == UserRole.referenteBarrial,
                 ),
               ],
               // Acción del Referente Barrial: confirmar / descartar con foto

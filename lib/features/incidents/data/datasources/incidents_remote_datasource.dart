@@ -51,8 +51,7 @@ class IncidentsRemoteDataSource {
   ) async {
     try {
       final ext = fileName.contains('.') ? fileName.split('.').last : 'jpg';
-      final path =
-          'incidents/$incidentId/resolution/${const Uuid().v4()}.$ext';
+      final path = 'incidents/$incidentId/resolution/${const Uuid().v4()}.$ext';
       final ref = _storage.ref(path);
       await ref.putData(
         bytes,

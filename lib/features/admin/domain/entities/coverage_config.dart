@@ -28,8 +28,7 @@ class CoverageConfig extends Equatable {
   final List<CoverageVertex>? polygonPoints;
 
   /// `true` si la configuración debe validarse por polígono (>= 3 vértices).
-  bool get usesPolygon =>
-      polygonPoints != null && polygonPoints!.length >= 3;
+  bool get usesPolygon => polygonPoints != null && polygonPoints!.length >= 3;
 
   /// Valores por defecto: Junin, BA (UNNOBA), 5000m.
   static const CoverageConfig defaults = CoverageConfig(
@@ -81,8 +80,8 @@ class CoverageConfig extends Equatable {
       // Punto sobre el lado (i, j) → dentro.
       if (_isOnSegment(x, y, xj, yj, xi, yi)) return true;
 
-      final intersects = ((yi > y) != (yj > y)) &&
-          (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+      final intersects =
+          ((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
       if (intersects) inside = !inside;
     }
     return inside;

@@ -268,8 +268,7 @@ class _CoverageConfigPageState extends ConsumerState<CoverageConfigPage> {
                         Expanded(
                           child: OutlinedButton.icon(
                             icon: const Icon(Icons.delete_outline),
-                            label:
-                                const Text(AppStrings.coveragePolygonClear),
+                            label: const Text(AppStrings.coveragePolygonClear),
                             onPressed: isSubmitting ? null : _clearPolygon,
                             style: OutlinedButton.styleFrom(
                               foregroundColor:
@@ -299,7 +298,10 @@ class _CoverageConfigPageState extends ConsumerState<CoverageConfigPage> {
                         Expanded(
                           child: Text(
                             AppStrings.coveragePolygonFallbackNote,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(
                                   color: Theme.of(context).colorScheme.outline,
                                 ),
                           ),
@@ -337,8 +339,7 @@ class _CoverageConfigPageState extends ConsumerState<CoverageConfigPage> {
                                     strokeWidth: 2,
                                   ),
                                 },
-                          polygons: (_polygonMode &&
-                                  _polygonPoints.length >= 3)
+                          polygons: (_polygonMode && _polygonPoints.length >= 3)
                               ? {
                                   Polygon(
                                     polygonId: const PolygonId('coverage'),
