@@ -367,6 +367,7 @@ class IncidentEvent extends Equatable {
     this.confirmationScore = 0.0,
     this.communityValidated = false,
     this.closureConfirmation,
+    this.resolutionEvidenceUrl,
   });
 
   final String? eventId;
@@ -405,6 +406,10 @@ class IncidentEvent extends Equatable {
   // se setea con state=pendiente y luego el reportero confirma/disputa o el
   // auto-cierre programado lo confirma por timeout. [F-05]
   final ClosureConfirmation? closureConfirmation;
+  // Foto opcional de evidencia de la reparación. La sube admin/referente al
+  // pasar el incident a `solucionado`. Null si no se adjuntó. Visible a todos
+  // en el detalle como rendición de cuentas. [F-06]
+  final String? resolutionEvidenceUrl;
 
   IncidentEvent copyWith({
     String? eventId,
@@ -430,6 +435,7 @@ class IncidentEvent extends Equatable {
     double? confirmationScore,
     bool? communityValidated,
     ClosureConfirmation? closureConfirmation,
+    String? resolutionEvidenceUrl,
   }) {
     return IncidentEvent(
       eventId: eventId ?? this.eventId,
@@ -456,6 +462,8 @@ class IncidentEvent extends Equatable {
       confirmationScore: confirmationScore ?? this.confirmationScore,
       communityValidated: communityValidated ?? this.communityValidated,
       closureConfirmation: closureConfirmation ?? this.closureConfirmation,
+      resolutionEvidenceUrl:
+          resolutionEvidenceUrl ?? this.resolutionEvidenceUrl,
     );
   }
 
@@ -484,5 +492,6 @@ class IncidentEvent extends Equatable {
         confirmationScore,
         communityValidated,
         closureConfirmation,
+        resolutionEvidenceUrl,
       ];
 }

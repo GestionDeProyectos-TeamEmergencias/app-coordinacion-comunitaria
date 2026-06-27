@@ -76,6 +76,29 @@ class IncidentDetailPage extends ConsumerWidget {
                   ],
                 ],
               ),
+              // Evidencia de la reparación: visible a todos cuando admin o
+              // referente la adjuntó al cerrar el reporte. [F-06]
+              if (incident.resolutionEvidenceUrl != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  AppStrings.resolutionEvidenceCaption,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 6),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    incident.resolutionEvidenceUrl!,
+                    height: 160,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const SizedBox(
+                      height: 160,
+                      child: Icon(Icons.broken_image),
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 12),
               // Categoría: solo lectura para todos, editable para admin. [D-06]
               if (user?.role == UserRole.administrador)
@@ -143,15 +166,18 @@ class IncidentDetailPage extends ConsumerWidget {
                 incident: incident,
                 callerUser: user,
               ),
-              // Avance de ciclo de vida (RF-ADM-02): solo el admin. El
-              // referente verifica con su propio widget, sin tocar `status`.
-              // [D-05 alinea esto con la jerarquía SRS]
-              if (user?.role == UserRole.administrador) ...[
+              // Avance de ciclo de vida (RF-ADM-02): el admin gestiona todas
+              // las transiciones; el referente solo puede cerrar a
+              // `solucionado` adjuntando evidencia (excepción documentada a
+              // D-07 introducida por F-06). [D-05 / F-06]
+              if (user?.role.canVerify == true) ...[
                 const Divider(height: 32),
                 _StatusUpdater(
                   incidentId: incidentId,
                   currentStatus: incident.status,
                   userId: user!.userId,
+                  referenteOnlyClosure:
+                      user.role == UserRole.referenteBarrial,
                 ),
               ],
               // Acción del Referente Barrial: confirmar / descartar con foto
@@ -202,11 +228,16 @@ class _StatusUpdater extends ConsumerStatefulWidget {
     required this.incidentId,
     required this.currentStatus,
     required this.userId,
+    this.referenteOnlyClosure = false,
   });
 
   final String incidentId;
   final IncidentStatus currentStatus;
   final String userId;
+  // Cuando es true (caller referente), la única transición ofrecida es cerrar
+  // a `solucionado` con evidencia. El admin conserva todas las transiciones.
+  // [F-06]
+  final bool referenteOnlyClosure;
 
   @override
   ConsumerState<_StatusUpdater> createState() => _StatusUpdaterState();
@@ -216,15 +247,62 @@ class _StatusUpdaterState extends ConsumerState<_StatusUpdater> {
   // Marca si esta instancia del widget disparó una actualización pendiente
   // de feedback. Evita mostrar SnackBars heredados de operaciones previas.
   bool _awaitingFeedback = false;
+  // Cierre en curso: el usuario eligió `solucionado` y todavía no confirmó.
+  // Mientras tanto se ofrece adjuntar la foto de evidencia (opcional). [F-06]
+  bool _closing = false;
+  Uint8List? _evidenceBytes;
+  String? _evidenceName;
 
   void _onChanged(IncidentStatus? newStatus) {
     if (newStatus == null || newStatus == widget.currentStatus) return;
+    // Cerrar abre un paso de confirmación para ofrecer la foto opcional; el
+    // cambio recién se aplica al confirmar. El resto de transiciones se aplican
+    // de inmediato (comportamiento previo). [F-06]
+    if (newStatus == IncidentStatus.solucionado) {
+      setState(() => _closing = true);
+      return;
+    }
     setState(() => _awaitingFeedback = true);
     ref.read(updateStatusNotifierProvider.notifier).update(
           eventId: widget.incidentId,
           status: newStatus,
           changedBy: widget.userId,
         );
+  }
+
+  Future<void> _pickEvidence() async {
+    final picked = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 70,
+      maxWidth: 1024,
+      maxHeight: 1024,
+    );
+    if (picked == null) return;
+    final bytes = await picked.readAsBytes();
+    if (!mounted) return;
+    setState(() {
+      _evidenceBytes = bytes;
+      _evidenceName = picked.name;
+    });
+  }
+
+  void _confirmClosure() {
+    setState(() => _awaitingFeedback = true);
+    ref.read(updateStatusNotifierProvider.notifier).update(
+          eventId: widget.incidentId,
+          status: IncidentStatus.solucionado,
+          changedBy: widget.userId,
+          resolutionEvidenceBytes: _evidenceBytes,
+          resolutionEvidenceName: _evidenceName,
+        );
+  }
+
+  void _cancelClosure() {
+    setState(() {
+      _closing = false;
+      _evidenceBytes = null;
+      _evidenceName = null;
+    });
   }
 
   @override
@@ -238,6 +316,9 @@ class _StatusUpdaterState extends ConsumerState<_StatusUpdater> {
         context.showSnackBar(next.error.toString(), isError: true);
       } else {
         context.showSnackBar(AppStrings.statusUpdatedSuccess);
+        _closing = false;
+        _evidenceBytes = null;
+        _evidenceName = null;
       }
       setState(() => _awaitingFeedback = false);
     });
@@ -245,7 +326,12 @@ class _StatusUpdaterState extends ConsumerState<_StatusUpdater> {
     // El dropdown solo expone transiciones válidas desde el estado actual.
     // Estados terminales (`solucionado` y marcadores) no permiten cambio
     // manual desde el cliente (la regla Firestore también lo bloquea). [D-07]
-    final transitions = widget.currentStatus.allowedTransitions;
+    // Para el referente, la única transición ofrecida es cerrar. [F-06]
+    final transitions = widget.referenteOnlyClosure
+        ? widget.currentStatus.allowedTransitions
+            .where((s) => s == IncidentStatus.solucionado)
+            .toList()
+        : widget.currentStatus.allowedTransitions;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -288,6 +374,59 @@ class _StatusUpdaterState extends ConsumerState<_StatusUpdater> {
             ],
             onChanged: isLoading ? null : _onChanged,
           ),
+        // Flujo de cierre: foto de evidencia opcional + confirmación. [F-06]
+        if (_closing) ...[
+          const SizedBox(height: 12),
+          Text(
+            AppStrings.resolutionEvidenceTitle,
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            AppStrings.resolutionEvidenceHint,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            icon: const Icon(Icons.camera_alt),
+            label: Text(_evidenceBytes != null
+                ? AppStrings.resolutionEvidenceAttached
+                : AppStrings.resolutionEvidenceAttach),
+            onPressed: isLoading ? null : _pickEvidence,
+          ),
+          if (_evidenceBytes != null) ...[
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.memory(
+                _evidenceBytes!,
+                height: 140,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  icon: const Icon(Icons.check_circle),
+                  label: const Text(AppStrings.resolutionEvidenceConfirmClose),
+                  onPressed: isLoading ? null : _confirmClosure,
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(44),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              TextButton(
+                onPressed: isLoading ? null : _cancelClosure,
+                child: const Text(AppStrings.resolutionEvidenceCancel),
+              ),
+            ],
+          ),
+        ],
         if (isLoading) ...[
           const SizedBox(height: 8),
           const LinearProgressIndicator(),

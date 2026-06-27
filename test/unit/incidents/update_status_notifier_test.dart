@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:app_coordinacion_comunitaria/features/incidents/domain/entities/incident_event.dart';
 import 'package:app_coordinacion_comunitaria/features/incidents/domain/repositories/incidents_repository.dart';
 import 'package:app_coordinacion_comunitaria/features/incidents/presentation/providers/incidents_provider.dart';
@@ -8,6 +10,11 @@ class _FakeRepo implements IncidentsRepository {
   IncidentStatus? lastStatus;
   String? lastChangedBy;
   String? lastEventId;
+  String? lastResolutionEvidenceUrl;
+  Uint8List? lastEvidenceBytes;
+  String? lastEvidenceName;
+  String? lastEvidenceIncidentId;
+  int uploadEvidenceCount = 0;
   Object? error;
 
   @override
@@ -15,11 +22,26 @@ class _FakeRepo implements IncidentsRepository {
     String eventId,
     IncidentStatus status, {
     String? changedBy,
+    String? resolutionEvidenceUrl,
   }) async {
     if (error != null) throw error!;
     lastEventId = eventId;
     lastStatus = status;
     lastChangedBy = changedBy;
+    lastResolutionEvidenceUrl = resolutionEvidenceUrl;
+  }
+
+  @override
+  Future<String> uploadResolutionEvidence(
+    Uint8List bytes,
+    String fileName,
+    String incidentId,
+  ) async {
+    uploadEvidenceCount++;
+    lastEvidenceBytes = bytes;
+    lastEvidenceName = fileName;
+    lastEvidenceIncidentId = incidentId;
+    return 'https://example.com/resolution-$uploadEvidenceCount.jpg';
   }
 
   @override
@@ -100,6 +122,73 @@ void main() {
       final state = container.read(updateStatusNotifierProvider);
       expect(state.hasError, isTrue);
       expect(state.error.toString(), contains('boom'));
+    });
+
+    // F-06: cierre con evidencia opcional.
+    test('cierre sin foto: no sube evidencia y resolutionEvidenceUrl es null',
+        () async {
+      final fakeRepo = _FakeRepo();
+      final container = ProviderContainer(overrides: [
+        incidentsRepositoryProvider.overrideWithValue(fakeRepo),
+      ]);
+      addTearDown(container.dispose);
+
+      await container.read(updateStatusNotifierProvider.notifier).update(
+            eventId: 'event-9',
+            status: IncidentStatus.solucionado,
+            changedBy: 'ref-uid',
+          );
+
+      expect(fakeRepo.uploadEvidenceCount, 0);
+      expect(fakeRepo.lastStatus, IncidentStatus.solucionado);
+      expect(fakeRepo.lastResolutionEvidenceUrl, isNull);
+    });
+
+    test('cierre con foto: sube primero y propaga la URL al updateStatus',
+        () async {
+      final fakeRepo = _FakeRepo();
+      final container = ProviderContainer(overrides: [
+        incidentsRepositoryProvider.overrideWithValue(fakeRepo),
+      ]);
+      addTearDown(container.dispose);
+
+      final bytes = Uint8List.fromList([9, 8, 7]);
+      await container.read(updateStatusNotifierProvider.notifier).update(
+            eventId: 'event-10',
+            status: IncidentStatus.solucionado,
+            changedBy: 'admin-uid',
+            resolutionEvidenceBytes: bytes,
+            resolutionEvidenceName: 'reparado.jpg',
+          );
+
+      expect(fakeRepo.uploadEvidenceCount, 1);
+      expect(fakeRepo.lastEvidenceBytes, bytes);
+      expect(fakeRepo.lastEvidenceName, 'reparado.jpg');
+      // La evidencia se sube bajo el path del propio incident.
+      expect(fakeRepo.lastEvidenceIncidentId, 'event-10');
+      expect(
+        fakeRepo.lastResolutionEvidenceUrl,
+        'https://example.com/resolution-1.jpg',
+      );
+    });
+
+    test('evidencia adjunta en transición que NO es cierre se ignora',
+        () async {
+      final fakeRepo = _FakeRepo();
+      final container = ProviderContainer(overrides: [
+        incidentsRepositoryProvider.overrideWithValue(fakeRepo),
+      ]);
+      addTearDown(container.dispose);
+
+      await container.read(updateStatusNotifierProvider.notifier).update(
+            eventId: 'event-11',
+            status: IncidentStatus.enReparacion,
+            changedBy: 'admin-uid',
+            resolutionEvidenceBytes: Uint8List.fromList([1, 2]),
+          );
+
+      expect(fakeRepo.uploadEvidenceCount, 0);
+      expect(fakeRepo.lastResolutionEvidenceUrl, isNull);
     });
   });
 }

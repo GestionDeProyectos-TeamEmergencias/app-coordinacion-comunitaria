@@ -66,6 +66,16 @@ abstract final class AppStrings {
   static const statusHistoryEmpty = 'Aún no hay cambios de estado registrados.';
   static const statusUpdatedSuccess = 'Estado actualizado correctamente.';
 
+  // Evidencia opcional al cerrar el reporte [F-06]
+  static const resolutionEvidenceTitle = 'Foto de evidencia (opcional)';
+  static const resolutionEvidenceHint =
+      'Adjuntá una foto de la reparación como evidencia del cierre.';
+  static const resolutionEvidenceAttach = 'Adjuntar evidencia';
+  static const resolutionEvidenceAttached = 'Foto cargada ✓';
+  static const resolutionEvidenceConfirmClose = 'Confirmar cierre';
+  static const resolutionEvidenceCancel = 'Cancelar';
+  static const resolutionEvidenceCaption = 'Evidencia de la reparación';
+
   // Alerta riesgo vital (RF-PRI-05)
   static const vitalRiskTitle = '⚠️ Situación de riesgo vital detectada';
   static const vitalRiskBody =
@@ -124,6 +134,20 @@ abstract final class AppStrings {
   static const algorithmConfigUpdated = 'Calibración guardada correctamente.';
   static const coverageConfigUpdated =
       'Configuración de cobertura actualizada correctamente.';
+
+  // Polígono de cobertura [F-07]
+  static const coveragePolygonEdit = 'Editar polígono';
+  static const coveragePolygonCircleMode = 'Modo círculo';
+  static const coveragePolygonClear = 'Limpiar polígono';
+  static const coveragePolygonTapHint =
+      'Tocá el mapa para agregar vértices. Arrastrá un vértice para moverlo y '
+      'mantené presionado el mapa para borrar el más cercano.';
+  static const coveragePolygonTooFew =
+      'El polígono necesita al menos 3 vértices para aplicarse.';
+  static const coveragePolygonActive = 'Cobertura por polígono activa.';
+  static const coveragePolygonFallbackNote =
+      'El centro y radio quedan como respaldo; se usan solo si limpiás el '
+      'polígono.';
 
   // Validaciones genéricas de formularios [T-AUTH-06]
   static const fieldRequired = 'Campo requerido.';

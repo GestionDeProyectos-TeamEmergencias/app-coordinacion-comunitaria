@@ -28,6 +28,7 @@ class IncidentEventModel {
     this.confirmationScore = 0.0,
     this.communityValidated = false,
     this.closureConfirmation,
+    this.resolutionEvidenceUrl,
   });
 
   final String eventId;
@@ -58,6 +59,8 @@ class IncidentEventModel {
   final bool communityValidated;
   // Raw map; se convierte a `ClosureConfirmation` en `toDomain`. [F-05]
   final Map<String, dynamic>? closureConfirmation;
+  // Foto opcional de evidencia de la reparación al cerrar. [F-06]
+  final String? resolutionEvidenceUrl;
 
   factory IncidentEventModel.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> doc,
@@ -105,6 +108,7 @@ class IncidentEventModel {
           ? Map<String, dynamic>.from(
               data['closureConfirmation'] as Map<dynamic, dynamic>)
           : null,
+      resolutionEvidenceUrl: data['resolutionEvidenceUrl'] as String?,
     );
   }
 
@@ -120,6 +124,8 @@ class IncidentEventModel {
         'status': status,
         if (priority != null) 'priority': priority,
         if (priorityScore != null) 'priorityScore': priorityScore,
+        if (resolutionEvidenceUrl != null)
+          'resolutionEvidenceUrl': resolutionEvidenceUrl,
       };
 
   IncidentEvent toDomain() => IncidentEvent(
@@ -155,6 +161,7 @@ class IncidentEventModel {
         confirmationScore: confirmationScore,
         communityValidated: communityValidated,
         closureConfirmation: _closureConfirmationFromMap(closureConfirmation),
+        resolutionEvidenceUrl: resolutionEvidenceUrl,
       );
 
   factory IncidentEventModel.fromDomain(IncidentEvent event) =>
@@ -171,6 +178,7 @@ class IncidentEventModel {
         status: event.status.firestoreValue,
         priority: event.priority?.name,
         priorityScore: event.priorityScore,
+        resolutionEvidenceUrl: event.resolutionEvidenceUrl,
       );
 }
 

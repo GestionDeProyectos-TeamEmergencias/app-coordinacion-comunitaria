@@ -2,8 +2,10 @@ import {
   calculateHaversineDistance,
   isWithinCoverage,
   loadCoverageConfig,
+  pointInPolygon,
   DEFAULT_COVERAGE_CONFIG,
   CoverageConfig,
+  PolygonVertex,
 } from "./coverageValidation";
 
 // -- Mock de Firestore siguiendo el patron de reputationManager.test.ts --
@@ -141,6 +143,93 @@ describe("isWithinCoverage", () => {
   });
 });
 
+// -- Tests de pointInPolygon (ray casting) [F-07] --
+
+describe("pointInPolygon", () => {
+  // Cuadrado (lat,lng) [0..4] x [0..4].
+  const square: PolygonVertex[] = [
+    { lat: 0, lng: 0 },
+    { lat: 0, lng: 4 },
+    { lat: 4, lng: 4 },
+    { lat: 4, lng: 0 },
+  ];
+
+  // Polígono cóncavo "L": el cuadrante superior-derecho queda FUERA.
+  const lShape: PolygonVertex[] = [
+    { lat: 0, lng: 0 },
+    { lat: 4, lng: 0 },
+    { lat: 4, lng: 2 },
+    { lat: 2, lng: 2 },
+    { lat: 2, lng: 4 },
+    { lat: 0, lng: 4 },
+  ];
+
+  it("interior → dentro", () => {
+    expect(pointInPolygon(2, 2, square)).toBe(true);
+  });
+
+  it("exterior → fuera", () => {
+    expect(pointInPolygon(5, 5, square)).toBe(false);
+    expect(pointInPolygon(2, -1, square)).toBe(false);
+  });
+
+  it("vértice exacto → dentro", () => {
+    expect(pointInPolygon(0, 0, square)).toBe(true);
+    expect(pointInPolygon(4, 4, square)).toBe(true);
+  });
+
+  it("borde (punto medio de un lado) → dentro", () => {
+    expect(pointInPolygon(0, 2, square)).toBe(true);
+    expect(pointInPolygon(2, 0, square)).toBe(true);
+  });
+
+  it("primer y último vértice → dentro", () => {
+    expect(pointInPolygon(square[0].lat, square[0].lng, square)).toBe(true);
+    const last = square[square.length - 1];
+    expect(pointInPolygon(last.lat, last.lng, square)).toBe(true);
+  });
+
+  it("polígono cóncavo: notch fuera, brazos dentro", () => {
+    expect(pointInPolygon(3, 3, lShape)).toBe(false);
+    expect(pointInPolygon(3, 1, lShape)).toBe(true);
+    expect(pointInPolygon(1, 3, lShape)).toBe(true);
+    expect(pointInPolygon(1, 1, lShape)).toBe(true);
+  });
+});
+
+// -- Tests de isWithinCoverage con polígono [F-07] --
+
+describe("isWithinCoverage con polígono", () => {
+  const square: PolygonVertex[] = [
+    { lat: 0, lng: 0 },
+    { lat: 0, lng: 4 },
+    { lat: 4, lng: 4 },
+    { lat: 4, lng: 0 },
+  ];
+
+  it("usa el polígono cuando está presente, ignorando el círculo", () => {
+    // Centro lejano y radio chico: si usara círculo, (2,2) daría fuera.
+    const config: CoverageConfig = {
+      centerLat: -34.5,
+      centerLng: -60.9,
+      radiusMeters: 10,
+      polygonPoints: square,
+    };
+    expect(isWithinCoverage(2, 2, config)).toBe(true);
+    expect(isWithinCoverage(5, 5, config)).toBe(false);
+  });
+
+  it("retrocompat: sin polígono valida por círculo", () => {
+    const config: CoverageConfig = {
+      centerLat: -34.5895,
+      centerLng: -60.9442,
+      radiusMeters: 5000,
+    };
+    expect(isWithinCoverage(-34.5895, -60.9442, config)).toBe(true);
+    expect(isWithinCoverage(-35.5, -61.0, config)).toBe(false);
+  });
+});
+
 // -- Tests de loadCoverageConfig --
 
 describe("loadCoverageConfig", () => {
@@ -246,5 +335,52 @@ describe("loadCoverageConfig", () => {
     result.radiusMeters = 99999;
 
     expect(DEFAULT_COVERAGE_CONFIG.radiusMeters).toBe(5000);
+  });
+
+  // F-07: lectura del polígono.
+  it("should load polygonPoints when present with >= 3 valid vertices", async () => {
+    const { firestore } = buildFakeFirestore({
+      "config/coverage": {
+        data: {
+          centerLat: -34.5,
+          centerLng: -60.9,
+          radiusMeters: 5000,
+          polygonPoints: [
+            { lat: 0, lng: 0 },
+            { lat: 0, lng: 4 },
+            { lat: 4, lng: 4 },
+          ],
+        },
+      },
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await loadCoverageConfig(firestore as any);
+
+    expect(result.polygonPoints).toBeDefined();
+    expect(result.polygonPoints).toHaveLength(3);
+  });
+
+  it("should ignore polygonPoints with fewer than 3 vertices", async () => {
+    const { firestore } = buildFakeFirestore({
+      "config/coverage": {
+        data: {
+          centerLat: -34.5,
+          centerLng: -60.9,
+          radiusMeters: 5000,
+          polygonPoints: [
+            { lat: 0, lng: 0 },
+            { lat: 0, lng: 4 },
+          ],
+        },
+      },
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await loadCoverageConfig(firestore as any);
+
+    // Cae a círculo: el polígono inválido no se incluye.
+    expect(result.polygonPoints).toBeUndefined();
+    expect(result.radiusMeters).toBe(5000);
   });
 });

@@ -15,7 +15,17 @@ abstract interface class IncidentsRepository {
     String eventId,
     IncidentStatus status, {
     String? changedBy,
+    String? resolutionEvidenceUrl,
   });
+
+  /// Sube la foto de evidencia de resolución al cerrar un incident y devuelve
+  /// la URL. Escritura restringida a admin/referente por reglas de Storage.
+  /// [F-06]
+  Future<String> uploadResolutionEvidence(
+    Uint8List bytes,
+    String fileName,
+    String incidentId,
+  );
 
   /// Edita un reporte propio mientras `status == recibido`. Solo los tres
   /// campos editables por el dueño (description, category, photoUrl). Las
