@@ -88,6 +88,17 @@ service firebase.storage {
       allow write: if isAdminOrReferente();
     }
 
+    // ── Evidencia de resolución al cerrar el incident [F-06] ────────────────
+    // Path: `incidents/{incidentId}/resolution/{fileName}`. Foto opcional que
+    // adjunta admin o referente al pasar el incident a `solucionado`. Es
+    // rendición de cuentas pública (visible al vecino dueño y al barrio).
+    // Lectura: cualquier activo. Escritura: admin o referente activo.
+
+    match /incidents/{incidentId}/resolution/{fileName} {
+      allow read: if isActive();
+      allow write: if isAdminOrReferente();
+    }
+
     // ── Denegación por defecto ──────────────────────────────────────────────
     // Cualquier ruta no listada queda bloqueada para lectura y escritura.
 

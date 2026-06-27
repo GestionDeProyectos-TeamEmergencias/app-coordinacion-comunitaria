@@ -105,6 +105,25 @@ service cloud.firestore {
         ));
     }
 
+    // ── Cierre con evidencia por el Referente Barrial (F-06) ───────────────────
+    // Excepción documentada a D-07: el referente —que normalmente solo escribe
+    // `referentVerification(History)`— puede cerrar el incident a `solucionado`
+    // adjuntando evidencia opcional. La apertura es estrecha: SOLO transición a
+    // `solucionado` (validada por el grafo) y tocando únicamente los campos del
+    // cierre. El admin conserva el control de todas las demás transiciones.
+    function isReferenteResolvingIncident() {
+      return request.resource.data.status == 'solucionado' &&
+        isValidStatusTransition(resource.data.status, 'solucionado') &&
+        request.resource.data.diff(resource.data)
+          .affectedKeys()
+          .hasOnly([
+            'status',
+            'statusHistory',
+            'resolutionEvidenceUrl',
+            'closureConfirmation'
+          ]);
+    }
+
     // ── Colección: users ───────────────────────────────────────────────────────
     // Un vecino solo puede ver su propio documento.
     // Un admin puede ver y modificar cualquier usuario.
@@ -185,6 +204,8 @@ service cloud.firestore {
           request.resource.data.diff(resource.data)
             .affectedKeys()
             .hasOnly(['referentVerification', 'referentVerificationHistory'])) ||
+        // F-06: el referente cierra el incident a `solucionado` con evidencia.
+        (isReferente() && isReferenteResolvingIncident()) ||
         (resource.data.userId == request.auth.uid &&
           resource.data.status == 'recibido' &&
           request.resource.data.diff(resource.data)

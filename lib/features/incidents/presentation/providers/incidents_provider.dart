@@ -156,15 +156,30 @@ class UpdateStatusNotifier extends StateNotifier<AsyncValue<void>> {
     required String eventId,
     required IncidentStatus status,
     String? changedBy,
+    Uint8List? resolutionEvidenceBytes,
+    String? resolutionEvidenceName,
   }) async {
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(
-      () => _ref.read(incidentsRepositoryProvider).updateStatus(
-            eventId,
-            status,
-            changedBy: changedBy,
-          ),
-    );
+    state = await AsyncValue.guard(() async {
+      final repo = _ref.read(incidentsRepositoryProvider);
+      // F-06: solo subimos evidencia cuando el cierre llega a `solucionado` y
+      // el usuario adjuntó una foto (opcional). La URL viaja en el mismo update.
+      String? evidenceUrl;
+      if (status == IncidentStatus.solucionado &&
+          resolutionEvidenceBytes != null) {
+        evidenceUrl = await repo.uploadResolutionEvidence(
+          resolutionEvidenceBytes,
+          resolutionEvidenceName ?? 'resolution.jpg',
+          eventId,
+        );
+      }
+      await repo.updateStatus(
+        eventId,
+        status,
+        changedBy: changedBy,
+        resolutionEvidenceUrl: evidenceUrl,
+      );
+    });
   }
 }
 

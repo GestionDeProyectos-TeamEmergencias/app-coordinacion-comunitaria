@@ -77,6 +77,18 @@ class _MapPageState extends ConsumerState<MapPage> {
         ),
       };
 
+  // Dibuja el polígono de cobertura cuando está configurado. Reemplaza al
+  // círculo para que el área mostrada coincida con la que valida. [F-07]
+  Set<Polygon> _buildCoveragePolygon(List<LatLng> points) => {
+        Polygon(
+          polygonId: const PolygonId('coverage'),
+          points: points,
+          strokeColor: AppColors.primary,
+          strokeWidth: 2,
+          fillColor: AppColors.primary.withValues(alpha: 0.08),
+        ),
+      };
+
   Future<void> _recenter(LatLng center) async {
     await _controller?.animateCamera(
       CameraUpdate.newCameraPosition(
@@ -99,15 +111,19 @@ class _MapPageState extends ConsumerState<MapPage> {
   Widget build(BuildContext context) {
     final incidentsAsync = ref.watch(activeIncidentsStreamProvider);
     final coverageAsync = ref.watch(coverageConfigProvider);
+    final config = coverageAsync.valueOrNull;
 
-    final center = coverageAsync.valueOrNull != null
-        ? LatLng(
-            coverageAsync.valueOrNull!.centerLat,
-            coverageAsync.valueOrNull!.centerLng,
-          )
+    final center = config != null
+        ? LatLng(config.centerLat, config.centerLng)
         : CoverageArea.center;
-    final radius =
-        coverageAsync.valueOrNull?.radiusMeters ?? CoverageArea.radiusMeters;
+    final radius = config?.radiusMeters ?? CoverageArea.radiusMeters;
+
+    // Si hay polígono configurado, se dibuja el polígono; si no, el círculo.
+    // [F-07]
+    final usesPolygon = config?.usesPolygon ?? false;
+    final polygonPoints = usesPolygon
+        ? config!.polygonPoints!.map((p) => LatLng(p.lat, p.lng)).toList()
+        : const <LatLng>[];
 
     final initialPos = CameraPosition(
       target: center,
@@ -124,7 +140,10 @@ class _MapPageState extends ConsumerState<MapPage> {
             GoogleMap(
               initialCameraPosition: initialPos,
               markers: _buildMarkers(incidents),
-              circles: _buildCoverageCircle(center, radius),
+              circles:
+                  usesPolygon ? const {} : _buildCoverageCircle(center, radius),
+              polygons:
+                  usesPolygon ? _buildCoveragePolygon(polygonPoints) : const {},
               myLocationEnabled: true,
               myLocationButtonEnabled: true,
               onMapCreated: (c) => _controller = c,

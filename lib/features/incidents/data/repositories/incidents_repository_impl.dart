@@ -81,6 +81,14 @@ class IncidentsRepositoryImpl implements IncidentsRepository {
       _dataSource.uploadPhoto(bytes, fileName, userId);
 
   @override
+  Future<String> uploadResolutionEvidence(
+    Uint8List bytes,
+    String fileName,
+    String incidentId,
+  ) =>
+      _dataSource.uploadResolutionEvidence(bytes, fileName, incidentId);
+
+  @override
   Future<IncidentEvent> getIncidentById(String eventId) async {
     final model = await _dataSource.getIncidentById(eventId);
     return model.toDomain();
@@ -95,10 +103,12 @@ class IncidentsRepositoryImpl implements IncidentsRepository {
     String eventId,
     IncidentStatus status, {
     String? changedBy,
+    String? resolutionEvidenceUrl,
   }) =>
       _dataSource.updateStatus(
         eventId,
         status.firestoreValue,
         changedBy: changedBy,
+        resolutionEvidenceUrl: resolutionEvidenceUrl,
       );
 }

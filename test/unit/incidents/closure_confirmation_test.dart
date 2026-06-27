@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:app_coordinacion_comunitaria/core/errors/app_exception.dart';
 import 'package:app_coordinacion_comunitaria/features/incidents/data/datasources/incidents_remote_datasource.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -43,6 +45,44 @@ void main() {
       await ds.updateStatus(incidentId, 'programado', changedBy: adminUid);
       final doc = await firestore.collection('incidents').doc(incidentId).get();
       expect(doc.data()!.containsKey('closureConfirmation'), isFalse);
+    });
+  });
+
+  // F-06: evidencia opcional de resolución al cerrar.
+  group('updateStatus con evidencia de resolución', () {
+    test('persiste resolutionEvidenceUrl cuando se pasa', () async {
+      await ds.updateStatus(
+        incidentId,
+        'solucionado',
+        changedBy: adminUid,
+        resolutionEvidenceUrl: 'https://example.com/evidencia.jpg',
+      );
+      final doc = await firestore.collection('incidents').doc(incidentId).get();
+      expect(
+        doc.data()!['resolutionEvidenceUrl'],
+        'https://example.com/evidencia.jpg',
+      );
+      // El cierre bilateral se inicializa igual, con o sin foto.
+      final closure =
+          doc.data()!['closureConfirmation'] as Map<String, dynamic>;
+      expect(closure['state'], 'pendiente');
+    });
+
+    test('sin evidencia NO escribe el campo resolutionEvidenceUrl', () async {
+      await ds.updateStatus(incidentId, 'solucionado', changedBy: adminUid);
+      final doc = await firestore.collection('incidents').doc(incidentId).get();
+      expect(doc.data()!.containsKey('resolutionEvidenceUrl'), isFalse);
+    });
+  });
+
+  group('uploadResolutionEvidence', () {
+    test('sube la evidencia y devuelve una URL no vacía', () async {
+      final url = await ds.uploadResolutionEvidence(
+        Uint8List.fromList([1, 2, 3]),
+        'reparado.jpg',
+        incidentId,
+      );
+      expect(url, isNotEmpty);
     });
   });
 

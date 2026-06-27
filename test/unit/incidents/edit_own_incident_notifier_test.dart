@@ -58,7 +58,15 @@ class _RecordingRepo implements IncidentsRepository {
     String eventId,
     IncidentStatus status, {
     String? changedBy,
+    String? resolutionEvidenceUrl,
   }) =>
+      throw UnimplementedError();
+  @override
+  Future<String> uploadResolutionEvidence(
+    Uint8List bytes,
+    String fileName,
+    String incidentId,
+  ) =>
       throw UnimplementedError();
   @override
   Stream<List<IncidentEvent>> watchActiveIncidents() =>

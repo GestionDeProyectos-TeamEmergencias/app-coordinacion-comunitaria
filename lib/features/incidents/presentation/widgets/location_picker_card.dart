@@ -104,7 +104,9 @@ class _LocationPickerCardState extends ConsumerState<LocationPickerCard> {
                                   .setManual(newPos),
                             ),
                           },
-                    circles: coverage == null
+                    // Con polígono configurado se dibuja el polígono; si no,
+                    // el círculo. Coincide con lo que valida la cobertura. [F-07]
+                    circles: (coverage == null || coverage.usesPolygon)
                         ? const {}
                         : {
                             Circle(
@@ -120,6 +122,20 @@ class _LocationPickerCardState extends ConsumerState<LocationPickerCard> {
                                   AppColors.primary.withValues(alpha: 0.05),
                             ),
                           },
+                    polygons: (coverage != null && coverage.usesPolygon)
+                        ? {
+                            Polygon(
+                              polygonId: const PolygonId('coverage-preview'),
+                              points: coverage.polygonPoints!
+                                  .map((p) => LatLng(p.lat, p.lng))
+                                  .toList(),
+                              strokeColor: AppColors.primary,
+                              strokeWidth: 1,
+                              fillColor:
+                                  AppColors.primary.withValues(alpha: 0.05),
+                            ),
+                          }
+                        : const {},
                     onTap: (latLng) => ref
                         .read(locationPickerProvider.notifier)
                         .setManual(latLng),

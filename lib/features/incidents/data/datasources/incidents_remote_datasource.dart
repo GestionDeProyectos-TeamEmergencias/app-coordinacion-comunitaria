@@ -40,6 +40,29 @@ class IncidentsRemoteDataSource {
     }
   }
 
+  /// Sube la foto de evidencia de resolución al cerrar un incident y retorna la
+  /// URL de descarga. Path dedicado `incidents/{incidentId}/resolution/{uuid}`
+  /// (mismo patrón que la evidencia del referente). La regla Storage permite
+  /// escritura solo a admin/referente. [F-06]
+  Future<String> uploadResolutionEvidence(
+    Uint8List bytes,
+    String fileName,
+    String incidentId,
+  ) async {
+    try {
+      final ext = fileName.contains('.') ? fileName.split('.').last : 'jpg';
+      final path = 'incidents/$incidentId/resolution/${const Uuid().v4()}.$ext';
+      final ref = _storage.ref(path);
+      await ref.putData(
+        bytes,
+        SettableMetadata(contentType: 'image/$ext'),
+      );
+      return await ref.getDownloadURL();
+    } on FirebaseException catch (e) {
+      throw StorageException(e.message ?? 'Error al subir la evidencia.');
+    }
+  }
+
   /// Envía el evento como documento a Firestore y retorna el eventId.
   /// Inicializa `statusHistory` con la primera entrada (estado inicial). [T-REP-06]
   Future<String> submitIncident(IncidentEvent event) async {
@@ -126,6 +149,7 @@ class IncidentsRemoteDataSource {
     String eventId,
     String status, {
     String? changedBy,
+    String? resolutionEvidenceUrl,
   }) async {
     // F-05: cuando el cierre llega a `solucionado`, inicializamos la validación
     // bilateral con `closureConfirmation.state = pendiente`. El reportero verá
@@ -146,6 +170,11 @@ class IncidentsRemoteDataSource {
         'by': changedBy,
         'at': Timestamp.now(),
       };
+    }
+    // F-06: evidencia opcional de la reparación. Solo se persiste si se subió
+    // una foto (URL ya resuelta por `uploadResolutionEvidence`).
+    if (resolutionEvidenceUrl != null) {
+      patch['resolutionEvidenceUrl'] = resolutionEvidenceUrl;
     }
     await _incidents.doc(eventId).update(patch);
   }
