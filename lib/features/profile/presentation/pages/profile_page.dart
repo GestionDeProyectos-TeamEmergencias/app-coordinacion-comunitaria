@@ -72,6 +72,20 @@ class ProfilePage extends ConsumerWidget {
             onTap: () => context.push(AppRoutes.myReports),
           ),
           const Divider(height: 1),
+          // Ubicación de interés para broadcasts zonales (opt-in).
+          ListTile(
+            leading: const Icon(Icons.home_outlined),
+            title: const Text('Mi ubicación de interés'),
+            subtitle: Text(
+              user.homeLocation == null
+                  ? 'Sin definir — no recibís avisos zonales'
+                  : 'Definida — recibís avisos de tu zona',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push(AppRoutes.homeLocationSetup),
+          ),
+          const Divider(height: 1),
           // Acceso de consulta a los T&C aceptados. [D-04]
           ListTile(
             leading: const Icon(Icons.description_outlined),

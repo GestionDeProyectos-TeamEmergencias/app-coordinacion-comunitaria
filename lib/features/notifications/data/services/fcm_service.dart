@@ -33,31 +33,51 @@ class FcmService {
 
   /// Pide permisos, obtiene el token y lo persiste en `users/{uid}.fcmTokens`.
   /// Idempotente: llamarla dos veces con el mismo uid no duplica el token.
-  /// Si los permisos son denegados, retorna `false` y no persiste nada.
+  /// Si los permisos son denegados o bloqueados, retorna `false` y NO propaga
+  /// la excepción. Cualquier otro error del platform channel también se traga
+  /// con un log: registrar push es best-effort y NUNCA debe romper el flujo
+  /// de login. [D-01 con hardening pos-prod]
   Future<bool> registerForUser(String userId) async {
     if (_registeredForUid == userId && _currentToken != null) {
       // Ya está registrado para este user. Nada que hacer.
       return true;
     }
 
-    // 1. Pedir permisos. En web, una notificación bloqueada por el browser
-    //    aparece como denegada acá.
-    final settings = await _messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
-    if (settings.authorizationStatus == AuthorizationStatus.denied) {
+    try {
+      // 1. Pedir permisos. En web, el browser puede responder:
+      //    - `denied`: el user (o el browser) negó.
+      //    - `permission-blocked`: bloqueado a nivel sitio (más fuerte que
+      //      denied). El plugin lo tira como FirebaseException.
+      final settings = await _messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+      if (settings.authorizationStatus == AuthorizationStatus.denied) {
+        return false;
+      }
+
+      // 2. Obtener el token. En web requiere el vapidKey (configurado en consola
+      //    de Firebase). Si falta, `getToken` retorna null silenciosamente.
+      final token = await _messaging.getToken();
+      if (token == null || token.isEmpty) {
+        return false;
+      }
+
+      return await _persistAndSubscribe(userId: userId, token: token);
+    } catch (e) {
+      // Casos típicos: `permission-blocked` (web), vapidKey faltante,
+      // service worker no registrado, etc. No queremos que esto rompa el
+      // login — el push es opcional. Logueamos y seguimos.
+      debugPrint('FcmService.registerForUser swallowed error: $e');
       return false;
     }
+  }
 
-    // 2. Obtener el token. En web requiere el vapidKey (configurado en consola
-    //    de Firebase). Si falta, `getToken` retorna null silenciosamente.
-    final token = await _messaging.getToken();
-    if (token == null || token.isEmpty) {
-      return false;
-    }
-
+  Future<bool> _persistAndSubscribe({
+    required String userId,
+    required String token,
+  }) async {
     // 3. Persistir con arrayUnion para no duplicar entre dispositivos.
     await _firestore.collection('users').doc(userId).update({
       'fcmTokens': FieldValue.arrayUnion([token]),

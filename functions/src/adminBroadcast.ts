@@ -64,7 +64,9 @@ export async function executeBroadcast(
     .where("status", "==", "active")
     .get();
 
-  const allTokens = new Set<string>();
+  // Mapping token → userId para poder limpiar tokens muertos después del envío.
+  // Antes era un Set<string> que perdía esa información.
+  const tokenToUser = new Map<string, string>();
 
   snapshot.forEach((doc) => {
     const data = doc.data();
@@ -77,10 +79,23 @@ export async function executeBroadcast(
     }
 
     if (area) {
+      // Posición de referencia del usuario para el filtro zonal:
+      //   - `homeLat/Lng`: ubicación de interés del VECINO (opt-in en perfil).
+      //   - `coverageLat/Lng`: zona de cobertura del REFERENTE BARRIAL (D-01).
+      // Tomamos la primera disponible. Si el user no tiene ninguna, se lo
+      // skippea del broadcast zonal (sigue recibiendo los globales).
       const lat =
-        typeof data.coverageLat === "number" ? data.coverageLat : undefined;
+        typeof data.homeLat === "number"
+          ? data.homeLat
+          : typeof data.coverageLat === "number"
+            ? data.coverageLat
+            : undefined;
       const lng =
-        typeof data.coverageLng === "number" ? data.coverageLng : undefined;
+        typeof data.homeLng === "number"
+          ? data.homeLng
+          : typeof data.coverageLng === "number"
+            ? data.coverageLng
+            : undefined;
       if (lat === undefined || lng === undefined) {
         return;
       }
@@ -95,10 +110,12 @@ export async function executeBroadcast(
       }
     }
 
-    data.fcmTokens.forEach((token: string) => allTokens.add(token));
+    data.fcmTokens.forEach((token: string) => {
+      tokenToUser.set(token, doc.id);
+    });
   });
 
-  const tokensArray = Array.from(allTokens);
+  const tokensArray = Array.from(tokenToUser.keys());
 
   if (tokensArray.length === 0) {
     logger.info("No tokens matched the broadcast criteria", { area });
@@ -162,6 +179,13 @@ export async function executeBroadcast(
     invalidTokens: invalidTokens.length,
   });
 
+  // Limpieza de tokens muertos: `arrayRemove` en el user al que pertenecía
+  // cada token inválido. Evita que los arrays `fcmTokens` acumulen basura.
+  // Es best-effort: si la limpieza falla, no afecta el resultado del envío.
+  if (invalidTokens.length > 0) {
+    await cleanupInvalidTokens(firestore, invalidTokens, tokenToUser);
+  }
+
   await persistBroadcastAudit(firestore, {
     title,
     body,
@@ -190,6 +214,55 @@ interface BroadcastAuditEntry {
   failureCount: number;
   invalidTokens: number;
   invalidTokenSamples?: string[];
+}
+
+async function cleanupInvalidTokens(
+  firestore: admin.firestore.Firestore,
+  invalidTokens: string[],
+  tokenToUser: Map<string, string>,
+): Promise<void> {
+  // Agrupar tokens por user para hacer un solo arrayRemove por doc.
+  const byUser = new Map<string, string[]>();
+  for (const token of invalidTokens) {
+    const userId = tokenToUser.get(token);
+    if (!userId) continue;
+    const acc = byUser.get(userId) ?? [];
+    acc.push(token);
+    byUser.set(userId, acc);
+  }
+
+  if (byUser.size === 0) return;
+
+  // Firestore admite hasta 500 ops por batch; agrupamos por las dudas, aunque
+  // en la práctica los tokens muertos por broadcast son pocos.
+  let batch = firestore.batch();
+  let ops = 0;
+  for (const [userId, tokens] of byUser.entries()) {
+    batch.update(firestore.collection("users").doc(userId), {
+      fcmTokens: admin.firestore.FieldValue.arrayRemove(...tokens),
+    });
+    ops++;
+    if (ops >= 500) {
+      try {
+        await batch.commit();
+      } catch (e) {
+        logger.warn("Token cleanup batch failed", { error: e });
+      }
+      batch = firestore.batch();
+      ops = 0;
+    }
+  }
+  if (ops > 0) {
+    try {
+      await batch.commit();
+    } catch (e) {
+      logger.warn("Token cleanup batch failed", { error: e });
+    }
+  }
+  logger.info("Cleaned up invalid tokens", {
+    usersAffected: byUser.size,
+    tokensRemoved: invalidTokens.length,
+  });
 }
 
 async function persistBroadcastAudit(

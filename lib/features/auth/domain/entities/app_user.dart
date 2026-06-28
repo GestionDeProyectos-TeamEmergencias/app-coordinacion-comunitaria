@@ -53,6 +53,7 @@ class AppUser extends Equatable {
     this.fcmTokens = const [],
     this.termsAcceptedVersion,
     this.termsAcceptedAt,
+    this.homeLocation,
   });
 
   final String userId;
@@ -73,6 +74,11 @@ class AppUser extends Equatable {
   // menor a `TermsConfig.currentVersion`, el router lo redirige al gate. [D-04]
   final int? termsAcceptedVersion;
   final DateTime? termsAcceptedAt;
+  // Ubicación de interés del vecino (opt-in desde Perfil). Si está seteada,
+  // los broadcasts zonales del admin pueden alcanzarlo. Sin esto, solo recibe
+  // los broadcasts globales. Se persiste en `users/{uid}.homeLat`/`homeLng`.
+  // [Broadcast fix posterior a T-NLP-09]
+  final ({double latitude, double longitude})? homeLocation;
 
   bool get isActive => status == UserStatus.active;
   bool get isPending => status == UserStatus.pending;
@@ -93,6 +99,7 @@ class AppUser extends Equatable {
     List<String>? fcmTokens,
     int? termsAcceptedVersion,
     DateTime? termsAcceptedAt,
+    ({double latitude, double longitude})? homeLocation,
   }) {
     return AppUser(
       userId: userId ?? this.userId,
@@ -108,6 +115,7 @@ class AppUser extends Equatable {
       fcmTokens: fcmTokens ?? this.fcmTokens,
       termsAcceptedVersion: termsAcceptedVersion ?? this.termsAcceptedVersion,
       termsAcceptedAt: termsAcceptedAt ?? this.termsAcceptedAt,
+      homeLocation: homeLocation ?? this.homeLocation,
     );
   }
 
@@ -126,5 +134,6 @@ class AppUser extends Equatable {
         fcmTokens,
         termsAcceptedVersion,
         termsAcceptedAt,
+        homeLocation,
       ];
 }
