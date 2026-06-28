@@ -23,6 +23,7 @@ import '../features/incidents/presentation/pages/my_report_edit_page.dart';
 import '../features/incidents/presentation/pages/my_reports_page.dart';
 import '../features/incidents/presentation/pages/report_form_page.dart';
 import '../features/map/presentation/pages/map_page.dart';
+import '../features/notifications/presentation/pages/home_location_setup_page.dart';
 import '../features/notifications/presentation/pages/referent_location_setup_page.dart';
 import '../features/profile/presentation/pages/profile_page.dart';
 import '../features/splash/presentation/pages/splash_page.dart';
@@ -53,6 +54,8 @@ abstract final class AppRoutes {
   static const unauthorized = '/unauthorized';
   // Setup obligatorio de ubicación para Referentes Barriales. [D-01]
   static const referentLocationSetup = '/referent/setup-location';
+  // Setup opt-in de ubicación de interés para broadcasts zonales.
+  static const homeLocationSetup = '/profile/home-location';
   // Términos y Condiciones (gate y reader, según query param). [D-04]
   static const terms = '/terms';
   // Historial y edición de reportes propios. [F-01]
@@ -245,6 +248,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.referentLocationSetup,
         builder: (_, __) => const ReferentLocationSetupPage(),
+      ),
+      GoRoute(
+        path: AppRoutes.homeLocationSetup,
+        builder: (_, __) => const HomeLocationSetupPage(),
       ),
       GoRoute(
         path: AppRoutes.terms,

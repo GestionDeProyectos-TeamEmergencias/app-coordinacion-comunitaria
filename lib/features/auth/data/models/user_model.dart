@@ -21,6 +21,8 @@ class UserModel {
     this.fcmTokens = const [],
     this.termsAcceptedVersion,
     this.termsAcceptedAt,
+    this.homeLat,
+    this.homeLng,
   });
 
   final String userId;
@@ -48,6 +50,9 @@ class UserModel {
   // Null → nunca aceptó; el router redirige al gate. [D-04]
   final int? termsAcceptedVersion;
   final DateTime? termsAcceptedAt;
+  // Ubicación de interés del vecino para filtro zonal de broadcasts.
+  final double? homeLat;
+  final double? homeLng;
 
   factory UserModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data()!;
@@ -68,6 +73,8 @@ class UserModel {
           .toList(),
       termsAcceptedVersion: (data['termsAcceptedVersion'] as num?)?.toInt(),
       termsAcceptedAt: (data['termsAcceptedAt'] as Timestamp?)?.toDate(),
+      homeLat: (data['homeLat'] as num?)?.toDouble(),
+      homeLng: (data['homeLng'] as num?)?.toDouble(),
     );
   }
 
@@ -101,5 +108,8 @@ class UserModel {
         fcmTokens: fcmTokens,
         termsAcceptedVersion: termsAcceptedVersion,
         termsAcceptedAt: termsAcceptedAt,
+        homeLocation: (homeLat != null && homeLng != null)
+            ? (latitude: homeLat!, longitude: homeLng!)
+            : null,
       );
 }
