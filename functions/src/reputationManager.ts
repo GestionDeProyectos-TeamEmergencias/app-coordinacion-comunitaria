@@ -40,13 +40,26 @@ export async function updateUserReputationLogic(
     return; // No reputation change needed
   }
 
+  const isReward = delta > 0;
+
   try {
     await firestore.runTransaction(async (transaction) => {
       const incidentRef = firestore.collection("incidents").doc(incidentId);
       const incidentDoc = await transaction.get(incidentRef);
+      const incidentData = incidentDoc.data() ?? {};
 
-      if (incidentDoc.data()?.reputationApplied === true) {
-        return; // Idempotency: ya se aplicó reputación por este incidente
+      // Idempotencia POR TIPO de evento: premio (+5) y castigo (−15) se rastrean
+      // por separado para que un reporte validado y luego moderado como falso
+      // reciba ambos. Antes un único `reputationApplied` bloqueaba el segundo
+      // efecto. Para el camino de premio se respeta el flag legacy
+      // `reputationApplied` (la mayoría de los incidentes viejos fueron premios);
+      // el castigo usa solo su flag nuevo. Re-castigar un incidente legacy es
+      // inofensivo en la práctica: moderation.ts no permite moderar dos veces.
+      const alreadyRewarded =
+        incidentData.reputationRewarded ?? incidentData.reputationApplied ?? false;
+      const alreadyPenalized = incidentData.reputationPenalized ?? false;
+      if (isReward ? alreadyRewarded === true : alreadyPenalized === true) {
+        return;
       }
 
       const userRef = firestore.collection("users").doc(userId);
@@ -75,8 +88,11 @@ export async function updateUserReputationLogic(
         });
       }
       
-      // Marcar como aplicado en el incidente para idempotencia
-      transaction.update(incidentRef, { reputationApplied: true });
+      // Marcar el tipo de efecto aplicado para idempotencia por evento.
+      transaction.update(
+        incidentRef,
+        isReward ? { reputationRewarded: true } : { reputationPenalized: true },
+      );
     });
   } catch (error) {
     logger.error("Failed to update user reputation", {
