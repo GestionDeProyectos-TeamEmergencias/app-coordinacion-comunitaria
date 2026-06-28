@@ -118,7 +118,7 @@ Ninguno compromete la propuesta de valor para la defensa; se proponen como **tic
 | G-3 | **Sin tests de integración e2e**: las suites son unitarias con mocks; no hay prueba end-to-end del pipeline completo | Media | Agregar test de integración con emuladores (Firestore + Functions) para el flujo reporte→alerta |
 | G-4 | **Escala: sin geohashing**: `findNearbyReferentes` trae candidatos y filtra por distancia; correcto a escala barrial, costoso a gran escala | Baja | Geohashing/consulta espacial si se proyecta crecimiento (fuera de alcance académico) |
 | G-5 | **Limpieza proactiva de tokens FCM rotados**: el token viejo queda en el array hasta que el backend lo detecta inválido | Baja | Aceptable; el backend ya limpia tokens muertos al enviar |
-
+Arreglar/calibrar como se asignan prioridades, como se detecta si derivar al 911/100 sin dejar que el reporte se cree. Ademas de tener que probar que ande bien la funcion de reputacion
 ---
 
 ## 5. RNF y promesas del Informe

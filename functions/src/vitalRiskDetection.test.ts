@@ -62,7 +62,8 @@ describe("Vital Risk Detection (T-NLP-05)", () => {
 
     expect(result.isVitalRisk).toBe(true);
     expect(result.matchedTerms).toContain("incendio");
-    // La seguridad tiene prioridad: el flujo se interrumpe
+    // Solo matchea 'desastre' (incendio); el triage por precedencia lo refleja.
+    expect(result.riskCategory).toBe("desastre");
   });
 
   // ── Edge cases ──────────────────────────────────────────────────────────────
@@ -106,6 +107,81 @@ describe("Vital Risk Detection (T-NLP-05)", () => {
     expect(result.matchedTerms).toContain("tiroteo");
     expect(result.matchedTerms).toContain("desangrando");
     expect(result.matchedTerms.length).toBeGreaterThanOrEqual(2);
+  });
+
+  // ── Endurecimiento: contexto no-emergencia, límite de palabra, triage ───────
+
+  describe("contexto no-emergencia (no deriva)", () => {
+    it("no deriva ante un simulacro de incendio", async () => {
+      const result = await vitalRiskDetectionFlow({
+        description: "Hoy hay un simulacro de incendio en la escuela",
+      });
+      expect(result.isVitalRisk).toBe(false);
+      expect(result.riskCategory).toBe("none");
+    });
+
+    it("no deriva ante recomendación preventiva ('en caso de incendio')", async () => {
+      const result = await vitalRiskDetectionFlow({
+        description: "En caso de incendio usar la escalera, no el ascensor",
+      });
+      expect(result.isVitalRisk).toBe(false);
+    });
+
+    it("no deriva ante una medida para evitar un incendio", async () => {
+      const result = await vitalRiskDetectionFlow({
+        description: "Para evitar un incendio no tiren colillas al pasto seco",
+      });
+      expect(result.isVitalRisk).toBe(false);
+    });
+  });
+
+  describe("límite de palabra (no matchea términos dentro de otras palabras)", () => {
+    it("'retiro' no dispara el término 'tiro'", async () => {
+      const result = await vitalRiskDetectionFlow({
+        description: "Voy a hacer un retiro de plata del cajero de la esquina",
+      });
+      expect(result.isVitalRisk).toBe(false);
+    });
+  });
+
+  describe("ampliación de diccionario (falsos negativos antes perdidos)", () => {
+    it("deriva ante 'le dieron un tiro'", async () => {
+      const result = await vitalRiskDetectionFlow({
+        description: "Le dieron un tiro a un vecino en la plaza",
+      });
+      expect(result.isVitalRisk).toBe(true);
+      expect(result.matchedTerms).toContain("tiro");
+      expect(result.riskCategory).toBe("seguridad");
+    });
+
+    it("deriva ante 'le dieron una puñalada'", async () => {
+      const result = await vitalRiskDetectionFlow({
+        description: "Le dieron una puñalada en una pelea",
+      });
+      expect(result.isVitalRisk).toBe(true);
+      expect(result.riskCategory).toBe("seguridad");
+    });
+
+    it("deriva ante 'tuvo un ataque al corazón'", async () => {
+      const result = await vitalRiskDetectionFlow({
+        description: "Mi abuelo tuvo un ataque al corazón",
+      });
+      expect(result.isVitalRisk).toBe(true);
+      expect(result.riskCategory).toBe("medico");
+    });
+  });
+
+  describe("triage de categoría por precedencia explícita", () => {
+    it("con incendio (desastre) + infarto (medico) prioriza 'medico'", async () => {
+      const result = await vitalRiskDetectionFlow({
+        description: "Hay un incendio y mi vecino tuvo un infarto",
+      });
+      expect(result.isVitalRisk).toBe(true);
+      expect(result.riskCategory).toBe("medico");
+      expect(result.matchedTerms).toEqual(
+        expect.arrayContaining(["incendio", "infarto"])
+      );
+    });
   });
 
   // ── Tests de la función normalizeText ───────────────────────────────────────
