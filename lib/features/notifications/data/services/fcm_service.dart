@@ -20,11 +20,25 @@ class FcmService {
   FcmService({
     FirebaseMessaging? messaging,
     FirebaseFirestore? firestore,
+    String vapidKey = const String.fromEnvironment(
+      'FCM_VAPID_KEY',
+      // VAPID public key (Web Push certificate). NO es secreta: se entrega a todo
+      // navegador, igual que la config de firebase_options.dart. Default para no
+      // depender de la flag; sobreescribible con --dart-define si hace falta.
+      defaultValue:
+          'BPb13Q-QwRS0c48MScUA36Mcjs-ZuczUT23xvWNPowbQco2bpxgYim4NjrSQ5pB9ett9v4IIgitmnS3D2QA4Kf8',
+    ),
   })  : _messaging = messaging ?? FirebaseMessaging.instance,
-        _firestore = firestore ?? FirebaseFirestore.instance;
+        _firestore = firestore ?? FirebaseFirestore.instance,
+        _vapidKey = vapidKey;
 
   final FirebaseMessaging _messaging;
   final FirebaseFirestore _firestore;
+
+  /// VAPID public key necesaria para emitir token FCM en **web** (Firebase
+  /// Console → Cloud Messaging → Web Push certificates). En mobile el plugin la
+  /// ignora. Entra por `--dart-define=FCM_VAPID_KEY=...`; no se hardcodea.
+  final String _vapidKey;
 
   StreamSubscription<String>? _refreshSub;
   StreamSubscription<RemoteMessage>? _foregroundSub;
@@ -57,9 +71,12 @@ class FcmService {
         return false;
       }
 
-      // 2. Obtener el token. En web requiere el vapidKey (configurado en consola
-      //    de Firebase). Si falta, `getToken` retorna null silenciosamente.
-      final token = await _messaging.getToken();
+      // 2. Obtener el token. En web FCM requiere el vapidKey; sin él `getToken`
+      //    retorna null silenciosamente. En mobile el plugin lo ignora, así que
+      //    lo pasamos sin ramificar por plataforma (null si no está configurado).
+      final token = await _messaging.getToken(
+        vapidKey: _vapidKey.isEmpty ? null : _vapidKey,
+      );
       if (token == null || token.isEmpty) {
         return false;
       }

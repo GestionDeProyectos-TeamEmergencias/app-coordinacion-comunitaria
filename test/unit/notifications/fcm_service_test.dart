@@ -64,6 +64,23 @@ void main() {
     expect(doc.data()!['fcmTokens'], contains(token));
   });
 
+  test('registerForUser pasa el vapidKey a getToken (push web) [G-1]', () async {
+    stubPermission(AuthorizationStatus.authorized);
+    when(() => messaging.getToken(vapidKey: 'web-vapid'))
+        .thenAnswer((_) async => token);
+
+    final service = FcmService(
+      messaging: messaging,
+      firestore: firestore,
+      vapidKey: 'web-vapid',
+    );
+
+    final ok = await service.registerForUser(uid);
+
+    expect(ok, isTrue);
+    verify(() => messaging.getToken(vapidKey: 'web-vapid')).called(1);
+  });
+
   test('registerForUser es idempotente para el mismo uid', () async {
     stubPermission(AuthorizationStatus.authorized);
     when(() => messaging.getToken()).thenAnswer((_) async => token);
