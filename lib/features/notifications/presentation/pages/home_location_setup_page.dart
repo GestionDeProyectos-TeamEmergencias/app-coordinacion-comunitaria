@@ -23,8 +23,7 @@ class HomeLocationSetupPage extends ConsumerStatefulWidget {
       _HomeLocationSetupPageState();
 }
 
-class _HomeLocationSetupPageState
-    extends ConsumerState<HomeLocationSetupPage> {
+class _HomeLocationSetupPageState extends ConsumerState<HomeLocationSetupPage> {
   bool _saving = false;
   String? _error;
 

@@ -78,7 +78,6 @@ class FcmService {
     required String userId,
     required String token,
   }) async {
-
     // 3. Persistir con arrayUnion para no duplicar entre dispositivos.
     await _firestore.collection('users').doc(userId).update({
       'fcmTokens': FieldValue.arrayUnion([token]),
