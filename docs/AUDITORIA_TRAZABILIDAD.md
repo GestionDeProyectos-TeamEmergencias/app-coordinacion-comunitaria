@@ -109,16 +109,50 @@ El producto **cumple lo prometido** en sus cuatro pilares de valor, todos operat
 
 ## 4. Gaps remanentes y recomendaciones (priorizado)
 
-Ninguno compromete la propuesta de valor para la defensa; se proponen como **tickets nuevos** (no se corrigen en F-02).
+Los ítems de la nota de revisión (prioridades, derivación 911/107 y reputación) **se
+corrigieron en esta iteración**, junto con **G-1**, **G-2** y **G-5** (ver §4.1). Solo queda
+abierto **G-3** (tests e2e con emuladores); **G-4** está fuera de alcance académico. Ninguno
+compromete la propuesta de valor para la defensa.
 
-| # | Gap | Severidad | Recomendación |
-|---|---|---|---|
-| G-1 | **Push web sin `vapidKey`**: `getToken` devuelve null en web, no se registra token → el referente no recibe push en navegador | Media | Configurar `vapidKey` en `firebase_options`/consola; si la demo es web, validar el flujo end-to-end o demostrar en mobile |
-| G-2 | **`referentVerification` no pondera el score**: la verificación autoritativa del referente no realimenta `priorityCalculation` | Baja | Integrar la señal del referente como input del score (documentado como trabajo futuro) |
-| G-3 | **Sin tests de integración e2e**: las suites son unitarias con mocks; no hay prueba end-to-end del pipeline completo | Media | Agregar test de integración con emuladores (Firestore + Functions) para el flujo reporte→alerta |
-| G-4 | **Escala: sin geohashing**: `findNearbyReferentes` trae candidatos y filtra por distancia; correcto a escala barrial, costoso a gran escala | Baja | Geohashing/consulta espacial si se proyecta crecimiento (fuera de alcance académico) |
-| G-5 | **Limpieza proactiva de tokens FCM rotados**: el token viejo queda en el array hasta que el backend lo detecta inválido | Baja | Aceptable; el backend ya limpia tokens muertos al enviar |
-Arreglar/calibrar como se asignan prioridades, como se detecta si derivar al 911/100 sin dejar que el reporte se cree. Ademas de tener que probar que ande bien la funcion de reputacion
+| # | Gap | Severidad | Estado | Recomendación |
+|---|---|---|---|---|
+| G-1 | **Push web roto**: `getToken` se llamaba sin `vapidKey` y faltaba el service worker → en web no se registraba token y el referente no recibía push en navegador | Media | ✅ Resuelto | (1) `FcmService` pasa `vapidKey` a `getToken`; (2) service worker `web/firebase-messaging-sw.js` agregado (lo exige FCM web). Falta solo el paso de despliegue: generar la VAPID key (Console → Cloud Messaging → Web Push certificates) y buildear web con `--dart-define=FCM_VAPID_KEY=...` |
+| G-2 | **La verificación del referente no se aprovechaba**: la confirmación in-situ no se reflejaba en el panel | Baja | ✅ Resuelto (como veracidad) | Indicador de **veracidad** (badges Avalado/En disputa/Descartado) derivado en vivo del historial. **Deliberadamente NO se cableó al `priorityScore`**: prioridad=urgencia y verificación=veracidad son ortogonales |
+| G-3 | **Sin tests de integración e2e**: las suites son unitarias con mocks; no hay prueba end-to-end del pipeline completo | Media | ⚠️ Abierto | Test de integración con emuladores (Firestore + Functions) para el flujo reporte→alerta |
+| G-4 | **Escala: sin geohashing**: `findNearbyReferentes` trae candidatos y filtra por distancia; correcto a escala barrial, costoso a gran escala | Baja | ➖ Fuera de alcance | Geohashing/consulta espacial si se proyecta crecimiento (fuera de alcance académico) |
+| G-5 | **Limpieza proactiva de tokens FCM rotados**: el token viejo quedaba en el array hasta que el backend lo detectaba inválido | Baja | ✅ Resuelto | `cleanupInvalidTokens` (`adminBroadcast.ts`) hace `arrayRemove` de los tokens muertos tras cada envío (merge de develop) |
+
+### 4.1 Resueltos en esta iteración (post-auditoría)
+
+Los tres puntos de la nota de revisión se implementaron con **TDD** (suite de Cloud Functions
+verde: 143 tests, `tsc` limpio):
+
+- **Reputación** (`reputationManager.ts`): idempotencia separada por evento
+  (`reputationRewarded` / `reputationPenalized`). Un reporte validado (+5) y **luego** moderado
+  como falso ya recibe también el −15; antes el flag único lo bloqueaba.
+- **Derivación 911/107** (`vitalRiskDetection.ts`): matching por **límite de palabra** (evita
+  falsos positivos por substring), **lista de contexto no-emergencia** (`simulacro`, `evitar`,
+  `en caso de`…; sin "no" genérico, para no romper `no respira`), **triage de categoría
+  explícito** y **diccionario ampliado** para falsos negativos (`tiro`, `puñalada`, etc.).
+- **Prioridades** (`algorithmConfig.ts`): calibración de defaults — `urgente` ahora es
+  alcanzable por señal textual fuerte (multiplicador 10→13, umbral 80→72) y la reputación
+  pondera en más casos (umbrales 30/80→45/70, ajuste 10→15).
+
+Además se cerraron dos gaps de la tabla (frontend Flutter, TDD, suite verde: 186 tests, `analyze` limpio):
+
+- **G-1 — Push web** (`fcm_service.dart` + `web/firebase-messaging-sw.js`): el push web requería
+  **dos** piezas, ambas resueltas: (1) `FcmService` pasa `vapidKey` a `getToken` (vía
+  `--dart-define=FCM_VAPID_KEY`, el plugin lo ignora en mobile; test que verifica que la key
+  llega a `getToken`); (2) se agregó el **service worker** `firebase-messaging-sw.js` que FCM web
+  exige para registrar el token (el plugin lo registra automáticamente). Para activarlo en una
+  demo web hay que generar la VAPID key en la consola y buildear con el `--dart-define`.
+- **G-2 — Sello de referente** (`referent_verification_aggregate.dart` + badge en
+  `incident_moderation_page.dart`): indicador de **veracidad** derivado en vivo del historial
+  (`aggregateReferentVerification`: dedup última postura por referente → `confirmed` /
+  `dismissed` / `disputed` / `none`). Badge en la lista (Avalado / En disputa / Descartado;
+  `none` sin badge). **No toca la prioridad** (ortogonalidad urgencia↔veracidad) y no guarda
+  estado de resolución (informativo; el admin resuelve con sus acciones de moderación).
+
 ---
 
 ## 5. RNF y promesas del Informe
