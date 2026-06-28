@@ -407,6 +407,11 @@ export {
   notifyClosurePending,
   autoConfirmExpiredClosures,
 } from "./closureConfirmation";
+// T-NLP-09: notificación masiva del administrador. El cliente la invoca como
+// `httpsCallable('broadcastNotification')`. Estaba implementada pero no se
+// exportaba acá, lo que hacía que `firebase deploy` la ignorara: el browser
+// recibía 404 sin CORS y mostraba "blocked by CORS policy".
+export { broadcastNotification } from "./adminBroadcast";
 
 // ── Derivación a 911/107 — chequeo síncrono pre-envío (D-03) ────────────────
 // Permite al cliente Flutter consultar si la descripción de un reporte dispara
