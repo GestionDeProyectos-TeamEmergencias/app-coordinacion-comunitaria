@@ -94,6 +94,12 @@ abstract final class AppStrings {
   static const mapCategoryFilters = 'Filtrar por categoría';
   static const mapCoverageArea = 'Área de cobertura';
   static const mapRecenter = 'Centrar en cobertura';
+  // Bottom sheet del marcador → detalle del incidente.
+  static const goToDetail = 'Ir al detalle';
+  // Mini-mapa in-app de la ubicación del incidente (desde el detalle).
+  static const incidentLocationTitle = 'Ubicación del incidente';
+  static const viewOnMap = 'Ver en el mapa';
+  static const openInExternalMaps = 'Cómo llegar';
 
   // Navegación principal
   static const navHome = 'Inicio';

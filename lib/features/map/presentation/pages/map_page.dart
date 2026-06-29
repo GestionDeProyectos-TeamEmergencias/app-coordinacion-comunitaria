@@ -11,6 +11,7 @@ import '../../../../core/widgets/app_loading.dart';
 import '../../../admin/presentation/providers/coverage_config_provider.dart';
 import '../../../incidents/domain/entities/incident_event.dart';
 import '../../../incidents/presentation/providers/incidents_provider.dart';
+import '../widgets/incident_marker_sheet.dart';
 
 // RF-ADM-01: mapa de incidencias geolocalizado con marcadores por prioridad y categoría. [T-REP-05]
 class MapPage extends ConsumerStatefulWidget {
@@ -40,30 +41,31 @@ class _MapPageState extends ConsumerState<MapPage> {
               IncidentPriority.baja => BitmapDescriptor.hueGreen,
             };
 
-      final categoryLabel = incident.category != null
-          ? '${incident.category!.emoji} ${incident.category!.displayName}'
-          : AppStrings.mapDefaultCategory;
-      final priorityLabel = incident.priority?.displayName ?? '';
-      final snippet = [
-        if (priorityLabel.isNotEmpty) 'Prioridad: $priorityLabel',
-        incident.description ?? incident.status.displayName,
-      ].join(' · ');
-
       return Marker(
         markerId:
             MarkerId(incident.eventId ?? incident.timestamp.toIso8601String()),
         position: LatLng(incident.latitude, incident.longitude),
         icon: BitmapDescriptor.defaultMarkerWithHue(hue),
-        infoWindow: InfoWindow(
-          title: categoryLabel,
-          snippet: snippet,
-          onTap: incident.eventId != null
-              ? () =>
-                  context.go(AppRoutes.incidentDetailPath(incident.eventId!))
-              : null,
-        ),
+        // Tocar el marcador abre un bottom sheet con resumen + "Ir al detalle".
+        onTap: () => _showIncidentSheet(incident),
       );
     }).toSet();
+  }
+
+  void _showIncidentSheet(IncidentEvent incident) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (_) => IncidentMarkerSheet(
+        incident: incident,
+        onOpenDetail: incident.eventId != null
+            ? () {
+                Navigator.of(context).pop();
+                context.push(AppRoutes.incidentDetailPath(incident.eventId!));
+              }
+            : null,
+      ),
+    );
   }
 
   Set<Circle> _buildCoverageCircle(LatLng center, double radius) => {

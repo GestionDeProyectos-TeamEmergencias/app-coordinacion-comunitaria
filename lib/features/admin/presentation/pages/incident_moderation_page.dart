@@ -195,7 +195,8 @@ class _IncidentCard extends StatelessWidget {
         trailing: const Icon(Icons.chevron_right),
         onTap: incident.eventId == null
             ? null
-            : () => context.go(AppRoutes.incidentDetailPath(incident.eventId!)),
+            : () =>
+                context.push(AppRoutes.incidentDetailPath(incident.eventId!)),
       ),
     );
   }

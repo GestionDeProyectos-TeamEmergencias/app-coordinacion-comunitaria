@@ -146,5 +146,16 @@ void main() {
       expect(
           find.byType(DropdownButtonFormField<IncidentStatus>), findsOneWidget);
     });
+
+    testWidgets('muestra el botón "Ver en el mapa" (mini-mapa del incidente)',
+        (tester) async {
+      await tester.pumpWidget(_wrap(
+        incident: _buildIncident(),
+        currentUserRole: UserRole.vecinoInformante,
+      ));
+      await tester.pump();
+
+      expect(find.text(AppStrings.viewOnMap), findsOneWidget);
+    });
   });
 }

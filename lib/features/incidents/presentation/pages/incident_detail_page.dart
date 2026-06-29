@@ -2,9 +2,11 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../app/router.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/extensions/context_extensions.dart';
 import '../../../../core/widgets/app_button.dart';
@@ -126,6 +128,15 @@ class IncidentDetailPage extends ConsumerWidget {
                 label: 'Ubicación',
                 value:
                     '${incident.latitude.toStringAsFixed(5)}, ${incident.longitude.toStringAsFixed(5)}',
+              ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () =>
+                      context.push(AppRoutes.incidentMapPath(incidentId)),
+                  icon: const Icon(Icons.map_outlined),
+                  label: const Text(AppStrings.viewOnMap),
+                ),
               ),
               // Resumen de verificación del referente (visible a todos cuando
               // existe — es señal **autoritativa**). Por encima del bloque de

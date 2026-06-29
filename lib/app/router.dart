@@ -22,6 +22,7 @@ import '../features/incidents/presentation/pages/incident_detail_page.dart';
 import '../features/incidents/presentation/pages/my_report_edit_page.dart';
 import '../features/incidents/presentation/pages/my_reports_page.dart';
 import '../features/incidents/presentation/pages/report_form_page.dart';
+import '../features/map/presentation/pages/incident_location_map_page.dart';
 import '../features/map/presentation/pages/map_page.dart';
 import '../features/notifications/presentation/pages/home_location_setup_page.dart';
 import '../features/notifications/presentation/pages/referent_location_setup_page.dart';
@@ -43,6 +44,9 @@ abstract final class AppRoutes {
   static const map = '/map';
   static const profile = '/profile';
   static const incidentDetail = '/incident/:id';
+  // Mini-mapa in-app centrado en la ubicación de un incidente. Subruta de
+  // detalle: accesible a todo usuario activo (igual que el detalle).
+  static const incidentMap = '/incident/:id/map';
   static const admin = '/admin';
   static const adminUsers = '/admin/users';
   static const adminIncidents = '/admin/incidents';
@@ -63,7 +67,99 @@ abstract final class AppRoutes {
   static const myReportEdit = '/my-reports/:id';
 
   static String incidentDetailPath(String id) => '/incident/$id';
+  static String incidentMapPath(String id) => '/incident/$id/map';
   static String myReportEditPath(String id) => '/my-reports/$id';
+}
+
+/// Lógica de redirección del router como **función pura** y testeable.
+///
+/// Se extrae del `routerProvider` para que `router_rbac_test` valide el redirect
+/// real en lugar de una copia que tiende a desincronizarse. Devuelve la ruta a
+/// la que hay que redirigir, o `null` si la ubicación actual es válida.
+///
+/// RBAC (T-AUTH-03): las rutas `/admin*` exigen administrador y `adminIncidents`/
+/// `alerts` exigen `canVerify` (referente o admin). El **detalle del incidente**
+/// (`/incident/:id` y su subruta `/map`) es la **vista pública** del barrio:
+/// accesible a todo usuario activo; las acciones de moderación se ocultan por
+/// rol dentro de la página y se protegen en `firestore.rules`.
+String? resolveRedirect({
+  required AsyncValue<AppUser?> auth,
+  required String location,
+  required Uri uri,
+}) {
+  final loc = location;
+
+  // Splash mientras Firebase Auth resuelve (T-REP-01).
+  if (auth.isLoading) return loc == AppRoutes.splash ? null : AppRoutes.splash;
+
+  final user = auth.valueOrNull;
+  final isOnAuthPage = loc == AppRoutes.login || loc == AppRoutes.register;
+
+  if (user == null) return isOnAuthPage ? null : AppRoutes.login;
+
+  if (user.status == UserStatus.pending) {
+    return loc == AppRoutes.pending ? null : AppRoutes.pending;
+  }
+
+  // Cuenta rechazada: redirigir a página de rechazo. [T-AUTH-01]
+  if (user.status == UserStatus.rejected) {
+    return loc == AppRoutes.rejected ? null : AppRoutes.rejected;
+  }
+
+  // Cuenta bloqueada por reportes falsos: redirigir a página de bloqueo. [T-AUTH-07]
+  if (user.status == UserStatus.blocked) {
+    return loc == AppRoutes.blocked ? null : AppRoutes.blocked;
+  }
+
+  if (isOnAuthPage ||
+      loc == AppRoutes.splash ||
+      loc == AppRoutes.pending ||
+      loc == AppRoutes.rejected ||
+      loc == AppRoutes.blocked) {
+    return AppRoutes.home;
+  }
+
+  // Referente Barrial activo sin ubicación de cobertura → setup obligatorio.
+  // El backend (findNearbyReferentes) descarta referentes sin coverageLat/Lng,
+  // por lo que no recibirían pushes hasta completar este paso. [D-01]
+  if (user.role == UserRole.referenteBarrial &&
+      user.coverageAreaCenter == null) {
+    return loc == AppRoutes.referentLocationSetup
+        ? null
+        : AppRoutes.referentLocationSetup;
+  }
+
+  // Una vez seteada la ubicación, no permitir volver a la pantalla de setup.
+  if (loc == AppRoutes.referentLocationSetup) {
+    return AppRoutes.home;
+  }
+
+  // Usuario activo sin T&C aceptados (o con versión obsoleta) → gate. [D-04]
+  // El modo `reader` (accedido desde Perfil) lleva query `?mode=read` y NO
+  // es bloqueado: el usuario ya aceptó, está consultando.
+  final isReaderMode = uri.queryParameters['mode'] == 'read';
+  if (!hasAcceptedCurrentTerms(user) && !isReaderMode) {
+    return loc == AppRoutes.terms ? null : AppRoutes.terms;
+  }
+
+  // --- RBAC: Restricciones de acceso por rol (T-AUTH-03) ---
+
+  // Rutas de administrador
+  if (loc.startsWith(AppRoutes.admin)) {
+    if (user.role != UserRole.administrador) {
+      return AppRoutes.unauthorized;
+    }
+  }
+
+  // Rutas de moderación (Referente Barrial o Administrador). El detalle del
+  // incidente NO entra acá: es la vista pública del barrio. [fix bug visibilidad]
+  if (loc == AppRoutes.adminIncidents || loc == AppRoutes.alerts) {
+    if (!user.role.canVerify) {
+      return AppRoutes.unauthorized;
+    }
+  }
+
+  return null;
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -71,83 +167,11 @@ final routerProvider = Provider<GoRouter>((ref) {
 
   return GoRouter(
     initialLocation: AppRoutes.home,
-    redirect: (context, state) {
-      final isLoading = authState.isLoading;
-      final loc = state.matchedLocation;
-
-      // Show splash while Firebase Auth resolves (T-REP-01)
-      if (isLoading) return loc == AppRoutes.splash ? null : AppRoutes.splash;
-
-      final user = authState.valueOrNull;
-      final isOnAuthPage = loc == AppRoutes.login || loc == AppRoutes.register;
-
-      if (user == null) return isOnAuthPage ? null : AppRoutes.login;
-
-      if (user.status == UserStatus.pending) {
-        return loc == AppRoutes.pending ? null : AppRoutes.pending;
-      }
-
-      // Cuenta rechazada: redirigir a página de rechazo. [T-AUTH-01]
-      if (user.status == UserStatus.rejected) {
-        return loc == AppRoutes.rejected ? null : AppRoutes.rejected;
-      }
-
-      // Cuenta bloqueada por reportes falsos: redirigir a página de bloqueo. [T-AUTH-07]
-      if (user.status == UserStatus.blocked) {
-        return loc == AppRoutes.blocked ? null : AppRoutes.blocked;
-      }
-
-      if (isOnAuthPage ||
-          loc == AppRoutes.splash ||
-          loc == AppRoutes.pending ||
-          loc == AppRoutes.rejected ||
-          loc == AppRoutes.blocked) {
-        return AppRoutes.home;
-      }
-
-      // Referente Barrial activo sin ubicación de cobertura → setup obligatorio.
-      // El backend (findNearbyReferentes) descarta referentes sin coverageLat/Lng,
-      // por lo que no recibirían pushes hasta completar este paso. [D-01]
-      if (user.role == UserRole.referenteBarrial &&
-          user.coverageAreaCenter == null) {
-        return loc == AppRoutes.referentLocationSetup
-            ? null
-            : AppRoutes.referentLocationSetup;
-      }
-
-      // Una vez seteada la ubicación, no permitir volver a la pantalla de setup.
-      if (loc == AppRoutes.referentLocationSetup) {
-        return AppRoutes.home;
-      }
-
-      // Usuario activo sin T&C aceptados (o con versión obsoleta) → gate. [D-04]
-      // El modo `reader` (accedido desde Perfil) lleva query `?mode=read` y NO
-      // es bloqueado: el usuario ya aceptó, está consultando.
-      final isReaderMode = state.uri.queryParameters['mode'] == 'read';
-      if (!hasAcceptedCurrentTerms(user) && !isReaderMode) {
-        return loc == AppRoutes.terms ? null : AppRoutes.terms;
-      }
-
-      // --- RBAC: Restricciones de acceso por rol (T-AUTH-03) ---
-
-      // Rutas de administrador
-      if (loc.startsWith(AppRoutes.admin)) {
-        if (user.role != UserRole.administrador) {
-          return AppRoutes.unauthorized;
-        }
-      }
-
-      // Rutas de moderación (Referente Barrial o Administrador)
-      if (loc.startsWith(AppRoutes.incidentDetail.split(':')[0]) ||
-          loc == AppRoutes.adminIncidents ||
-          loc == AppRoutes.alerts) {
-        if (!user.role.canVerify) {
-          return AppRoutes.unauthorized;
-        }
-      }
-
-      return null;
-    },
+    redirect: (context, state) => resolveRedirect(
+      auth: authState,
+      location: state.matchedLocation,
+      uri: state.uri,
+    ),
     routes: [
       GoRoute(
         path: AppRoutes.splash,
@@ -206,6 +230,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: AppRoutes.incidentDetail,
         builder: (_, state) => IncidentDetailPage(
+          incidentId: state.pathParameters['id']!,
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.incidentMap,
+        builder: (_, state) => IncidentLocationMapPage(
           incidentId: state.pathParameters['id']!,
         ),
       ),

@@ -60,7 +60,7 @@ class ProfilePage extends ConsumerWidget {
               leading: const Icon(Icons.admin_panel_settings),
               title: const Text(AppStrings.adminDashboard),
               trailing: const Icon(Icons.chevron_right),
-              onTap: () => context.go('/admin'),
+              onTap: () => context.push('/admin'),
             ),
             const Divider(height: 1),
           ],

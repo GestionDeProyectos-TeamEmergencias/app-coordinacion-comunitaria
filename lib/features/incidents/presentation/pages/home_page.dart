@@ -39,13 +39,13 @@ class _HomePageState extends ConsumerState<HomePage> {
             IconButton(
               icon: const Icon(Icons.notifications_active),
               tooltip: AppStrings.referentAlertsTitle,
-              onPressed: () => context.go(AppRoutes.alerts),
+              onPressed: () => context.push(AppRoutes.alerts),
             ),
           if (user?.role == UserRole.administrador)
             IconButton(
               icon: const Icon(Icons.admin_panel_settings),
               tooltip: AppStrings.adminDashboard,
-              onPressed: () => context.go(AppRoutes.admin),
+              onPressed: () => context.push(AppRoutes.admin),
             ),
           IconButton(
             icon: const Icon(Icons.logout),
@@ -175,7 +175,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                         ),
                       ),
                       trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.go(
+                      onTap: () => context.push(
                         AppRoutes.incidentDetailPath(incident.eventId!),
                       ),
                     );
