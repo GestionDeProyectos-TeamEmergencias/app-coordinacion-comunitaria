@@ -1,7 +1,7 @@
 # Auditoría de Trazabilidad — Promesas vs. Implementación
 
 > **Origen:** ampliación de F-02 pedida para validar que lo prometido (SRS v1.1 + Informe de Viabilidad V2) está efectivamente implementado en el código actual, detectar gaps y evaluar la coherencia del producto.
-> **Fecha:** 2026-06-27 · **Alcance:** estado del repo a la fecha (post F-01…F-07 y cierre de deudas D-01…D-10).
+> **Fecha:** 2026-06-27 (act. 2026-06-29: cierre de G-1 push web) · **Alcance:** estado del repo a la fecha (post F-01…F-07 y cierre de deudas D-01…D-10).
 > **Método:** verificación **basada en evidencia** — cada veredicto se respaldó leyendo el archivo/símbolo real, no resúmenes. Las rutas citadas son verificables.
 
 ## Leyenda de estado
@@ -20,7 +20,7 @@
 El producto **cumple lo prometido** en sus cuatro pilares de valor, todos operativos end-to-end en el código:
 
 1. **Ciencia ciudadana (vecino ve el barrio):** ✅ reglas de `incidents` permiten lectura a todo usuario activo (`firestore.rules:170`).
-2. **Alertas focalizadas (referente recibe push):** ✅ registro de token FCM en cliente + envío por cercanía en backend. ⚠️ con salvedad de push **web** (vapidKey).
+2. **Alertas focalizadas (referente recibe push):** ✅ registro de token FCM en cliente + envío por cercanía en backend, **web incluido** (VAPID key baked + service worker).
 3. **Moderación anti-reportes-falsos:** ✅ marcar `falso` decrementa reputación y bloquea al umbral (`reputationManager.ts:35`).
 4. **Trazabilidad / rendición de cuentas:** ✅ historial de estados, acciones del admin, evidencia de cierre y auditoría persistida.
 
@@ -94,7 +94,7 @@ El producto **cumple lo prometido** en sus cuatro pilares de valor, todos operat
 
 | Deuda | Severidad original | Estado actual | Evidencia de cierre |
 |---|---|---|---|
-| **D-01** Push e2e (token FCM nunca registrado) | 🔴 Crítico | ✅ Cerrada (⚠️ web) | `fcm_service.dart:62` persiste `fcmTokens` con `arrayUnion`; `referent_location_setup_page.dart` captura ubicación. **Salvedad:** en web `getToken` devuelve null sin `vapidKey` (`fcm_service.dart:54-58`) |
+| **D-01** Push e2e (token FCM nunca registrado) | 🔴 Crítico | ✅ Cerrada | `fcm_service.dart:99` persiste `fcmTokens` con `arrayUnion`; `referent_location_setup_page.dart` captura ubicación. **Web incluido:** `getToken` recibe la `vapidKey` (VAPID public key baked como default en `fcm_service.dart:23-30`, sobreescribible por `--dart-define`) + service worker `web/firebase-messaging-sw.js` |
 | **D-02** Visibilidad del vecino bloqueada por reglas | 🔴 Crítico | ✅ Cerrada | `firestore.rules:170` `allow read: if isActive()`; sanitización de UID en UI |
 | **D-03** Derivación 911/107 no cableada en cliente | 🔴 Alto | ✅ Cerrada | enum `vitalRiskDetected` con displayName de derivación (`incident_event.dart:76,113`); `vital_risk_dialog.dart` |
 | **D-04** Disclaimer + TyC inexistentes | 🟡 Medio | ✅ Cerrada | `terms/` (`terms_page.dart`, `terms_provider.dart`, `terms_config.dart`) |
@@ -116,7 +116,7 @@ compromete la propuesta de valor para la defensa.
 
 | # | Gap | Severidad | Estado | Recomendación |
 |---|---|---|---|---|
-| G-1 | **Push web roto**: `getToken` se llamaba sin `vapidKey` y faltaba el service worker → en web no se registraba token y el referente no recibía push en navegador | Media | ✅ Resuelto | (1) `FcmService` pasa `vapidKey` a `getToken`; (2) service worker `web/firebase-messaging-sw.js` agregado (lo exige FCM web). Falta solo el paso de despliegue: generar la VAPID key (Console → Cloud Messaging → Web Push certificates) y buildear web con `--dart-define=FCM_VAPID_KEY=...` |
+| G-1 | **Push web roto**: `getToken` se llamaba sin `vapidKey` y faltaba el service worker → en web no se registraba token y el referente no recibía push en navegador | Media | ✅ Resuelto | (1) `FcmService` pasa la `vapidKey` a `getToken`, con la **VAPID public key baked como default** (`fcm_service.dart:23-30`; no es secreta, igual que `firebase_options.dart`); (2) service worker `web/firebase-messaging-sw.js` agregado (lo exige FCM web). Funciona en un build web normal **sin flags**; `--dart-define=FCM_VAPID_KEY=...` queda como override opcional si rota la key |
 | G-2 | **La verificación del referente no se aprovechaba**: la confirmación in-situ no se reflejaba en el panel | Baja | ✅ Resuelto (como veracidad) | Indicador de **veracidad** (badges Avalado/En disputa/Descartado) derivado en vivo del historial. **Deliberadamente NO se cableó al `priorityScore`**: prioridad=urgencia y verificación=veracidad son ortogonales |
 | G-3 | **Sin tests de integración e2e**: las suites son unitarias con mocks; no hay prueba end-to-end del pipeline completo | Media | ⚠️ Abierto | Test de integración con emuladores (Firestore + Functions) para el flujo reporte→alerta |
 | G-4 | **Escala: sin geohashing**: `findNearbyReferentes` trae candidatos y filtra por distancia; correcto a escala barrial, costoso a gran escala | Baja | ➖ Fuera de alcance | Geohashing/consulta espacial si se proyecta crecimiento (fuera de alcance académico) |
@@ -141,11 +141,12 @@ verde: 143 tests, `tsc` limpio):
 Además se cerraron dos gaps de la tabla (frontend Flutter, TDD, suite verde: 186 tests, `analyze` limpio):
 
 - **G-1 — Push web** (`fcm_service.dart` + `web/firebase-messaging-sw.js`): el push web requería
-  **dos** piezas, ambas resueltas: (1) `FcmService` pasa `vapidKey` a `getToken` (vía
-  `--dart-define=FCM_VAPID_KEY`, el plugin lo ignora en mobile; test que verifica que la key
-  llega a `getToken`); (2) se agregó el **service worker** `firebase-messaging-sw.js` que FCM web
-  exige para registrar el token (el plugin lo registra automáticamente). Para activarlo en una
-  demo web hay que generar la VAPID key en la consola y buildear con el `--dart-define`.
+  **dos** piezas, ambas resueltas: (1) `FcmService` pasa la `vapidKey` a `getToken` con la
+  **VAPID public key baked como default** (`fcm_service.dart:23-30`; el plugin la ignora en mobile;
+  test que verifica que la key llega a `getToken`); (2) se agregó el **service worker**
+  `firebase-messaging-sw.js` que FCM web exige para registrar el token (el plugin lo registra
+  automáticamente). Funciona en un build web normal **sin flags**; `--dart-define=FCM_VAPID_KEY=...`
+  queda como override opcional si rota la key.
 - **G-2 — Sello de referente** (`referent_verification_aggregate.dart` + badge en
   `incident_moderation_page.dart`): indicador de **veracidad** derivado en vivo del historial
   (`aggregateReferentVerification`: dedup última postura por referente → `confirmed` /
