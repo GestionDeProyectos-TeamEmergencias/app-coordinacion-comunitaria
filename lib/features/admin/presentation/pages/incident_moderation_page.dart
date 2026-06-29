@@ -172,17 +172,24 @@ class _IncidentCard extends StatelessWidget {
         ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 4),
-          child: Wrap(
-            spacing: 6,
-            runSpacing: 4,
-            children: [
-              IncidentStatusBadge(status: incident.status),
-              if (incident.priority != null)
-                IncidentPriorityBadge(priority: incident.priority!),
-              if (referentAggregate.state != ReferentAggregateState.none)
-                ReferentVerificationBadge(aggregate: referentAggregate),
-              Text(_formatDate(incident.timestamp)),
-            ],
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                IncidentStatusBadge(status: incident.status),
+                if (incident.priority != null) ...[
+                  const SizedBox(width: 8),
+                  IncidentPriorityBadge(priority: incident.priority!),
+                ],
+                if (referentAggregate.state != ReferentAggregateState.none) ...[
+                  const SizedBox(width: 8),
+                  ReferentVerificationBadge(aggregate: referentAggregate),
+                ],
+                const SizedBox(width: 8),
+                Text(_formatDate(incident.timestamp)),
+              ],
+            ),
           ),
         ),
         trailing: const Icon(Icons.chevron_right),

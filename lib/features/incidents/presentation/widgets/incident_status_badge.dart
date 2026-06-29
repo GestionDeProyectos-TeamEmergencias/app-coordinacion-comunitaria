@@ -49,9 +49,10 @@ class IncidentPriorityBadge extends StatelessWidget {
 
     return Chip(
       label: Text(priority.displayName),
-      backgroundColor: color.withValues(alpha: 0.15),
-      side: BorderSide(color: color),
-      labelStyle: TextStyle(color: color, fontWeight: FontWeight.w600),
+      backgroundColor: color,
+      side: BorderSide.none,
+      labelStyle:
+          const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
       padding: EdgeInsets.zero,
     );
   }
@@ -96,9 +97,15 @@ class ReferentVerificationBadge extends StatelessWidget {
     }
 
     return Chip(
-      avatar: Icon(icon, size: 16, color: color),
-      label: Text(label),
-      backgroundColor: color.withValues(alpha: 0.15),
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 4),
+          Text(label),
+        ],
+      ),
+      backgroundColor: Colors.transparent,
       side: BorderSide(color: color),
       labelStyle: TextStyle(color: color, fontWeight: FontWeight.w600),
       padding: EdgeInsets.zero,

@@ -64,7 +64,8 @@ void main() {
     expect(doc.data()!['fcmTokens'], contains(token));
   });
 
-  test('registerForUser pasa el vapidKey a getToken (push web) [G-1]', () async {
+  test('registerForUser pasa el vapidKey a getToken (push web) [G-1]',
+      () async {
     stubPermission(AuthorizationStatus.authorized);
     when(() => messaging.getToken(vapidKey: 'web-vapid'))
         .thenAnswer((_) async => token);
