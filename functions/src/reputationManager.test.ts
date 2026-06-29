@@ -78,7 +78,7 @@ describe("updateUserReputationLogic", () => {
     await updateUserReputationLogic(firestore as any, "user1", { status: "recibido" }, { status: "programado" }, "incident1");
 
     expect(store["users/user1"].data?.reputationScore).toBe(55);
-    expect(store["incidents/incident1"].data?.reputationApplied).toBe(true);
+    expect(store["incidents/incident1"].data?.reputationRewarded).toBe(true);
   });
 
   it("should decrement reputation when incident is moderatedAsFalse", async () => {
@@ -91,7 +91,7 @@ describe("updateUserReputationLogic", () => {
     await updateUserReputationLogic(firestore as any, "user2", { moderatedAsFalse: false }, { moderatedAsFalse: true }, "incident2");
 
     expect(store["users/user2"].data?.reputationScore).toBe(35);
-    expect(store["incidents/incident2"].data?.reputationApplied).toBe(true);
+    expect(store["incidents/incident2"].data?.reputationPenalized).toBe(true);
   });
 
   it("should not exceed max reputation limit", async () => {
@@ -128,7 +128,7 @@ describe("updateUserReputationLogic", () => {
     await updateUserReputationLogic(firestore as any, "user5", { status: "programado" }, { status: "solucionado" }, "incident5");
 
     expect(store["users/user5"].data?.reputationScore).toBe(55);
-    expect(store["incidents/incident5"].data?.reputationApplied).toBe(true);
+    expect(store["incidents/incident5"].data?.reputationRewarded).toBe(true);
   });
 
   it("should early return if status and moderatedAsFalse did not change", async () => {
@@ -217,7 +217,7 @@ describe("updateUserReputationLogic", () => {
       await updateUserReputationLogic(firestore as any, "reporter", before, after, "incidentX");
 
       expect(store["users/reporter"].data?.reputationScore).toBe(55);
-      expect(store["incidents/incidentX"].data?.reputationApplied).toBe(true);
+      expect(store["incidents/incidentX"].data?.reputationPenalized).toBe(true);
     });
 
     it("no decrementa de nuevo si moderation.ts es invocado dos veces (idempotencia conjunta)", async () => {
@@ -245,6 +245,29 @@ describe("updateUserReputationLogic", () => {
       await updateUserReputationLogic(firestore as any, "reporter2", before, after, "incidentY");
 
       expect(store["users/reporter2"].data?.reputationScore).toBe(70);
+    });
+
+    // Bug de idempotencia de flag único: un reporte validado (+5) y MÁS TARDE
+    // moderado como falso debe recibir AMBOS efectos. Con el viejo flag único
+    // `reputationApplied`, el −15 quedaba bloqueado y el reporte se escapaba.
+    it("aplica +5 (validación) y luego −15 (moderación falsa) sobre el mismo incidente", async () => {
+      const { firestore, store } = buildFakeFirestore({
+        "users/userZ": { data: { reputationScore: 50 } },
+        "incidents/incidentZ": { data: { status: "programado" } },
+      });
+
+      // 1) Validación: recibido -> programado  => +5 => 55
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await updateUserReputationLogic(firestore as any, "userZ",
+        { status: "recibido" }, { status: "programado" }, "incidentZ");
+      expect(store["users/userZ"].data?.reputationScore).toBe(55);
+
+      // 2) Más tarde se modera como falso => -15 => 40
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await updateUserReputationLogic(firestore as any, "userZ",
+        { status: "programado", moderatedAsFalse: false },
+        { status: "falso", moderatedAsFalse: true }, "incidentZ");
+      expect(store["users/userZ"].data?.reputationScore).toBe(40);
     });
   });
 });

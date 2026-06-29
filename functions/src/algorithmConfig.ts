@@ -65,14 +65,15 @@ export type AlgorithmConfigPatch = z.infer<typeof AlgorithmConfigPatchSchema>;
 export const DEFAULT_ALGORITHM_CONFIG: AlgorithmConfig = {
   vitalRiskTerms: {
     medico: [
-      "infarto", "infartando", "convulsion", "convulsionando",
-      "inconsciente", "desmayado", "paro cardiaco", "no respira",
-      "hemorragia", "desangrando", "sobredosis", "ahogando",
-      "electrocutado", "electrocucion", "intoxicacion",
+      "infarto", "infartando", "ataque al corazon", "convulsion",
+      "convulsionando", "inconsciente", "desmayado", "paro cardiaco",
+      "no respira", "hemorragia", "desangrando", "se desangra",
+      "sobredosis", "ahogando", "electrocutado", "electrocucion",
+      "intoxicacion", "se muere", "muriendo", "agoniza",
     ],
     seguridad: [
-      "tiroteo", "disparos", "disparo", "baleado",
-      "apunalado", "acuchillado", "navajazo",
+      "tiroteo", "disparos", "disparo", "tiro", "baleado",
+      "apunalado", "apunalada", "punalada", "acuchillado", "navajazo",
       "asalto armado", "secuestro", "rehen", "rehenes",
       "amenaza de bomba", "explosion", "arma de fuego",
       "robo a mano armada",
@@ -99,15 +100,20 @@ export const DEFAULT_ALGORITHM_CONFIG: AlgorithmConfig = {
   },
   priorityWeights: {
     semanticTermsLimit: 3,
-    semanticTermPointsMultiplier: 10,
+    // Calibración: subido de 10 a 13 para que un reporte único textualmente
+    // grave (3 términos ~0.9) pueda alcanzar 'urgente' sin depender de duplicados.
+    semanticTermPointsMultiplier: 13,
     duplicateNearbyPoints: 5,
     duplicateMaxPoints: 20,
-    reputationLowThreshold: 30,
-    reputationHighThreshold: 80,
-    reputationAdjustment: 10,
+    // Calibración: rango acercado (45/70) y ajuste subido (15) para que la
+    // reputación del usuario pondere en más casos, no solo en extremos.
+    reputationLowThreshold: 45,
+    reputationHighThreshold: 70,
+    reputationAdjustment: 15,
   },
   priorityThresholds: {
-    urgente: 80,
+    // Calibración: urgente bajado de 80 a 72 (alcanzable por señal textual fuerte).
+    urgente: 72,
     alta: 60,
     media: 30,
   },

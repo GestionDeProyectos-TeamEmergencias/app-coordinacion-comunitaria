@@ -53,7 +53,8 @@ void main() {
 
   test('registerForUser persiste el token via arrayUnion', () async {
     stubPermission(AuthorizationStatus.authorized);
-    when(() => messaging.getToken()).thenAnswer((_) async => token);
+    when(() => messaging.getToken(vapidKey: any(named: 'vapidKey')))
+        .thenAnswer((_) async => token);
 
     final service = FcmService(messaging: messaging, firestore: firestore);
 
@@ -64,9 +65,28 @@ void main() {
     expect(doc.data()!['fcmTokens'], contains(token));
   });
 
+  test('registerForUser pasa el vapidKey a getToken (push web) [G-1]',
+      () async {
+    stubPermission(AuthorizationStatus.authorized);
+    when(() => messaging.getToken(vapidKey: 'web-vapid'))
+        .thenAnswer((_) async => token);
+
+    final service = FcmService(
+      messaging: messaging,
+      firestore: firestore,
+      vapidKey: 'web-vapid',
+    );
+
+    final ok = await service.registerForUser(uid);
+
+    expect(ok, isTrue);
+    verify(() => messaging.getToken(vapidKey: 'web-vapid')).called(1);
+  });
+
   test('registerForUser es idempotente para el mismo uid', () async {
     stubPermission(AuthorizationStatus.authorized);
-    when(() => messaging.getToken()).thenAnswer((_) async => token);
+    when(() => messaging.getToken(vapidKey: any(named: 'vapidKey')))
+        .thenAnswer((_) async => token);
 
     final service = FcmService(messaging: messaging, firestore: firestore);
 
@@ -74,7 +94,8 @@ void main() {
     await service.registerForUser(uid);
 
     // getToken solo debe llamarse una vez (early return en la 2da invocación).
-    verify(() => messaging.getToken()).called(1);
+    verify(() => messaging.getToken(vapidKey: any(named: 'vapidKey')))
+        .called(1);
   });
 
   test('registerForUser retorna false si los permisos son denegados', () async {
@@ -87,12 +108,13 @@ void main() {
     expect(ok, isFalse);
     final doc = await firestore.collection('users').doc(uid).get();
     expect(doc.data()!['fcmTokens'], isEmpty);
-    verifyNever(() => messaging.getToken());
+    verifyNever(() => messaging.getToken(vapidKey: any(named: 'vapidKey')));
   });
 
   test('registerForUser retorna false si getToken devuelve null', () async {
     stubPermission(AuthorizationStatus.authorized);
-    when(() => messaging.getToken()).thenAnswer((_) async => null);
+    when(() => messaging.getToken(vapidKey: any(named: 'vapidKey')))
+        .thenAnswer((_) async => null);
 
     final service = FcmService(messaging: messaging, firestore: firestore);
 
@@ -105,7 +127,8 @@ void main() {
 
   test('onTokenRefresh persiste el nuevo token', () async {
     stubPermission(AuthorizationStatus.authorized);
-    when(() => messaging.getToken()).thenAnswer((_) async => token);
+    when(() => messaging.getToken(vapidKey: any(named: 'vapidKey')))
+        .thenAnswer((_) async => token);
 
     final service = FcmService(messaging: messaging, firestore: firestore);
     await service.registerForUser(uid);
@@ -121,7 +144,8 @@ void main() {
 
   test('unregisterCurrent quita el token actual', () async {
     stubPermission(AuthorizationStatus.authorized);
-    when(() => messaging.getToken()).thenAnswer((_) async => token);
+    when(() => messaging.getToken(vapidKey: any(named: 'vapidKey')))
+        .thenAnswer((_) async => token);
 
     final service = FcmService(messaging: messaging, firestore: firestore);
     await service.registerForUser(uid);

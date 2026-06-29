@@ -1,7 +1,7 @@
 # Backlog — App de Coordinación Comunitaria
 
 **Proyecto Jira:** [KAN — comunidad-team-nb4pgq0v.atlassian.net](https://comunidad-team-nb4pgq0v.atlassian.net)
-**Última sincronización:** 2026-06-20
+**Última sincronización:** 2026-06-27
 
 ---
 
@@ -20,11 +20,11 @@
 
 | Estado | Cantidad |
 |---|---|
-| ✅ Finalizado | 30 |
+| ✅ Finalizado | 37 |
 | 🔄 En curso | 1 |
 | 🔍 En revisión | 0 |
 | ⬜ Por hacer | 6 |
-| **Total** | **37** |
+| **Total** | **44** |
 
 ---
 
@@ -97,6 +97,22 @@
 | KAN-34 | [T-TEST-04] Ejecución de pruebas — Motor NLP y Notificaciones | ⬜ Por hacer | Eric Doyle | Medium |
 | KAN-71 | [T-TEST-05] Ejecución de pruebas de RNF | ⬜ Por hacer | JOAQUIN SEBASTIAN HUBNER | Medium |
 | KAN-72 | [T-TEST-06] Ejecución final de la suite completa — registro OK | ⬜ Por hacer | Eric Doyle | Medium |
+
+---
+
+## Épica 6 — Tercera Iteración (KAN-??)
+
+> Features de la tercera iteración. `ajuste-feedback` = cierre de lo ya especificado/pedido; `extra` = amplía el SRS (ver `PLAN_TERCERA_ITERACION.md` §7). Completar las claves `KAN-NN` reales y los responsables faltantes al sincronizar con Jira.
+
+| Clave | Tarea | Estado | Responsable | Prioridad |
+|---|---|---|---|---|
+| KAN-?? (completar) | [F-01] Mis reportes con edición (`ajuste-feedback`) | ✅ Finalizado | (completar) | Medium |
+| KAN-?? (completar) | [F-02] Definición operativa del cliente objetivo (`ajuste-feedback`) | ✅ Finalizado | Eric Doyle | Medium |
+| KAN-?? (completar) | [F-03] Selector de ubicación interactivo (`ajuste-feedback`) | ✅ Finalizado | (completar) | Medium |
+| KAN-?? (completar) | [F-04] Reacciones de la comunidad (`extra`) | ✅ Finalizado | (completar) | Medium |
+| KAN-?? (completar) | [F-05] Validación bilateral del cierre (`extra`) | ✅ Finalizado | (completar) | Medium |
+| KAN-?? (completar) | [F-06] Evidencia opcional al cerrar (`extra`) | ✅ Finalizado | (completar) | Medium |
+| KAN-?? (completar) | [F-07] Polígono de cobertura (`ajuste-feedback`) | ✅ Finalizado | Eric Doyle | Medium |
 
 ---
 

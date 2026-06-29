@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../domain/entities/incident_event.dart';
+import '../../domain/referent_verification_aggregate.dart';
 
 class IncidentStatusBadge extends StatelessWidget {
   const IncidentStatusBadge({super.key, required this.status});
@@ -48,7 +49,63 @@ class IncidentPriorityBadge extends StatelessWidget {
 
     return Chip(
       label: Text(priority.displayName),
-      backgroundColor: color.withValues(alpha: 0.15),
+      backgroundColor: color,
+      side: BorderSide.none,
+      labelStyle:
+          const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+      padding: EdgeInsets.zero,
+    );
+  }
+}
+
+/// Indicador de **veracidad**: refleja la verificación in-situ de los referentes
+/// barriales sobre el incidente. Es ortogonal a la prioridad (no la modifica).
+///
+/// No se renderiza cuando ningún referente intervino todavía
+/// (`ReferentAggregateState.none`) para no ensuciar la lista.
+class ReferentVerificationBadge extends StatelessWidget {
+  const ReferentVerificationBadge({super.key, required this.aggregate});
+
+  final ReferentVerificationAggregate aggregate;
+
+  @override
+  Widget build(BuildContext context) {
+    final (color, icon, label) = switch (aggregate.state) {
+      ReferentAggregateState.confirmed => (
+          AppColors.statusSolved,
+          Icons.verified,
+          aggregate.confirms > 1
+              ? 'Avalado · ${aggregate.confirms}'
+              : 'Avalado',
+        ),
+      ReferentAggregateState.disputed => (
+          AppColors.priorityHigh,
+          Icons.warning_amber_rounded,
+          'En disputa ${aggregate.confirms}✓·${aggregate.dismisses}✗',
+        ),
+      ReferentAggregateState.dismissed => (
+          AppColors.statusReceived,
+          Icons.cancel_outlined,
+          'Descartado por referente',
+        ),
+      // Sin intervención de referentes: no se muestra badge.
+      ReferentAggregateState.none => (null, null, null),
+    };
+
+    if (color == null || icon == null || label == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Chip(
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 4),
+          Text(label),
+        ],
+      ),
+      backgroundColor: Colors.transparent,
       side: BorderSide(color: color),
       labelStyle: TextStyle(color: color, fontWeight: FontWeight.w600),
       padding: EdgeInsets.zero,

@@ -53,9 +53,9 @@ describe("Priority Calculation (T-NLP-04)", () => {
       duplicateCheck: dummyDuplicate,
     });
 
-    // Base 40 + (0.9*10) + (0.8*10) = 40 + 9 + 8 = 57
-    expect(result.priorityScore).toBe(57);
-    expect(result.priority).toBe("media");
+    // Base 40 + round(0.9*13 + 0.8*13) = 40 + 22 = 62  [calibración: mult=13]
+    expect(result.priorityScore).toBe(62);
+    expect(result.priority).toBe("alta");
     expect(result.reason).toContain("Términos clave detectados");
   });
 
@@ -76,16 +76,16 @@ describe("Priority Calculation (T-NLP-04)", () => {
       semanticExtraction: {
         ...dummySemantic,
         detectedTerms: [
-          { term: "pozo", weight: 1.0 }, // +10
-          { term: "peligro", weight: 1.0 }, // +10
+          { term: "pozo", weight: 1.0 }, // +13
+          { term: "peligro", weight: 1.0 }, // +13
         ],
       },
-      enrichment: highRepEnrichment, // +10
+      enrichment: highRepEnrichment, // rep 90 > 70 -> +15
       duplicateCheck: manyDuplicates, // 5 * 5 = +25 (max 20) -> +20
     });
 
-    // 40 + 20 + 10 + 20 = 90 -> 'urgente'
-    expect(result.priorityScore).toBe(90);
+    // 40 + 26 + 15 + 20 = 101 -> clamp 100 -> 'urgente'  [calibración]
+    expect(result.priorityScore).toBe(100);
     expect(result.priority).toBe("urgente");
   });
 
@@ -98,12 +98,12 @@ describe("Priority Calculation (T-NLP-04)", () => {
     const result = await priorityCalculationFlow({
       category: "espacios_verdes" as CategoryNormalized, // base 20
       semanticExtraction: null,
-      enrichment: lowRepEnrichment, // -10 penalty
+      enrichment: lowRepEnrichment, // rep 10 < 45 -> -15 penalty
       duplicateCheck: dummyDuplicate,
     });
 
-    // 20 - 10 = 10 -> 'baja'
-    expect(result.priorityScore).toBe(10);
+    // 20 - 15 = 5 -> 'baja'  [calibración: reputationAdjustment=15]
+    expect(result.priorityScore).toBe(5);
     expect(result.priority).toBe("baja");
   });
 
@@ -119,7 +119,7 @@ describe("Priority Calculation (T-NLP-04)", () => {
       enrichment: lowRepEnrichment, // -10 penalty
       duplicateCheck: dummyDuplicate, // 0
     });
-    expect(res1.priorityScore).toBe(0); // 10 - 10 = 0 (bounded)
+    expect(res1.priorityScore).toBe(0); // 10 - 15 = -5 -> clamp 0 (bounded)
 
     const highRepEnrichment: EnrichmentResult = {
       ...dummyEnrichment,
@@ -134,18 +134,71 @@ describe("Priority Calculation (T-NLP-04)", () => {
       semanticExtraction: {
         ...dummySemantic,
         detectedTerms: [
-          { term: "a", weight: 1.0 }, // 10
-          { term: "b", weight: 1.0 }, // 10
-          { term: "c", weight: 1.0 }, // 10
-          { term: "d", weight: 1.0 }, // Top 3 only = 30
+          { term: "a", weight: 1.0 }, // 13
+          { term: "b", weight: 1.0 }, // 13
+          { term: "c", weight: 1.0 }, // 13
+          { term: "d", weight: 1.0 }, // Top 3 only = 39
         ],
       },
-      enrichment: highRepEnrichment, // +10
+      enrichment: highRepEnrichment, // rep 100 > 70 -> +15
       duplicateCheck: maxDuplicates, // +20
     });
-    
-    // 40 + 30 + 10 + 20 = 100
+
+    // 40 + 39 + 15 + 20 = 114 -> clamp 100
     expect(res2.priorityScore).toBe(100);
     expect(res2.priority).toBe("urgente");
+  });
+
+  // ── Calibración: urgente alcanzable + reputación pondera más ────────────────
+  describe("calibración de defaults", () => {
+    it("un reporte único textualmente grave alcanza 'urgente' sin duplicados", async () => {
+      const result = await priorityCalculationFlow({
+        category: "infraestructura_vial" as CategoryNormalized, // base 40
+        semanticExtraction: {
+          ...dummySemantic,
+          detectedTerms: [
+            { term: "derrumbe", weight: 0.9 },
+            { term: "grietas", weight: 0.9 },
+            { term: "peligro", weight: 0.9 },
+          ],
+        },
+        enrichment: dummyEnrichment, // rep 50 -> neutral
+        duplicateCheck: dummyDuplicate,
+      });
+
+      // 40 + round(0.9*13 * 3 = 35.1) = 75 >= urgente(72)
+      expect(result.priorityScore).toBe(75);
+      expect(result.priority).toBe("urgente");
+    });
+
+    it("penaliza reputación moderadamente baja (40) que antes quedaba neutral", async () => {
+      const result = await priorityCalculationFlow({
+        category: "infraestructura_vial" as CategoryNormalized, // base 40
+        semanticExtraction: null,
+        enrichment: {
+          ...dummyEnrichment,
+          user: { ...dummyEnrichment.user, reputationScore: 40 }, // < 45
+        },
+        duplicateCheck: dummyDuplicate,
+      });
+
+      // 40 - 15 = 25 (antes quedaba en 40: rep 40 > low=30 no penalizaba)
+      expect(result.priorityScore).toBe(25);
+    });
+
+    it("bonifica reputación alta (75) que antes quedaba neutral", async () => {
+      const result = await priorityCalculationFlow({
+        category: "infraestructura_vial" as CategoryNormalized, // base 40
+        semanticExtraction: null,
+        enrichment: {
+          ...dummyEnrichment,
+          user: { ...dummyEnrichment.user, reputationScore: 75 }, // > 70
+        },
+        duplicateCheck: dummyDuplicate,
+      });
+
+      // 40 + 15 = 55 (antes quedaba en 40: rep 75 < high=80 no bonificaba)
+      expect(result.priorityScore).toBe(55);
+    });
   });
 });

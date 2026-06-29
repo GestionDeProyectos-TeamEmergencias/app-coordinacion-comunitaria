@@ -6,6 +6,7 @@ import '../../../../app/router.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/widgets/app_loading.dart';
 import '../../../incidents/domain/entities/incident_event.dart';
+import '../../../incidents/domain/referent_verification_aggregate.dart';
 import '../../../incidents/presentation/providers/incidents_provider.dart';
 import '../../../incidents/presentation/widgets/incident_status_badge.dart';
 
@@ -149,6 +150,11 @@ class _IncidentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Indicador de veracidad (ortogonal a la prioridad): refleja la verificación
+    // in-situ de los referentes. No se muestra si ninguno intervino. [G-2]
+    final referentAggregate =
+        aggregateReferentVerification(incident.referentVerificationHistory);
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: ListTile(
@@ -166,15 +172,24 @@ class _IncidentCard extends StatelessWidget {
         ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 4),
-          child: Wrap(
-            spacing: 6,
-            runSpacing: 4,
-            children: [
-              IncidentStatusBadge(status: incident.status),
-              if (incident.priority != null)
-                IncidentPriorityBadge(priority: incident.priority!),
-              Text(_formatDate(incident.timestamp)),
-            ],
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                IncidentStatusBadge(status: incident.status),
+                if (incident.priority != null) ...[
+                  const SizedBox(width: 8),
+                  IncidentPriorityBadge(priority: incident.priority!),
+                ],
+                if (referentAggregate.state != ReferentAggregateState.none) ...[
+                  const SizedBox(width: 8),
+                  ReferentVerificationBadge(aggregate: referentAggregate),
+                ],
+                const SizedBox(width: 8),
+                Text(_formatDate(incident.timestamp)),
+              ],
+            ),
           ),
         ),
         trailing: const Icon(Icons.chevron_right),
