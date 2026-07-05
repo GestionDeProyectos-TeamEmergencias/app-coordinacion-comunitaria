@@ -1,3 +1,4 @@
+import 'package:app_coordinacion_comunitaria/features/auth/presentation/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,7 +7,6 @@ import '../../../../app/router.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/extensions/context_extensions.dart';
 import '../../../../core/widgets/app_button.dart';
-import '../providers/auth_provider.dart';
 import '../widgets/auth_form_field.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
@@ -35,10 +35,88 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           email: _emailCtrl.text.trim(),
           password: _passwordCtrl.text,
         );
+    // Si el login fue exitoso el router ya navegó y el widget está disposed.
+    // Hay que comprobar mounted ANTES de usar ref o context. [T-AUTH-01]
+    if (!mounted) return;
     final error = ref.read(authNotifierProvider).error;
-    if (error != null && mounted) {
+    if (error != null) {
       context.showSnackBar(error.toString(), isError: true);
     }
+  }
+
+  void _showResetPasswordDialog(BuildContext context) {
+    final TextEditingController resetEmailController = TextEditingController();
+    final resetFormKey = GlobalKey<FormState>(); // Para validación local
+
+    showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Recuperar contraseña'),
+          content: Form(
+            key: resetFormKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                    'Ingresá tu correo electrónico y te enviaremos un enlace para restablecerla.'),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: resetEmailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    labelText: 'Correo electrónico',
+                    hintText: 'ejemplo@correo.com',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (v) => (v == null || !v.contains('@'))
+                      ? 'Ingresá un correo electrónico válido'
+                      : null,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (!resetFormKey.currentState!.validate()) return;
+
+                await ref.read(authNotifierProvider.notifier).resetPassword(
+                      email: resetEmailController.text.trim(),
+                    );
+
+                final error = ref.read(authNotifierProvider).error;
+
+                if (context.mounted) {
+                  if (error != null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(error.toString()),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  } else {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                            '¡Enlace enviado! Revisá tu bandeja de entrada.'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text('Enviar enlace'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -107,6 +185,17 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   onPressed: () => context.go(AppRoutes.register),
                   child: const Text('¿No tenés cuenta? Registrate'),
                 ),
+                TextButton(
+                  onPressed: () {
+                    _showResetPasswordDialog(context);
+                  },
+                  child: const Text(
+                    '¿Olvidaste tu contraseña?',
+                    style: TextStyle(
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                )
               ],
             ),
           ),

@@ -9,4 +9,35 @@ abstract interface class AuthRepository {
   Future<AppUser> login({required String email, required String password});
   Future<void> logout();
   Future<AppUser?> getCurrentUser();
+
+  Future<void> resetPassword({required String email});
+  // ── Gestión de usuarios pendientes (T-AUTH-01) ────────────────────────────
+
+  /// Stream en tiempo real de usuarios con status "pending".
+  Stream<List<AppUser>> get pendingUsersStream;
+
+  /// Aprueba una cuenta: status → "active".
+  Future<void> approveUser(String uid);
+
+  /// Rechaza una cuenta: status → "rejected".
+  Future<void> rejectUser(String uid);
+
+  // ── Gestión de roles (T-AUTH-04) ──────────────────────────────────────────
+
+  /// Stream en tiempo real de usuarios activos, opcionalmente filtrado por rol.
+  Stream<List<AppUser>> activeUsersStream({UserRole? role});
+
+  /// Promueve un vecino informante a referente barrial.
+  Future<void> promoteToReferent(String uid);
+
+  /// Degrada un referente barrial a vecino informante.
+  Future<void> demoteToVecino(String uid);
+
+  // ── Gestión de bloqueos (T-AUTH-07) ───────────────────────────────────────
+
+  /// Stream en tiempo real de usuarios bloqueados.
+  Stream<List<AppUser>> get blockedUsersStream;
+
+  /// Bloquea manualmente a un usuario: status → "blocked".
+  Future<void> blockUser(String uid);
 }

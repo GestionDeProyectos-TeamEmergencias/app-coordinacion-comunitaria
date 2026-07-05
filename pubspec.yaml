@@ -46,6 +46,10 @@ dependencies:
 
   # ── UI ────────────────────────────────────────────────────────────────────
   cupertino_icons: ^1.0.8
+  cloud_functions: ^5.6.2
+
+  # ── Deep links (tel:, mailto:) — usado para derivación a 911/107. [D-03]
+  url_launcher: ^6.3.1
 
 dev_dependencies:
   flutter_test:
@@ -66,6 +70,7 @@ dev_dependencies:
   mocktail: ^1.0.4
   fake_cloud_firestore: ^3.0.3
   firebase_auth_mocks: ^0.14.1
+  firebase_storage_mocks: ^0.7.0
 
 flutter:
   uses-material-design: true

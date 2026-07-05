@@ -1,13 +1,22 @@
+import 'package:app_coordinacion_comunitaria/features/auth/domain/usecases/reset_password_usecase.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../notifications/presentation/providers/fcm_service_provider.dart';
 import '../../data/datasources/auth_remote_datasource.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/entities/app_user.dart';
+import '../../domain/usecases/approve_user_usecase.dart';
+import '../../domain/usecases/block_user_usecase.dart';
+import '../../domain/usecases/demote_to_vecino_usecase.dart';
+import '../../domain/usecases/get_active_users_usecase.dart';
+import '../../domain/usecases/get_pending_users_usecase.dart';
 import '../../domain/usecases/login_usecase.dart';
 import '../../domain/usecases/logout_usecase.dart';
+import '../../domain/usecases/promote_to_referent_usecase.dart';
 import '../../domain/usecases/register_usecase.dart';
+import '../../domain/usecases/reject_user_usecase.dart';
 
 // ── Infraestructura ────────────────────────────────────────────────────────────
 
@@ -44,10 +53,63 @@ final logoutUseCaseProvider = Provider<LogoutUseCase>((ref) {
   return LogoutUseCase(ref.watch(_authRepositoryProvider));
 });
 
+final resetPasswordUseCaseProvider = Provider<ResetPasswordUseCase>((ref) {
+  return ResetPasswordUseCase(ref.watch(_authRepositoryProvider));
+});
+
+// ── Use cases — gestión de usuarios pendientes (T-AUTH-01) ───────────────────
+
+final getPendingUsersUseCaseProvider = Provider<GetPendingUsersUseCase>((ref) {
+  return GetPendingUsersUseCase(ref.watch(_authRepositoryProvider));
+});
+
+final approveUserUseCaseProvider = Provider<ApproveUserUseCase>((ref) {
+  return ApproveUserUseCase(ref.watch(_authRepositoryProvider));
+});
+
+final rejectUserUseCaseProvider = Provider<RejectUserUseCase>((ref) {
+  return RejectUserUseCase(ref.watch(_authRepositoryProvider));
+});
+
+// ── Use cases — gestión de roles (T-AUTH-04) ──────────────────────────────────
+
+final promoteToReferentUseCaseProvider =
+    Provider<PromoteToReferentUseCase>((ref) {
+  return PromoteToReferentUseCase(ref.watch(_authRepositoryProvider));
+});
+
+final demoteToVecinoUseCaseProvider = Provider<DemoteToVecinoUseCase>((ref) {
+  return DemoteToVecinoUseCase(ref.watch(_authRepositoryProvider));
+});
+
+final getActiveUsersUseCaseProvider = Provider<GetActiveUsersUseCase>((ref) {
+  return GetActiveUsersUseCase(ref.watch(_authRepositoryProvider));
+});
+
+final blockUserUseCaseProvider = Provider<BlockUserUseCase>((ref) {
+  return BlockUserUseCase(ref.watch(_authRepositoryProvider));
+});
+
 // ── Estado de autenticación (stream) ──────────────────────────────────────────
 
 final authStateProvider = StreamProvider<AppUser?>((ref) {
   return ref.watch(_authRepositoryProvider).authStateChanges;
+});
+
+/// Stream en tiempo real de usuarios pendientes de aprobación. [T-AUTH-01]
+final pendingUsersProvider = StreamProvider<List<AppUser>>((ref) {
+  return ref.watch(getPendingUsersUseCaseProvider)();
+});
+
+/// Stream en tiempo real de usuarios activos, filtrado por rol opcional. [T-AUTH-04]
+final activeUsersProvider =
+    StreamProvider.family<List<AppUser>, UserRole?>((ref, role) {
+  return ref.watch(getActiveUsersUseCaseProvider)(role: role);
+});
+
+/// Stream en tiempo real de usuarios bloqueados. [T-AUTH-07]
+final blockedUsersProvider = StreamProvider<List<AppUser>>((ref) {
+  return ref.watch(_authRepositoryProvider).blockedUsersStream;
 });
 
 // ── Notifier para operaciones de auth ─────────────────────────────────────────
@@ -81,8 +143,19 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
 
   Future<void> logout() async {
     state = const AsyncValue.loading();
+    // Sacar el token FCM del array del usuario ANTES del signOut. Si lo hacemos
+    // después, las reglas Firestore niegan el update porque el request ya no
+    // tiene `request.auth`. Best-effort: el servicio no propaga errores. [D-01]
+    await _ref.read(fcmServiceProvider).unregisterCurrent();
     state = await AsyncValue.guard(
       () => _ref.read(logoutUseCaseProvider)(),
+    );
+  }
+
+  Future<void> resetPassword({required String email}) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(
+      () => _ref.read(resetPasswordUseCaseProvider)(email: email),
     );
   }
 }
@@ -90,4 +163,56 @@ class AuthNotifier extends StateNotifier<AsyncValue<void>> {
 final authNotifierProvider =
     StateNotifierProvider<AuthNotifier, AsyncValue<void>>(
   (ref) => AuthNotifier(ref),
+);
+
+// ── Notifier para operaciones del admin sobre usuarios (T-AUTH-01) ────────────
+
+/// Maneja las acciones de aprobación y rechazo de cuentas pendientes.
+class UserManagementNotifier extends StateNotifier<AsyncValue<void>> {
+  UserManagementNotifier(this._ref) : super(const AsyncValue.data(null));
+
+  final Ref _ref;
+
+  Future<void> approveUser(String uid) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(
+      () => _ref.read(approveUserUseCaseProvider)(uid),
+    );
+  }
+
+  Future<void> rejectUser(String uid) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(
+      () => _ref.read(rejectUserUseCaseProvider)(uid),
+    );
+  }
+
+  /// Promueve a referente barrial. [T-AUTH-04]
+  Future<void> promoteToReferent(String uid) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(
+      () => _ref.read(promoteToReferentUseCaseProvider)(uid),
+    );
+  }
+
+  /// Degrada a vecino informante. [T-AUTH-04]
+  Future<void> demoteToVecino(String uid) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(
+      () => _ref.read(demoteToVecinoUseCaseProvider)(uid),
+    );
+  }
+
+  /// Bloquea a un usuario. [T-AUTH-08]
+  Future<void> blockUser(String uid) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(
+      () => _ref.read(blockUserUseCaseProvider)(uid),
+    );
+  }
+}
+
+final userManagementNotifierProvider =
+    StateNotifierProvider<UserManagementNotifier, AsyncValue<void>>(
+  (ref) => UserManagementNotifier(ref),
 );

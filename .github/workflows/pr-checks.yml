@@ -2,6 +2,7 @@ name: PR Checks
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, edited]
     branches: [main, develop]
 
 jobs:
@@ -10,14 +11,21 @@ jobs:
     name: Validar título del PR
     runs-on: ubuntu-latest
     steps:
-      - name: Verificar formato [T-XXX-XX]
+      - name: Verificar formato [T-XXX-XX] | [D-NN] | [F-NN]
         run: |
           TITLE="${{ github.event.pull_request.title }}"
-          if echo "$TITLE" | grep -qE '\[T-[A-Z]+-[0-9]+\]'; then
+          # Acepta tres prefijos de tarea:
+          #   - T-XXX-NN  → tareas originales del backlog (Jira)
+          #   - D-NN      → deuda-mvp identificada en DEVOLUCION_PLAN_TERCERA_ITERACION.md
+          #   - F-NN      → features de extensión del PLAN_TERCERA_ITERACION.md
+          if echo "$TITLE" | grep -qE '\[(T-[A-Z]+-[0-9]+|D-[0-9]+|F-[0-9]+)\]'; then
             echo "✅ Título válido: $TITLE"
           else
-            echo "❌ El título del PR debe incluir el ID de la tarea Jira."
-            echo "   Formato requerido: feat: [T-AUTH-01] Descripción"
+            echo "❌ El título del PR debe incluir el ID de la tarea."
+            echo "   Formatos aceptados:"
+            echo "     feat: [T-AUTH-01] Descripción   (tarea de backlog)"
+            echo "     feat: [D-01] Descripción        (deuda-mvp)"
+            echo "     feat: [F-01] Descripción        (extensión)"
             echo "   Título actual: $TITLE"
             exit 1
           fi

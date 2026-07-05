@@ -26,11 +26,14 @@ enum UserRole {
 enum UserStatus {
   pending,
   active,
-  blocked;
+  blocked,
+  // Cuenta rechazada por el Administrador Vecinal. [T-AUTH-01]
+  rejected;
 
   static UserStatus fromString(String value) => switch (value) {
         'active' => UserStatus.active,
         'blocked' => UserStatus.blocked,
+        'rejected' => UserStatus.rejected,
         _ => UserStatus.pending,
       };
 }
@@ -43,8 +46,14 @@ class AppUser extends Equatable {
     required this.role,
     required this.status,
     this.reputationScore = 100.0,
+    this.falseReportsCount = 0,
     this.coverageAreaCenter,
     this.coverageRadiusKm,
+    this.identityProofUrl,
+    this.fcmTokens = const [],
+    this.termsAcceptedVersion,
+    this.termsAcceptedAt,
+    this.homeLocation,
   });
 
   final String userId;
@@ -53,13 +62,28 @@ class AppUser extends Equatable {
   final UserRole role;
   final UserStatus status;
   final double reputationScore;
+  final int falseReportsCount;
   // Posición central del área de cobertura (Firestore GeoPoint se mapea a lat/lng)
   final ({double latitude, double longitude})? coverageAreaCenter;
   final double? coverageRadiusKm;
+  // URL del comprobante de servicio para verificación de identidad. [T-AUTH-09]
+  final String? identityProofUrl;
+  // Tokens FCM registrados por este usuario. Múltiples dispositivos posibles. [D-01]
+  final List<String> fcmTokens;
+  // Versión de los Términos y Condiciones aceptados por el usuario. Si es
+  // menor a `TermsConfig.currentVersion`, el router lo redirige al gate. [D-04]
+  final int? termsAcceptedVersion;
+  final DateTime? termsAcceptedAt;
+  // Ubicación de interés del vecino (opt-in desde Perfil). Si está seteada,
+  // los broadcasts zonales del admin pueden alcanzarlo. Sin esto, solo recibe
+  // los broadcasts globales. Se persiste en `users/{uid}.homeLat`/`homeLng`.
+  // [Broadcast fix posterior a T-NLP-09]
+  final ({double latitude, double longitude})? homeLocation;
 
   bool get isActive => status == UserStatus.active;
   bool get isPending => status == UserStatus.pending;
   bool get isBlocked => status == UserStatus.blocked;
+  bool get isRejected => status == UserStatus.rejected;
 
   AppUser copyWith({
     String? userId,
@@ -68,8 +92,14 @@ class AppUser extends Equatable {
     UserRole? role,
     UserStatus? status,
     double? reputationScore,
+    int? falseReportsCount,
     ({double latitude, double longitude})? coverageAreaCenter,
     double? coverageRadiusKm,
+    String? identityProofUrl,
+    List<String>? fcmTokens,
+    int? termsAcceptedVersion,
+    DateTime? termsAcceptedAt,
+    ({double latitude, double longitude})? homeLocation,
   }) {
     return AppUser(
       userId: userId ?? this.userId,
@@ -78,8 +108,14 @@ class AppUser extends Equatable {
       role: role ?? this.role,
       status: status ?? this.status,
       reputationScore: reputationScore ?? this.reputationScore,
+      falseReportsCount: falseReportsCount ?? this.falseReportsCount,
       coverageAreaCenter: coverageAreaCenter ?? this.coverageAreaCenter,
       coverageRadiusKm: coverageRadiusKm ?? this.coverageRadiusKm,
+      identityProofUrl: identityProofUrl ?? this.identityProofUrl,
+      fcmTokens: fcmTokens ?? this.fcmTokens,
+      termsAcceptedVersion: termsAcceptedVersion ?? this.termsAcceptedVersion,
+      termsAcceptedAt: termsAcceptedAt ?? this.termsAcceptedAt,
+      homeLocation: homeLocation ?? this.homeLocation,
     );
   }
 
@@ -91,7 +127,13 @@ class AppUser extends Equatable {
         role,
         status,
         reputationScore,
+        falseReportsCount,
         coverageAreaCenter,
         coverageRadiusKm,
+        identityProofUrl,
+        fcmTokens,
+        termsAcceptedVersion,
+        termsAcceptedAt,
+        homeLocation,
       ];
 }

@@ -40,4 +40,41 @@ class AuthRepositoryImpl implements AuthRepository {
     final model = await _dataSource.getCurrentUser();
     return model?.toDomain();
   }
+
+  @override
+  Future<void> resetPassword({required String email}) =>
+      _dataSource.resetPassword(email: email);
+  // ── Gestión de usuarios pendientes (T-AUTH-01) ────────────────────────────
+
+  @override
+  Stream<List<AppUser>> get pendingUsersStream => _dataSource.pendingUsersStream
+      .map((models) => models.map((m) => m.toDomain()).toList());
+
+  @override
+  Future<void> approveUser(String uid) => _dataSource.approveUser(uid);
+
+  @override
+  Future<void> rejectUser(String uid) => _dataSource.rejectUser(uid);
+
+  // ── Gestión de roles (T-AUTH-04) ──────────────────────────────────────────
+
+  @override
+  Stream<List<AppUser>> activeUsersStream({UserRole? role}) => _dataSource
+      .activeUsersStream(role: role?.firestoreValue)
+      .map((models) => models.map((m) => m.toDomain()).toList());
+
+  @override
+  Future<void> promoteToReferent(String uid) =>
+      _dataSource.promoteToReferent(uid);
+
+  @override
+  Future<void> demoteToVecino(String uid) => _dataSource.demoteToVecino(uid);
+
+  @override
+  Stream<List<AppUser>> get blockedUsersStream => _dataSource
+      .blockedUsersStream()
+      .map((models) => models.map((m) => m.toDomain()).toList());
+
+  @override
+  Future<void> blockUser(String uid) => _dataSource.blockUser(uid);
 }

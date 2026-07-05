@@ -8,24 +8,120 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Verifica que exista el documento del caller antes de hacer get(): evita
+    // que las reglas tiren "permission-denied" cuando el doc todavía no se
+    // creó (típico durante el primer flow de registro o si hay corrupción).
+    function callerDocExists() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
     function callerData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
     function isActive() {
-      return isAuthenticated() && callerData().status == 'active';
+      return callerDocExists() && callerData().status == 'active';
     }
 
     function isAdmin() {
-      return isActive() && callerData().role == 'administrador';
+      return callerDocExists() &&
+        callerData().status == 'active' &&
+        callerData().role == 'administrador';
     }
 
     function isReferente() {
-      return isActive() && callerData().role == 'referente_barrial';
+      return callerDocExists() &&
+        callerData().status == 'active' &&
+        callerData().role == 'referente_barrial';
     }
 
     function isAdminOrReferente() {
       return isAdmin() || isReferente();
+    }
+
+    // ── Validación bilateral del cierre (F-05) ─────────────────────────────────
+    // Permite al dueño tocar `closureConfirmation` cuando el incident está en
+    // `solucionado` con state=pendiente. Hay dos caminos:
+    //
+    //   1. Confirmar: solo cambia closureConfirmation.state a 'confirmado',
+    //      sin tocar status.
+    //   2. Disputar: cambia closureConfirmation.state a 'disputado' Y status
+    //      vuelve a 'en_reparacion'. Es la única transición desde solucionado
+    //      permitida vía cliente (excepción documentada al grafo D-07).
+    //
+    // statusHistory es array de auditoría: se acepta su mutación dentro de
+    // ambos caminos siempre que el resto de la regla se cumpla.
+
+    function isOwnerConfirmingClosure() {
+      return resource.data.userId == request.auth.uid &&
+        resource.data.status == 'solucionado' &&
+        resource.data.closureConfirmation.state == 'pendiente' &&
+        request.resource.data.diff(resource.data)
+          .affectedKeys()
+          .hasOnly(['closureConfirmation']) &&
+        request.resource.data.closureConfirmation.state == 'confirmado';
+    }
+
+    function isOwnerDisputingClosure() {
+      return resource.data.userId == request.auth.uid &&
+        resource.data.status == 'solucionado' &&
+        resource.data.closureConfirmation.state == 'pendiente' &&
+        request.resource.data.diff(resource.data)
+          .affectedKeys()
+          .hasOnly(['closureConfirmation', 'status', 'statusHistory']) &&
+        request.resource.data.closureConfirmation.state == 'disputado' &&
+        request.resource.data.status == 'en_reparacion' &&
+        request.resource.data.closureConfirmation.note is string &&
+        request.resource.data.closureConfirmation.note.size() > 0;
+    }
+
+    // ── Máquina de estados de incidents (D-07 / RF-ADM-02) ────────────────────
+    // El grafo replica el del cliente (`IncidentStatus.allowedTransitions`):
+    //   recibido     → {programado, en_reparacion, solucionado}
+    //   programado   → {recibido, en_reparacion, solucionado}
+    //   en_reparacion→ {programado, solucionado}
+    //   solucionado  → {} (terminal; F-05 abrirá disputa por campo ortogonal)
+    // Los estados marcadores (`falso`, `rechazado_fuera_de_cobertura`,
+    // `vital_risk_detected`, `rechazado_autor_inactivo`) los pone el backend
+    // con Admin SDK — NUNCA son válidos vía dropdown del cliente. `falso`
+    // tiene su único camino vía el callable `moderateFalseReport`.
+
+    function isValidStatusTransition(oldStatus, newStatus) {
+      return newStatus == oldStatus ||
+        (oldStatus == 'recibido' && (
+          newStatus == 'programado' ||
+          newStatus == 'en_reparacion' ||
+          newStatus == 'solucionado'
+        )) ||
+        (oldStatus == 'programado' && (
+          newStatus == 'recibido' ||
+          newStatus == 'en_reparacion' ||
+          newStatus == 'solucionado'
+        )) ||
+        (oldStatus == 'en_reparacion' && (
+          newStatus == 'programado' ||
+          newStatus == 'solucionado'
+        ));
+    }
+
+    // ── Cierre con evidencia por el Referente Barrial (F-06) ───────────────────
+    // Excepción documentada a D-07: el referente —que normalmente solo escribe
+    // `referentVerification(History)`— puede cerrar el incident a `solucionado`
+    // adjuntando evidencia opcional. La apertura es estrecha: SOLO transición a
+    // `solucionado` (validada por el grafo) y tocando únicamente los campos del
+    // cierre. El admin conserva el control de todas las demás transiciones.
+    function isReferenteResolvingIncident() {
+      return request.resource.data.status == 'solucionado' &&
+        isValidStatusTransition(resource.data.status, 'solucionado') &&
+        request.resource.data.diff(resource.data)
+          .affectedKeys()
+          .hasOnly([
+            'status',
+            'statusHistory',
+            'resolutionEvidenceUrl',
+            'closureConfirmation'
+          ]);
     }
 
     // ── Colección: users ───────────────────────────────────────────────────────
@@ -37,16 +133,20 @@ service cloud.firestore {
       allow read: if isAuthenticated() &&
         (request.auth.uid == userId || isAdmin());
 
-      // Creación: el usuario se crea a sí mismo durante el registro.
+      // Creación: el usuario se crea a sí mismo durante el registro. [T-AUTH-01]
       allow create: if isAuthenticated() &&
-        request.auth.uid == userId;
+        request.auth.uid == userId &&
+        request.resource.data.role == 'vecino_informante' &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.reputationScore == 100.0 &&
+        request.resource.data.falseReportsCount == 0; // Guardamos que empiece en 0
 
       // Actualización: el usuario puede editar su propio perfil
-      // pero NO puede cambiar su rol ni su estado (eso solo lo hace el admin).
+      // pero NO puede cambiar su rol, estado, reputación ni contador de falsos.
       allow update: if isAuthenticated() && (
         (request.auth.uid == userId &&
           !request.resource.data.diff(resource.data)
-            .affectedKeys().hasAny(['role', 'status', 'reputationScore'])) ||
+            .affectedKeys().hasAny(['role', 'status', 'reputationScore', 'falseReportsCount'])) ||
         isAdmin()
       );
 
@@ -55,16 +155,19 @@ service cloud.firestore {
     }
 
     // ── Colección: incidents ───────────────────────────────────────────────────
-    // Los vecinos solo ven sus propios incidentes.
-    // Referentes y admins ven todos.
+    // Mapa del barrio (SRS §3.1.1): cualquier usuario activo lee los incidentes
+    // del barrio. La identidad del reportero (`userId`) viaja en el doc pero la
+    // colección `users/{uid}` sigue blindada a dueño + admin, así que el UID
+    // queda opaco para terceros. La sanitización visual (no mostrar userId a
+    // quien no sea dueño/admin/referente) se asegura en la capa de UI. [D-02]
     // Solo referentes y admins pueden cambiar estado/prioridad.
 
     match /incidents/{incidentId} {
-      // Lectura: usuario activo que sea dueño del incidente, referente, o admin.
-      allow read: if isActive() && (
-        resource.data.userId == request.auth.uid ||
-        isAdminOrReferente()
-      );
+      // Lectura: cualquier usuario activo. La granularidad de filtros (qué
+      // incidents se muestran en cada pantalla) se delega al cliente, no a las
+      // reglas, para evitar acoplar la regla a la evolución del enum de status
+      // y a índices compuestos. [D-02]
+      allow read: if isActive();
 
       // Creación: cualquier usuario activo puede reportar,
       // pero el userId del incidente debe ser el suyo.
@@ -72,19 +175,95 @@ service cloud.firestore {
         request.resource.data.userId == request.auth.uid;
 
       // Actualización:
-      // - Referentes y admins pueden actualizar cualquier campo.
-      // - El vecino dueño solo puede editar descripción/foto mientras el
-      //   incidente siga en estado 'recibido' (aún no procesado por NLP).
+      // - Admin: cualquier campo, **pero** si está tocando `status`, la
+      //   transición debe estar en el grafo permitido (D-07). Esto bloquea
+      //   saltos arbitrarios (p. ej. recibido → solucionado sin pasar por
+      //   en_reparacion no, pero saltos largos hacia adelante sí) y, sobre
+      //   todo, impide setear estados marcadores (`falso`, etc.) desde el
+      //   dropdown del cliente. `falso` queda con un único camino: el
+      //   callable `moderateFalseReport` (que corre con Admin SDK y no cae
+      //   bajo estas reglas).
+      // - Referente: solo `referentVerification` y `referentVerificationHistory`
+      //   (verificación de campo, RF-ROL-02(b)). NO puede tocar `status`,
+      //   `priority`, `category`, `actions` u otros campos. [D-05]
+      // - Vecino dueño: `description`, `photoUrl` y `category`, únicamente
+      //   mientras el incidente siga en `recibido`. F-01 amplía la allowlist
+      //   D-06 con `category` para que el reportero pueda corregir la categoría
+      //   que asignó en el form antes de que el NLP la procese. Una vez salido
+      //   de `recibido`, la categoría queda bajo control del admin (D-06).
+      //   `actions` y `categoryChangedBy/At` siguen fuera del alcance del dueño.
       allow update: if isActive() && (
-        isAdminOrReferente() ||
+        (isAdmin() &&
+          (!request.resource.data.diff(resource.data)
+              .affectedKeys().hasAny(['status']) ||
+            isValidStatusTransition(
+              resource.data.status,
+              request.resource.data.status
+            ))) ||
+        (isReferente() &&
+          request.resource.data.diff(resource.data)
+            .affectedKeys()
+            .hasOnly(['referentVerification', 'referentVerificationHistory'])) ||
+        // F-06: el referente cierra el incident a `solucionado` con evidencia.
+        (isReferente() && isReferenteResolvingIncident()) ||
         (resource.data.userId == request.auth.uid &&
           resource.data.status == 'recibido' &&
-          !request.resource.data.diff(resource.data)
-            .affectedKeys().hasAny(['status', 'priority', 'priorityScore', 'userId']))
+          request.resource.data.diff(resource.data)
+            .affectedKeys()
+            .hasOnly(['description', 'photoUrl', 'category'])) ||
+        // F-05: el dueño confirma o disputa el cierre.
+        (isActive() && isOwnerConfirmingClosure()) ||
+        (isActive() && isOwnerDisputingClosure())
       );
 
       // Eliminación: solo admins.
       allow delete: if isAdmin();
+
+      // ── Subcolección: reactions de la comunidad (F-04) ────────────────────
+      // Cada vecino activo puede dejar UNA reacción ('confirm' o 'dispute')
+      // sobre un incident ajeno. El dueño del incident NO puede votarse. El
+      // doc tiene como id el uid del votante. Un trigger (Cloud Function)
+      // agrega los conteos en el doc padre (`confirmsCount`, `confirmationScore`,
+      // `communityValidated`).
+      match /reactions/{userId} {
+        // Lectura: cualquier user activo (el score es público dentro del barrio).
+        allow read: if isActive();
+
+        // Crear o actualizar: user activo, doc propio, NO es dueño del incident.
+        // El sketch del plan original tenía `incidents.data.userId` lo cual no
+        // es referencia válida en este match — usamos `get()` del doc padre.
+        // [Corrección F-04 sobre §5.3 de la devolución]
+        allow create, update: if isActive() &&
+          request.auth.uid == userId &&
+          get(/databases/$(database)/documents/incidents/$(incidentId)).data.userId
+            != request.auth.uid &&
+          request.resource.data.by == request.auth.uid &&
+          (request.resource.data.type == 'confirm' ||
+            request.resource.data.type == 'dispute');
+
+        // Eliminar: el propio votante puede retirar su voto.
+        allow delete: if isActive() && request.auth.uid == userId;
+      }
+    }
+
+    // ── Colección: config ──────────────────────────────────────────────────────
+    // Configuraciones globales (cobertura geográfica, calibración de IA).
+    // Lectura: cualquier usuario activo (el cliente Flutter lo necesita para validación).
+    // Escritura: solo admins.
+
+    match /config/{document=**} {
+      allow read: if isActive();
+      allow write: if isAdmin();
+    }
+
+    // ── Colección: broadcasts (T-NLP-09) ─────────────────────────────────────
+    // Auditoría de notificaciones masivas enviadas por el admin.
+    // Escritura: solo desde el callable (con privilegios de admin SDK), nunca
+    // desde el cliente. Lectura: solo admins (panel de histórico futuro).
+
+    match /broadcasts/{document=**} {
+      allow read: if isAdmin();
+      allow write: if false;
     }
 
     // ── Denegación por defecto ─────────────────────────────────────────────────
