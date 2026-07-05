@@ -169,6 +169,26 @@ describe("Vital Risk Detection (T-NLP-05)", () => {
       expect(result.isVitalRisk).toBe(true);
       expect(result.riskCategory).toBe("medico");
     });
+
+    it("deriva ante 'se incendia el edificio, gente atrapada' (variantes verbales/de género)", async () => {
+      const result = await vitalRiskDetectionFlow({
+        description: "Se incendia el edificio del frente, hay gente atrapada adentro",
+      });
+      expect(result.isVitalRisk).toBe(true);
+      expect(result.riskCategory).toBe("desastre");
+      expect(result.matchedTerms).toEqual(
+        expect.arrayContaining(["incendia", "atrapada"])
+      );
+    });
+
+    it("deriva ante un escape de gas", async () => {
+      const result = await vitalRiskDetectionFlow({
+        description: "Hay un fuerte escape de gas en el edificio",
+      });
+      expect(result.isVitalRisk).toBe(true);
+      expect(result.riskCategory).toBe("desastre");
+      expect(result.matchedTerms).toContain("escape de gas");
+    });
   });
 
   describe("triage de categoría por precedencia explícita", () => {
